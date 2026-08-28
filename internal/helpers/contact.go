@@ -412,6 +412,12 @@ func newContactCommand() *cobra.Command {
 	// products.contact). Catalog assembly stamps provenance contract_final.
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "contact",
+		HelpReferences: contract.HelpReferences{
+			RelatedSkills: []string{"dingtalk-contact"},
+			Documentation: []contract.HelpDocumentation{
+				contract.SkillDocumentation("通讯录深度指南", "dingtalk-contact", "references/contact.md"),
+			},
+		},
 		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "查询通讯录与花名册，并管理企业、部门、员工及企业账号",
 			UseWhen: []string{
