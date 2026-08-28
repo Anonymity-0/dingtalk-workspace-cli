@@ -204,6 +204,25 @@ class TodoDailySummaryTest(unittest.TestCase):
         self.assertEqual(2, code)
         self.assertFalse(json.loads(stdout.getvalue())["complete"])
 
+    def test_missing_task_id_fails_closed(self):
+        start, _ = DAILY.date_range("today")
+        inside = int((start + timedelta(hours=9)).timestamp() * 1000)
+        payload = {
+            "ok": True,
+            "data": {
+                "complete": True,
+                "todos": [{"subject": "missing id", "dueTime": inside}],
+            },
+        }
+        stdout = io.StringIO()
+        with mock.patch.object(DAILY, "run_dws_json", return_value=payload):
+            with contextlib.redirect_stdout(stdout):
+                code = DAILY.run(["today"])
+        result = json.loads(stdout.getvalue())
+        self.assertEqual(2, code)
+        self.assertFalse(result["complete"])
+        self.assertIn("stable taskId", result["error"])
+
 
 class TodoOverdueTest(unittest.TestCase):
     def test_uses_overdue_shortcut_and_empty_is_success(self):

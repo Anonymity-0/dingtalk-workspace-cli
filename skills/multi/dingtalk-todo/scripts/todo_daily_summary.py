@@ -116,9 +116,12 @@ def run(argv: Optional[List[str]] = None) -> int:
             due = due_millis(item)
             if due is None or due < start_ms or due >= end_ms:
                 continue
+            identifier = task_id(item)
+            if not identifier:
+                raise ScriptError("Todo item is missing a stable taskId")
             selected.append(
                 {
-                    "taskId": task_id(item),
+                    "taskId": identifier,
                     "title": item.get("subject") or item.get("title") or "",
                     "priority": item.get("priority"),
                     "dueTime": due,
