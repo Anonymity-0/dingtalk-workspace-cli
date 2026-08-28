@@ -61,7 +61,7 @@ def run(argv: Optional[List[str]] = None) -> int:
         for item in extract_overdue(run_dws_json(command, args.dws)):
             task = item.get("taskId")
             due = item.get("dueTime")
-            if task in (None, "") or due in (None, ""):
+            if not isinstance(task, str) or not task.strip() or due in (None, ""):
                 raise ScriptError("overdue item is missing taskId or dueTime")
             try:
                 due_ms = int(due)
@@ -70,7 +70,7 @@ def run(argv: Optional[List[str]] = None) -> int:
                 raise ScriptError(f"invalid overdue dueTime: {due!r}") from exc
             items.append(
                 {
-                    "taskId": str(task),
+                    "taskId": task.strip(),
                     "title": item.get("subject") or item.get("title") or "",
                     "dueTime": due_ms,
                     "dueTimeISO": due_at.isoformat(),

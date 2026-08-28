@@ -196,32 +196,41 @@ class TodoDailySummaryTest(unittest.TestCase):
         )
 
     def test_incomplete_traversal_fails_closed(self):
-        payload = {"ok": True, "data": {"complete": False, "todos": []}}
-        stdout = io.StringIO()
-        with mock.patch.object(DAILY, "run_dws_json", return_value=payload):
-            with contextlib.redirect_stdout(stdout):
-                code = DAILY.run(["today"])
-        self.assertEqual(2, code)
-        self.assertFalse(json.loads(stdout.getvalue())["complete"])
+        for payload in (
+            {"ok": True, "data": {"complete": False, "todos": []}},
+            {"success": True, "result": {"todoCards": [], "hasMore": False}},
+        ):
+            with self.subTest(payload=payload):
+                stdout = io.StringIO()
+                with mock.patch.object(DAILY, "run_dws_json", return_value=payload):
+                    with contextlib.redirect_stdout(stdout):
+                        code = DAILY.run(["today"])
+                self.assertEqual(2, code)
+                self.assertFalse(json.loads(stdout.getvalue())["complete"])
 
     def test_missing_task_id_fails_closed(self):
         start, _ = DAILY.date_range("today")
         inside = int((start + timedelta(hours=9)).timestamp() * 1000)
-        payload = {
-            "ok": True,
-            "data": {
-                "complete": True,
-                "todos": [{"subject": "missing id", "dueTime": inside}],
-            },
-        }
-        stdout = io.StringIO()
-        with mock.patch.object(DAILY, "run_dws_json", return_value=payload):
-            with contextlib.redirect_stdout(stdout):
-                code = DAILY.run(["today"])
-        result = json.loads(stdout.getvalue())
-        self.assertEqual(2, code)
-        self.assertFalse(result["complete"])
-        self.assertIn("stable taskId", result["error"])
+        for task_id in (None, "", "   ", {"nested": "task-1"}):
+            with self.subTest(task_id=task_id):
+                item = {
+                    "subject": "missing id",
+                    "dueTime": inside,
+                }
+                if task_id is not None:
+                    item["taskId"] = task_id
+                payload = {
+                    "ok": True,
+                    "data": {"complete": True, "todos": [item]},
+                }
+                stdout = io.StringIO()
+                with mock.patch.object(DAILY, "run_dws_json", return_value=payload):
+                    with contextlib.redirect_stdout(stdout):
+                        code = DAILY.run(["today"])
+                result = json.loads(stdout.getvalue())
+                self.assertEqual(2, code)
+                self.assertFalse(result["complete"])
+                self.assertIn("stable taskId", result["error"])
 
 
 class TodoOverdueTest(unittest.TestCase):
@@ -239,6 +248,24 @@ class TodoOverdueTest(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertEqual(["todo", "+overdue", "--format", "json"], calls[0])
         self.assertEqual(0, json.loads(stdout.getvalue())["count"])
+
+    def test_missing_or_malformed_task_id_fails_closed(self):
+        for task_id in (None, "", "   ", {"nested": "task-1"}):
+            with self.subTest(task_id=task_id):
+                payload = {
+                    "ok": True,
+                    "data": {"overdue": [{"taskId": task_id, "dueTime": 1}]},
+                }
+                stdout = io.StringIO()
+                with mock.patch.object(
+                    OVERDUE, "run_dws_json", return_value=payload
+                ):
+                    with contextlib.redirect_stdout(stdout):
+                        code = OVERDUE.run([])
+                result = json.loads(stdout.getvalue())
+                self.assertEqual(2, code)
+                self.assertFalse(result["complete"])
+                self.assertIn("taskId", result["error"])
 
 
 class TodoBatchCreateTest(unittest.TestCase):
@@ -361,6 +388,7 @@ class TodoBatchCreateTest(unittest.TestCase):
             responses = [
                 {"result": {"taskId": "task-1"}},
                 {
+                    "taskId": "task-1",
                     "data": {
                         "todoDetailModel": {
                             "taskId": "task-2",
@@ -387,6 +415,63 @@ class TodoBatchCreateTest(unittest.TestCase):
         self.assertEqual("task-1", payload["ledger"][0]["taskId"])
         self.assertEqual("unverified", payload["ledger"][0]["status"])
         self.assertIn("readback taskId mismatch", payload["ledger"][0]["error"])
+
+    def test_batch_fails_closed_for_unprovable_create_and_readback_states(self):
+        cases = (
+            (
+                "malformed-create-id",
+                [{"result": {"taskId": {"nested": "task-1"}}}],
+                "unknown",
+            ),
+            (
+                "missing-detail",
+                [{"result": {"taskId": "task-1"}}, {"data": {}}],
+                "unverified",
+            ),
+            (
+                "title-mismatch",
+                [
+                    {"result": {"taskId": "task-1"}},
+                    {
+                        "data": {
+                            "todoDetailModel": {
+                                "taskId": "task-1",
+                                "subject": "wrong title",
+                            }
+                        }
+                    },
+                ],
+                "unverified",
+            ),
+        )
+        for name, responses, expected_status in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as raw:
+                source = Path(raw) / "todos.json"
+                source.write_text(
+                    '[{"title":"reviewed task","executors":"user1"}]',
+                    encoding="utf-8",
+                )
+                items = BATCH.validate(
+                    json.loads(source.read_text(encoding="utf-8"))
+                )
+                plan_digest = BATCH.batch_plan_digest(items)
+                stdout = io.StringIO()
+                with mock.patch.object(
+                    BATCH, "run_dws_json", side_effect=responses
+                ):
+                    with contextlib.redirect_stdout(stdout):
+                        code = BATCH.run(
+                            [
+                                str(source),
+                                "--yes",
+                                "--confirm-digest",
+                                plan_digest,
+                            ]
+                        )
+                payload = json.loads(stdout.getvalue())
+                self.assertEqual(2, code)
+                self.assertFalse(payload["complete"])
+                self.assertEqual(expected_status, payload["ledger"][0]["status"])
 
     def test_unconfirmed_batch_stops_before_first_dws_call(self):
         with tempfile.TemporaryDirectory() as raw:

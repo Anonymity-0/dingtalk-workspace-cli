@@ -52,13 +52,9 @@ def date_range(scope: str, now: Optional[datetime] = None) -> Tuple[datetime, da
 
 def extract_cards(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     data: Any = payload.get("data", payload)
-    if isinstance(data, dict) and "todos" in data:
-        if data.get("complete") is not True:
-            raise ScriptError("Todo traversal did not prove endpoint exhaustion")
-        value = data["todos"]
-    else:
-        legacy = payload.get("result", payload)
-        value = legacy.get("todoCards") if isinstance(legacy, dict) else None
+    if not isinstance(data, dict) or data.get("complete") is not True:
+        raise ScriptError("Todo traversal did not prove endpoint exhaustion")
+    value = data.get("todos")
     if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
         raise ScriptError("Todo response is missing a valid todos[] collection")
     return value
@@ -76,7 +72,7 @@ def due_millis(item: Dict[str, Any]) -> Optional[int]:
 
 def task_id(item: Dict[str, Any]) -> str:
     value = item.get("taskId") or item.get("id") or item.get("todoTaskId")
-    return "" if value is None else str(value)
+    return value.strip() if isinstance(value, str) else ""
 
 
 def run(argv: Optional[List[str]] = None) -> int:

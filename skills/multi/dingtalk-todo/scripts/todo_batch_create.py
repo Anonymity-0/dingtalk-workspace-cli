@@ -74,23 +74,35 @@ def run_dws_json(
     return payload
 
 
-def walk_objects(value: Any) -> Iterable[Dict[str, Any]]:
-    if isinstance(value, dict):
-        yield value
-        for child in value.values():
-            yield from walk_objects(child)
-    elif isinstance(value, list):
-        for child in value:
-            yield from walk_objects(child)
+def response_objects(value: Dict[str, Any], depth: int = 0) -> Iterable[Dict[str, Any]]:
+    if depth > 4:
+        return
+    yield value
+    for key in ("result", "data"):
+        child = value.get(key)
+        if isinstance(child, dict):
+            yield from response_objects(child, depth + 1)
 
 
 def first_string(payload: Dict[str, Any], keys: Iterable[str]) -> str:
-    for obj in walk_objects(payload):
+    for obj in response_objects(payload):
         for key in keys:
             value = obj.get(key)
-            if value not in (None, ""):
-                return str(value)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
     return ""
+
+
+def require_todo_detail(payload: Dict[str, Any]) -> Dict[str, Any]:
+    for obj in response_objects(payload):
+        for key in ("todoDetailModel", "todo", "task"):
+            if key not in obj:
+                continue
+            detail = obj[key]
+            if not isinstance(detail, dict):
+                raise ScriptError(f"readback {key} is not an object")
+            return detail
+    raise ScriptError("readback response did not contain a Todo detail object")
 
 
 def normalize_due(value: Any) -> Optional[str]:
@@ -295,13 +307,16 @@ def run(argv: Optional[List[str]] = None) -> int:
                     ],
                     args.dws,
                 )
-                actual_identifier = first_string(detail, ("taskId", "todoTaskId"))
+                detail_object = require_todo_detail(detail)
+                actual_identifier = first_string(
+                    detail_object, ("taskId", "todoTaskId")
+                )
                 if actual_identifier != identifier:
                     raise ScriptError(
                         f"readback taskId mismatch: expected {identifier!r}, "
                         f"got {actual_identifier!r}"
                     )
-                actual_title = first_string(detail, ("subject", "title"))
+                actual_title = first_string(detail_object, ("subject", "title"))
                 if actual_title != item["title"]:
                     raise ScriptError(
                         f"readback title mismatch: expected {item['title']!r}, "
