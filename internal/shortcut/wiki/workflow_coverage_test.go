@@ -562,11 +562,11 @@ func TestCrossPlatformCoverageWikiWriteWorkflows(t *testing.T) {
 
 	t.Run("move within wiki and to drive", func(t *testing.T) {
 		caller := &wikiCoverageCaller{responses: map[string][]string{
-			"doc/get_document_info": {`{"nodeId":"n","workspaceId":"old","folderId":"old-f"}`, `{"nodeId":"n","workspaceId":"target","folderId":"f"}`},
+			"doc/get_document_info": {`{"nodeId":"n","workspaceId":"old","folderId":"old-f"}`, `{"nodeId":"n","workspaceId":"target","parentFolderId":"f"}`},
 			"doc/move_document":     {`{"success":true}`},
 		}}
 		out, err := runWikiCoverageCLI(t, caller, "+move", "--workspace", "target", "--folder", "f", "--node", "n", "--yes")
-		if err != nil || out["nodeId"] != "n" || len(caller.calls) != 3 {
+		if err != nil || out["nodeId"] != "n" || out["targetFolderId"] != "f" || len(caller.calls) != 3 {
 			t.Fatalf("move output=%#v err=%v calls=%#v", out, err, caller.calls)
 		}
 		caller = &wikiCoverageCaller{responses: map[string][]string{

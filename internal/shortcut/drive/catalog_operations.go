@@ -497,7 +497,15 @@ var Upload = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		committed, err = requireDriveWrite(committed, operation)
+		if workspaceID != "" {
+			// commit_uploaded_file returns a business receipt identified by a
+			// flat or result-wrapped node ID; success=true is not part of its
+			// stable contract. Preserve explicit failures, then let the ID and
+			// read-back checks below prove the remote write.
+			committed, err = requireDriveResponse(committed, operation)
+		} else {
+			committed, err = requireDriveWrite(committed, operation)
+		}
 		if err != nil {
 			return err
 		}

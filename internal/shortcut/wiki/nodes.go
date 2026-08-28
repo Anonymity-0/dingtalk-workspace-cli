@@ -351,7 +351,7 @@ func executeMove(rt *shortcut.RuntimeContext, toDrive bool) error {
 	} else if afterWorkspace != rt.Str("workspace") {
 		return wikiResponseError("doc/move_document", "workspace_readback_mismatch", "移动后读回的目标知识库不一致")
 	}
-	if rt.Changed("folder") && firstWikiString(verified, "folderId", "parentId") != rt.Str("folder") {
+	if rt.Changed("folder") && firstWikiString(verified, "folderId", "parentFolderId", "parentId") != rt.Str("folder") {
 		return wikiResponseError("doc/move_document", "folder_readback_mismatch", "移动后读回的目标文件夹不一致")
 	}
 	preflight = projectWikiNode(preflight)

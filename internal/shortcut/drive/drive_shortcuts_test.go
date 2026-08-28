@@ -813,7 +813,7 @@ func TestCrossPlatformCoverageDriveUploadRoutesWorkspaceToDocSpace(t *testing.T)
 		var request helpers.DocSpaceUploadRequest
 		testseam.Swap(t, &uploadDocSpaceFile, func(_ context.Context, got helpers.DocSpaceUploadRequest) (map[string]any, error) {
 			request = got
-			return map[string]any{"success": true, "result": map[string]any{"nodeId": "doc-file-1"}}, nil
+			return map[string]any{"dentryUuid": "doc-file-1"}, nil
 		})
 		caller := &driveCoverageCaller{responses: map[string][]string{
 			"get_document_info": {`{"success":true,"result":{"nodeId":"doc-file-1","workspaceId":"wiki-1","name":"notes","extension":"txt"}}`},
@@ -846,7 +846,7 @@ func TestCrossPlatformCoverageDriveUploadRoutesWorkspaceToDocSpace(t *testing.T)
 		var request helpers.DocSpaceUploadRequest
 		testseam.Swap(t, &uploadDocSpaceFile, func(_ context.Context, got helpers.DocSpaceUploadRequest) (map[string]any, error) {
 			request = got
-			return map[string]any{"success": true, "nodeId": "doc-file-2"}, nil
+			return map[string]any{"result": map[string]any{"nodeId": "doc-file-2"}}, nil
 		})
 		caller := &driveCoverageCaller{responses: map[string][]string{
 			"get_document_info": {`{"nodeId":"doc-file-2","workspaceId":"wiki-1","name":"renamed.txt","fileSize":14}`},
@@ -894,6 +894,26 @@ func TestCrossPlatformCoverageDriveUploadRoutesWorkspaceToDocSpace(t *testing.T)
 			t.Fatalf("workspace mismatch error = %v", err)
 		}
 	})
+
+	for _, tc := range []struct {
+		name    string
+		receipt map[string]any
+		want    string
+	}{
+		{name: "workspace upload preserves explicit failure", receipt: map[string]any{"success": false, "message": "rejected"}, want: "rejected"},
+		{name: "workspace upload requires a stable receipt ID", receipt: map[string]any{"result": map[string]any{"name": "notes.txt"}}, want: "没有返回文件 ID"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+				return tc.receipt, nil
+			})
+			caller := &driveCoverageCaller{responses: map[string][]string{}}
+			err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes")
+			if err == nil || !strings.Contains(err.Error(), tc.want) || len(caller.history) != 0 {
+				t.Fatalf("workspace receipt error=%v history=%v, want %q before readback", err, caller.history, tc.want)
+			}
+		})
+	}
 
 	for _, args := range [][]string{
 		{"--file", "notes.txt", "--workspace", "wiki-1", "--space-id", "drive-1", "--yes"},
