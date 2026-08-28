@@ -6,6 +6,43 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.61-beta.1] - 2026-08-28
+
+### Added
+
+- **Chat Thread** — adds `chat thread promote` to upgrade an existing group message into a Thread root message.
+
+- **Sheet batch operations** — expands `sheet batch-update` from 16 to 39 CLI operations, adds strict validation for the new P0/P1 inputs, preserves server-generated create IDs in `results[].data`, and JSON-encodes translated operations locally so nested number/boolean values survive the MCP transport.
+- **Sheet batch dimension coordinates** — makes `delete-dimension` and `move-dimension` accept the same public coordinates as their standalone commands (1-based row numbers or column letters) and translates them locally to the batch API's 0-based indexes.
+
+- **Sheet CSV type control** — adds `sheet csv-put --auto-convert=false` (and the matching batch input) to preserve every non-formula CSV field as text while keeping fields beginning with `=` as formulas.
+
+### Changed
+
+- **Agent-friendly Help (Aone 85675069)** — adds a root Agent Quickstart and Safety model, renders complete Safety plus reviewed command-selection guidance on every Agent-visible leaf, and links service/leaf Help to the corresponding embedded DWS Skill and stable deep documentation.
+
+### Fixed
+
+- **Attendance schedule date ranges** (#1154) — sends `attendance schedule get`
+  date ranges as upstream datetime strings, expands date-only inputs to full-day
+  boundaries, and rejects reversed ranges before calling the service.
+
+- **Login with unreadable token slots** (#1172) — after a fresh OAuth, device, PAT, or `--token` login, legacy global, identity, and organization token slots whose ciphertext no longer decrypts with the current data-encryption key are removed so the new credential can be persisted instead of stranding a completed login at the write preflight.
+
+- **Windows Skill installation** (#1177) — stops the PowerShell installer from
+  rejecting a correct multi/mono Skill publication when the staged copy and the
+  destination carry different inherited Windows ACLs, and makes the transaction
+  record its published paths before verifying them so a failed publication is
+  rolled back instead of leaving the original Skill stranded in
+  `~/.dws/skill-backups`.
+
+- **Error-to-doctor recovery guidance** — links authentication and network
+  failures to the executable `dws doctor` human entry or `dws doctor --json`
+  Agent entry across legacy JSON, unified-envelope, shortcut, and multi-profile
+  errors, while keeping permission, validation, confirmation, and upstream
+  business errors on their more specific recovery paths.
+
+
 ## [1.0.60] - 2026-08-27
 
 This release promotes the sealed `v1.0.60-beta.3` contents to stable.
