@@ -412,7 +412,7 @@ func buildDelegationOptions(toolKey string, args map[string]any, corpID string) 
 			return map[string]any{"uploadActionParam": p}
 		}
 	case "create_import_session":
-		if p := buildUploadActionParam(args, "fileName"); p != nil {
+		if p := buildImportActionParam(args); p != nil {
 			return map[string]any{"importActionParam": p}
 		}
 	case "copy_document":
@@ -484,6 +484,27 @@ func buildUploadActionParam(args map[string]any, nameKey string) map[string]any 
 	fileName := strings.TrimSpace(stringArg(args, nameKey))
 	if fileName == "" {
 		return nil
+	}
+	param := map[string]any{"fileName": fileName}
+	if size, ok := numericFileSize(args["fileSize"]); ok {
+		param["fileSize"] = size
+	}
+	return param
+}
+
+// buildImportActionParam 构造 importActionParam（{fileName, fileSize?}），与
+// buildUploadActionParam 的强校验语义一致（fileName 为空返回 nil，fileSize 选填）。
+// 差异点：契约要求 importActionParam.fileName 含扩展名，而 import_flow.go 的
+// importSessionArgs 采用分离承载（"fileName" 为基础名 + "suffix" 为扩展名），故此处
+// 拼回扩展名——suffix 非空且 fileName 尚不含 "." 时用 fileName+"."+suffix；fileName
+// 已含 "." 或 suffix 缺失时保持原值（降级，避免拼出 "imp." 这类畸形名）。
+func buildImportActionParam(args map[string]any) map[string]any {
+	fileName := strings.TrimSpace(stringArg(args, "fileName"))
+	if fileName == "" {
+		return nil
+	}
+	if suffix := strings.TrimSpace(stringArg(args, "suffix")); suffix != "" && !strings.Contains(fileName, ".") {
+		fileName = fileName + "." + suffix
 	}
 	param := map[string]any{"fileName": fileName}
 	if size, ok := numericFileSize(args["fileSize"]); ok {
