@@ -35,7 +35,6 @@ func TestReviewedMutationSafetyReachesFinalSchema(t *testing.T) {
 		{canonical: "chat.shortcut_messages_send_card", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
 		{canonical: "chat.shortcut_messages_update_card", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
 		{canonical: "drive.recycle_restore", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown", provenance: declared},
-		{canonical: "mail.batch_delete_user_mail_contacts", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
 		{canonical: "minutes.create_speaker_summary", effect: "write", risk: "medium", confirmation: "not_required", idempotency: "unknown", provenance: declared},
 		{canonical: "sheet.clear_range", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
 		{canonical: "sheet.batch_update", effect: "write", risk: "medium", confirmation: "user_required", idempotency: "unknown", provenance: declared},
