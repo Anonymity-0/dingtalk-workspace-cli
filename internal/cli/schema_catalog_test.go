@@ -301,7 +301,7 @@ func TestDeliveryCatalogDocReadParamDeclsMatchMergeBaseContract(t *testing.T) {
 		t.Fatalf("doc read --content-format required = %#v, want false", contentFormat["required"])
 	}
 
-	for _, flagName := range []string{"scope", "tags", "max-depth", "start-block-id", "end-block-id"} {
+	for _, flagName := range []string{"scope", "tags", "max-depth", "start-block-id", "end-block-id", "version", "password"} {
 		if parameters[flagName]["required"] != false {
 			t.Fatalf("doc read --%s required = %#v, want false", flagName, parameters[flagName]["required"])
 		}
@@ -314,6 +314,15 @@ func TestDeliveryCatalogDocReadParamDeclsMatchMergeBaseContract(t *testing.T) {
 	}
 	if parameters["max-depth"]["type"] != "integer" {
 		t.Fatalf("doc read --max-depth type = %#v, want integer", parameters["max-depth"]["type"])
+	}
+	if got := parameters["version"]["property"]; got != "historyVersion" {
+		t.Fatalf("doc read --version property = %#v, want historyVersion", got)
+	}
+	if parameters["version"]["type"] != "integer" {
+		t.Fatalf("doc read --version type = %#v, want integer", parameters["version"]["type"])
+	}
+	if got := parameters["password"]["property"]; got != "password" {
+		t.Fatalf("doc read --password property = %#v, want password", got)
 	}
 }
 
@@ -1239,6 +1248,80 @@ func TestDeliveryCatalogContactParamDeclsMatchMergeBaseContract(t *testing.T) {
 			absent: []string{"dept-name", "super-dept", "super-dept-id"},
 		},
 		{
+			path: "contact label create",
+			params: map[string]wantParam{
+				"name":      {property: "labelModel.name", required: true},
+				"type":      {property: "type", required: true},
+				"parent-id": {property: "parentId", required: false, interfaceType: "integer"},
+			},
+			absent: []string{"label-name", "create-type", "label-type", "parentId", "parent", "label-parent-id", "labelParentId"},
+		},
+		{
+			path: "contact label update",
+			params: map[string]wantParam{
+				"id":   {property: "labelId", required: true, interfaceType: "integer"},
+				"name": {property: "label.name", required: true},
+			},
+			absent: []string{"label-id", "role-id", "labelName"},
+		},
+		{
+			path: "contact label delete",
+			params: map[string]wantParam{
+				"id": {property: "id", required: true, interfaceType: "integer"},
+			},
+			absent: []string{"label-id", "role-id"},
+		},
+		{
+			path: "contact label add-members",
+			params: map[string]wantParam{
+				"id":    {property: "labelIds", required: true, interfaceType: "array"},
+				"users": {property: "staffIds", required: true, interfaceType: "array"},
+			},
+			absent: []string{"label-id", "role-id", "user-ids", "userIds", "staff-ids", "staffIds"},
+		},
+		{
+			path: "contact label remove-members",
+			params: map[string]wantParam{
+				"id":    {property: "labelIds", required: true, interfaceType: "array"},
+				"users": {property: "staffIds", required: true, interfaceType: "array"},
+			},
+			absent: []string{"label-id", "role-id", "user-ids", "userIds", "staff-ids", "staffIds"},
+		},
+		{
+			path: "contact label update-member-scope",
+			params: map[string]wantParam{
+				"user":  {property: "staffId", required: true},
+				"id":    {property: "labelId", required: true, interfaceType: "integer"},
+				"depts": {property: "deptIds", required: true, interfaceType: "array"},
+			},
+			absent: []string{"staff-id", "staffId", "user-id", "userId", "label-id", "role-id", "dept-ids", "deptIds"},
+		},
+		{
+			path: "contact ext-field create",
+			params: map[string]wantParam{
+				"name": {property: "orgEmpAttrModels[0].name", required: true},
+			},
+			absent: []string{"field-name", "fieldName"},
+		},
+		{
+			path: "contact ext-field update",
+			params: map[string]wantParam{
+				"code":           {property: "orgEmpAttrModels[0].code", required: true},
+				"org-self-tag":   {property: "orgEmpAttrModels[0].orgSelfTag", required: false, interfaceType: "integer"},
+				"client-display": {property: "orgEmpAttrModels[0].clientDisplay", required: true},
+				"is-search":      {property: "orgEmpAttrModels[0].isSearch", required: true},
+			},
+			absent: []string{"field-code", "fieldCode", "field-type", "fieldType", "clientDisplay", "isSearch"},
+		},
+		{
+			path: "contact ext-field delete",
+			params: map[string]wantParam{
+				"code":         {property: "orgEmpAttrModels[0].code", required: true},
+				"org-self-tag": {property: "orgEmpAttrModels[0].orgSelfTag", required: false, interfaceType: "integer"},
+			},
+			absent: []string{"field-code", "fieldCode", "field-type", "fieldType"},
+		},
+		{
 			path: "contact dept update",
 			params: map[string]wantParam{
 				"dept":   {property: "deptId", required: true, interfaceType: "integer"},
@@ -1354,16 +1437,16 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		interfaceType string
 	}{
 		{"chat message edit", "conversation-id", "openConversationId", true, ""},
-		{"chat message edit", "msg-id", "openMessageId", true, ""},
+		{"chat message edit", "message-id", "openMessageId", true, ""},
 		{"chat message edit", "at-open-dingtalk-ids", "atOpenDingTalkIds", false, "array"},
+		{"chat message update-text-emotion", "message-id", "openMsgId", true, ""},
 		{"chat message send", "idempotency-key", "uuid", false, ""},
 		{"chat message send-card", "at-all", "atAll", false, ""},
 		{"chat message send-card", "at-open-dingtalk-ids", "atOpenDingTalkIds", false, "array"},
-		{"chat message update-text-emotion", "msg-id", "openMsgId", true, ""},
 		{"chat message update-text-emotion", "old-emotion-id", "oldEmotionId", true, ""},
 		{"chat category batch-info", "category-ids", "categoryIds", true, "array"},
-		{"chat category list-by-conv", "group", "openConversationId", true, ""},
-		{"chat group update-nick", "group", "openConversationId", true, ""},
+		{"chat category list-by-conv", "conversation-id", "openConversationId", true, ""},
+		{"chat group update-nick", "conversation-id", "", true, ""},
 		{"chat group upgrade-to-external", "extension", "extension", false, "object"},
 		{"chat +messages-send-card", "receiver-open-dingtalk-id", "receiverOpenDingTalkId", false, ""},
 		{"chat message list-favorites", "size", "", false, "string"},
@@ -1397,7 +1480,8 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		}
 	}
 
-	// Hidden conversation aliases must stay unpublished (merge-base parity).
+	// Manifest-covered migrations hide legacy aliases; manifest-external
+	// commands keep their existing visible flags for compatibility.
 	editLeaf, err := queryDeliverySchemaPayload([]string{"chat message edit"})
 	if err != nil {
 		t.Fatal(err)
@@ -1421,9 +1505,52 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		t.Fatal(err)
 	}
 	listParams := schemaMap(listByConv["parameters"])
-	for _, hidden := range []string{"conversation-id", "id"} {
-		if _, ok := listParams[hidden]; ok {
-			t.Fatalf("chat category list-by-conv unexpectedly publishes hidden alias --%s", hidden)
+	if _, ok := listParams["conversation-id"]; !ok {
+		t.Fatalf("chat category list-by-conv missing public canonical --conversation-id")
+	}
+	if _, ok := listParams["group"]; !ok {
+		t.Fatalf("chat category list-by-conv unexpectedly hides manifest-external --group")
+	}
+	if _, ok := listParams["id"]; ok {
+		t.Fatalf("chat category list-by-conv unexpectedly publishes hidden alias --id")
+	}
+
+	for _, path := range []string{
+		"chat message add-emoji",
+		"chat message remove-emoji",
+		"chat message add-text-emotion",
+		"chat message remove-text-emotion",
+	} {
+		leaf, err := queryDeliverySchemaPayload([]string{path})
+		if err != nil {
+			t.Fatal(err)
+		}
+		params := schemaMap(leaf["parameters"])
+		if _, ok := params["conversation-id"]; !ok {
+			t.Fatalf("%s missing public canonical --conversation-id", path)
+		}
+		for _, visible := range []string{"group", "id", "chat"} {
+			if _, ok := params[visible]; !ok {
+				t.Fatalf("%s unexpectedly hides manifest-external --%s", path, visible)
+			}
+		}
+	}
+
+	groupBots, err := queryDeliverySchemaPayload([]string{"chat group bots"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	groupBotsParams := schemaMap(groupBots["parameters"])
+	group := groupBotsParams["group"]
+	if group == nil {
+		t.Fatal("chat group bots missing public legacy --group")
+	}
+	if group["property"] != "openConversationId" {
+		t.Fatalf("chat group bots --group property = %#v, want openConversationId", group["property"])
+	}
+	for _, migrated := range []string{"conversation-id", "group-name"} {
+		if _, ok := groupBotsParams[migrated]; ok {
+			t.Fatalf("chat group bots unexpectedly publishes migrated --%s", migrated)
 		}
 	}
 }

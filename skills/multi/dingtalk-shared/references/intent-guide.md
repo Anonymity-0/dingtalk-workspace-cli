@@ -103,7 +103,8 @@
 | "给机器人发单聊/给机器人发消息/跟机器人聊天" | 给机器人发单聊消息 | `chat bot find` → `chat message send --open-dingtalk-id` | `chat bot search` | 必须先用 find 拿 openDingTalkId（search 没有此字段），再用 send --open-dingtalk-id 发单聊 |
 | "我创建的机器人/我的机器人/我自己的机器人/查看我的机器人" | 搜索我创建的机器人 | `chat bot search` | `chat bot find` | search 仅返回当前用户自己创建的机器人（返回 robotCode + robotName，无 openDingTalkId）；find 返回全部可用机器人 |
 | "合并转发/批量转发/合并转发多条消息" | 合并转发多条消息 | `chat message combine-forward` | `chat message forward` | combine-forward 合并多条为一条转发；forward 转发单条消息 |
-| "转发话题/转发话题消息/话题转发到另一个群" | 转发话题消息 | `chat message forward-topic` | `chat message forward` | forward-topic 专用于转发话题消息（需要话题ID）；forward 转发普通单条消息 |
+| "把群里这条已有消息转成 Thread/升级成群内话题" | 消息升级为 Thread | `chat thread promote` | `chat thread send` | promote 转换已有普通群消息；send 发布一条全新的 Thread |
+| "转发话题/转发话题消息/话题转发到另一个群" | 转发 Thread | `chat thread forward` | `chat message forward` | thread forward 转发整条 Thread 并保留上下文；message forward 只转发普通单条消息 |
 | "发卡片消息/推送流式卡片" | 创建并推送流式卡片 | `chat message send-card` | `chat message send` | send-card 发流式卡片；send 发普通文本/Markdown 消息 |
 | "更新卡片/流式更新卡片" | 流式更新卡片内容 | `chat message update-card` | `chat message send-card` | update-card 更新已有卡片；send-card 创建新卡片 |
 | "钉住消息/Pin消息/置顶消息到会话" | 钉住消息 | `chat message set-pin-msg` | `chat set-top` | set-pin-msg 钉住单条消息（Pin）；set-top 置顶整个会话 |
@@ -290,15 +291,15 @@ alidocs 链接表面长得一样（`https://alidocs.dingtalk.com/i/nodes/{id}`�
   - 已有 userId 时直接使用 `--user`；已有 openDingTalkId 时使用 `--open-dingtalk-id`
   - `+messages-send --user` 对所有内容类型都会通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId；无需手动预查，`--dry-run` 也会执行这次只读解析
   - 已持有 openDingTalkId 时优先使用显式 `--open-dingtalk-id`，避免额外解析
-- "发张图片/截图/语音/视频/文件到群里" / "发张图给某某" — **统一一条命令**：`dws chat message send ... --msg-type file --file-path <本地路径>`，CLI 内部自动上传并发送，**任意扩展名（png/jpg/pdf/mp4/zip…）都走这条**
-- "发图片+文字说明" — 不要硬塞进一条命令；先发文件消息再补一条 `--text "..."` 即可
+- "发张图片/截图/语音/视频/文件到群里" / "发张图给某某" — **统一一条命令**：`dws chat message send ... --msg-type file --file <本地路径>`，CLI 内部自动上传并发送，**任意扩展名（png/jpg/pdf/mp4/zip…）都走这条**
+- "发图片+文字说明" — 不要硬塞进一条命令；先发文件消息再补一条 `--content "..."` 即可
 
 ```bash
-dws chat message send --group <openConversationId> --msg-type file --file-path ./screenshot.png --format json
-dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file-path ./report.pdf --format json
+dws chat message send --conversation-id <openConversationId> --msg-type file --file ./screenshot.png --format json
+dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file ./report.pdf --format json
 ```
 
-> ❌ 反模式：调 `dt_media_upload` / `extract_media_id.py` / `drive upload` / `drive download` 等前置工具再 `--msg-type image --media-id`。这是**旧链路**，仅当上游已持有 mediaId 才用；新场景一律 `--file-path` 直发，避免长链路与“空白图”现象。
+> ❌ 反模式：调 `dt_media_upload` / `extract_media_id.py` / `drive upload` / `drive download` 等前置工具再 `--msg-type image --media-id`。这是**旧链路**，仅当上游已持有 mediaId 才用；新场景一律 `--file` 直发，避免长链路与“空白图”现象。
 > 单聊已持有 openDingTalkId 时优先使用 `--open-dingtalk-id`；传 `--user` 时 CLI 会通过通讯录关键词搜索做 userId 精确匹配后发送。
 
 **用 `chat +messages-send-card` 的场景**：
@@ -310,7 +311,7 @@ dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file
 - "发送位置/坐标/地址到群里" / "发个位置给某某" — `dws chat message send ... --msg-type location --latitude <纬度> --longitude <经度> --location-name <地址名称> --map-thumbnail-url @mediaId`；地图缩略图需先通过 `dt_media_upload` 上传获取 mediaId
 
 ```bash
-dws chat message send --group <openConversationId> --msg-type location --latitude <纬度> --longitude <经度> --location-name <地址名称> --format json
+dws chat message send --conversation-id <openConversationId> --msg-type location --latitude <纬度> --longitude <经度> --location-name <地址名称> --format json
 ```
 
 **用 `chat message send-by-bot` 的场景**：
@@ -436,7 +437,7 @@ dws chat message send --group <openConversationId> --msg-type location --latitud
 
 ```bash
 # 1. 搜人获取 userId（多人同名须 contact user get 消歧，禁止默认选第一个，详见 08-directory.md「多命中」）
-dws aisearch person --keyword "张三" --dimension name --format json
+dws aisearch person --query "张三" --dimension name --format json
 
 # 2. 用 userId 查详情获取 email
 dws contact user get --ids <userId> --format json
@@ -456,7 +457,7 @@ dws mail message send --from my@company.com --to zhangsan@company.com \
 ```bash
 # 手动流程（脚本不可用时）:
 # 1. 搜人获取 userId（多人同名须 contact user get 消歧，禁止默认选第一个，详见 08-directory.md「多命中」）
-dws aisearch person --keyword "张三" --dimension name --format json
+dws aisearch person --query "张三" --dimension name --format json
 
 # 2. 创建日程
 dws calendar event create --title "会议" \
@@ -472,7 +473,7 @@ dws calendar participant add --event <EVENT_ID> --users <USER_ID> --format json
 
 ```bash
 # 1. 搜人获取 userId（多人同名须 contact user get 消歧，禁止默认选第一个，详见 08-directory.md「多命中」）
-dws aisearch person --keyword "张三" --dimension name --format json
+dws aisearch person --query "张三" --dimension name --format json
 
 # 2. 创建待办
 dws todo task create --title "任务内容" --executors <USER_ID> --format json
@@ -510,21 +511,21 @@ dws todo task create --title "任务内容" --executors <USER_ID> --format json
 
 ```bash
 # 群聊
-dws chat message send --group <openConversationId> --msg-type file --file-path <本地路径> --format json
+dws chat message send --conversation-id <openConversationId> --msg-type file --file <本地路径> --format json
 
 # 单聊（推荐 --open-dingtalk-id；--user 也支持）
-dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file-path <本地路径> --format json
+dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file <本地路径> --format json
 ```
 
 支持任意扩展名（`.png/.jpg/.gif/.bmp/.webp/.pdf/.doc/.xls/.zip/.mp3/.wav/.mp4/.avi` …），CLI 自动识别并处理。**无需** `dt_media_upload` / `extract_media_id.py` / `drive upload` / `drive download` / `chat conversation-info` / `chat file upload` 等任何前置工具调用。
 
 ### 图片/文件 + 文字说明
 
-不要把文字塞进 `--msg-type file` 命令（该命令不读 `--text`）。先发文件再补一条文本消息即可：
+不要把文字塞进 `--msg-type file` 命令（该命令不读 `--content`）。先发文件再补一条文本消息即可：
 
 ```bash
-dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file-path ./screenshot.png --format json
-dws chat message send --open-dingtalk-id <openDingTalkId> --text "这是本周数据汇总" --format json
+dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file ./screenshot.png --format json
+dws chat message send --open-dingtalk-id <openDingTalkId> --content "这是本周数据汇总" --format json
 ```
 
 ### 旧链路（mediaId）— 仅兼容场景
@@ -532,5 +533,5 @@ dws chat message send --open-dingtalk-id <openDingTalkId> --text "这是本周�
 仅当上游已经通过 `dt_media_upload` 拿到 `@lQL...` 形式的 mediaId 时使用：
 
 ```bash
-dws chat message send --group <openConversationId> --msg-type image --media-id "@lQLPD4JNnliqBq3NBQDNA8Cw" --format json
+dws chat message send --conversation-id <openConversationId> --msg-type image --media-id "@lQLPD4JNnliqBq3NBQDNA8Cw" --format json
 ```

@@ -1,6 +1,6 @@
 ---
 name: dingtalk-event
-description: 钉钉个人 IM、OA 审批与 VoIP 通话事件长连接监听。Use when 用户说监听消息/@我/某人/某群/全部消息、已读/撤回/reaction、群成员加入/群成员退出/群状态变化、审批任务创建/完成/转交、审批实例发起/终止/完成，或在收到 VoIP 通话邀请时触发处理。命令前缀：dws event。
+description: 钉钉个人 IM、OA 审批与 VoIP 通话事件长连接监听。Use when 用户说监听消息/@我/某人/某群/全部消息、已读/撤回/reaction、群成员加入/群成员退出/群状态变化、审批任务创建/完成/转交、审批实例发起/抄送/终止/完成，或在收到 VoIP 通话邀请时触发处理。命令前缀：dws event。
 metadata:
   cli_version: ">=0.2.14"
   category: product
@@ -49,7 +49,7 @@ metadata:
 - `group` 必须且只能传 `--chat-id` 或 `--chat-query` 之一。
 - `--query` 只用于纯 `message` 监听；混入 reaction/read/recall 时不得使用。
 
-OA 事件不进入 `+listen-im`。六个公开 OA EventKey 都订阅当前 OAuth 用户相关的全部审批事件，使用 `ruleType=all`、`filterRule={}`；不接受 `--user`、`--open-dingtalk-id`、`--group`、`--query` 或 `--filter-json`。六项可放入同一个 consume，每项建立独立订阅并共享 bus。
+OA 事件不进入 `+listen-im`。七个公开 OA EventKey 都订阅当前 OAuth 用户相关的全部审批事件，使用 `ruleType=all`、`filterRule={}`；不接受 `--user`、`--open-dingtalk-id`、`--group`、`--query` 或 `--filter-json`。七项可放入同一个 consume，每项建立独立订阅并共享 bus。
 
 VoIP 事件也不进入 `+listen-im`。`user_voip_call_receive_invite` 订阅当前 OAuth 用户收到的通话邀请，使用 `ruleType=all`、`filterRule={}`，同样不接受目标或消息过滤参数。
 
@@ -71,7 +71,7 @@ user_im_group_member_added         user_im_group_member_exited
 user_im_group_disbanded
 ```
 
-六个 OA EventKey 及其输出字段见 [OA 事件参考](references/event-oa.md)。
+七个 OA EventKey 及其输出字段见 [OA 事件参考](references/event-oa.md)。
 
 VoIP EventKey、通话字段和敏感入会码处理见 [VoIP 事件参考](references/event-voip.md)。
 
@@ -107,7 +107,7 @@ kind + events + target
 
 - `event stop` 会取消订阅并影响本地 consumer：先 `--dry-run`，用户确认后再加 `--yes`。
 - 多事件属于一次原始操作；任一订阅启动失败时 Runtime 回滚本次已创建项，不拆成新命令绕过重试预算。
-- 这套 `0/2/1` 是 **Agent/host** 编排预算，适用于全部 23 个公开个人 EventKey（16 个 IM + 6 个 OA + 1 个 VoIP）：`retryable=false` 对应 `max_additional_attempts=0`；`retryable=true` 对应 `max_additional_attempts=2`；`retryable=unknown` 对应 `max_additional_attempts=1`。它不是 CLI 持久化硬总次数上限；每次调用最多创建一次，进程内不会自动重试，CLI 也不持久化或计算跨调用的 Agent/host 尝试次数。
+- 这套 `0/2/1` 是 **Agent/host** 编排预算，适用于全部 24 个公开个人 EventKey（16 个 IM + 7 个 OA + 1 个 VoIP）：`retryable=false` 对应 `max_additional_attempts=0`；`retryable=true` 对应 `max_additional_attempts=2`；`retryable=unknown` 对应 `max_additional_attempts=1`。它不是 CLI 持久化硬总次数上限；每次调用最多创建一次，进程内不会自动重试，CLI 也不持久化或计算跨调用的 Agent/host 尝试次数。
 - 重试必须遵守 `retry_after_seconds` / `next_retry_at`。遇到 `in_flight`、`cooldown`、`terminal_hold` 不并发或递归重启同一逻辑订阅，也不换 `subscribe_id` / `trace_id` 绕过保护。
 - 认证、profile、订阅保护状态和 bus 排障按失败类型读取 [订阅运维](references/event-im-operations.md)，不要在正常路径预加载完整运维手册。
 
@@ -134,5 +134,5 @@ kind + events + target
 | ready、bounded consume 与退出清理 | [event-im-lifecycle.md](references/event-im-lifecycle.md) | 启动/托管/关闭 consumer |
 | 扁平字段与事件到 Chat 交接 | [event-im-output.md](references/event-im-output.md) | 解析事件或自动回复 |
 | Filter、status/stop、重试与排障 | [event-im-operations.md](references/event-im-operations.md) | 订阅控制或失败恢复 |
-| OA 审批事件 | [event-oa.md](references/event-oa.md) | 选择六个 OA EventKey、组合消费或解析审批字段 |
+| OA 审批事件 | [event-oa.md](references/event-oa.md) | 选择七个 OA EventKey、组合消费或解析审批字段 |
 | VoIP 通话邀请事件 | [event-voip.md](references/event-voip.md) | 监听来电邀请、解析通话字段或处理敏感入会码 |

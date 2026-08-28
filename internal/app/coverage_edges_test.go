@@ -36,6 +36,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
 	upgradepkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/upgrade"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/config"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/mcptypes"
 	tea "github.com/charmbracelet/bubbletea"
@@ -242,6 +243,7 @@ func TestCrossPlatformCoverageSmallAppRegistryAndRootCoverage(t *testing.T) {
 	}
 	configureOAuthProviderCompatibility(authpkg.NewOAuthProvider(t.TempDir(), nil), t.TempDir())
 	configureLegacyAuthManagerCompatibility(authpkg.NewManager(t.TempDir(), nil))
+	//lint:ignore SA1012 This regression test intentionally covers the nil-context guard.
 	if IsAuthRetrying(nil) || !IsAuthRetrying(context.WithValue(context.Background(), authRetryingKey, true)) {
 		t.Fatal("auth retry context mismatch")
 	}
@@ -326,6 +328,29 @@ func TestCrossPlatformCoverageSmallAppRegistryAndRootCoverage(t *testing.T) {
 func TestCrossPlatformCoverageDirectRuntimeCoverage(t *testing.T) {
 	oldEdition := edition.Get()
 	t.Cleanup(func() { edition.Override(oldEdition); SetDynamicServers(nil) })
+	for _, tc := range []struct {
+		raw    string
+		region authpkg.LoginRegion
+		want   string
+	}{
+		{raw: "%", want: "%"},
+		{raw: "https://dingtalk.io/path", want: "https://dingtalk.com/path"},
+		{raw: "https://mcp.dingtalk.com:8443/path", region: authpkg.LoginRegionInternational, want: "https://mcp.dingtalk.io:8443/path"},
+	} {
+		if got := mcpBaseURLForLoginRegion(tc.raw, tc.region); got != tc.want {
+			t.Fatalf("mcpBaseURLForLoginRegion(%q, %q) = %q, want %q", tc.raw, tc.region, got, tc.want)
+		}
+	}
+	if hasDirectRuntimeEndpointOverride("") {
+		t.Fatal("blank product unexpectedly has an endpoint override")
+	}
+	t.Setenv("DINGTALK_COVERAGE_PRODUCT_MCP_URL", "https://override.test")
+	if !hasDirectRuntimeEndpointOverride("coverage-product") {
+		t.Fatal("configured product endpoint override was not detected")
+	}
+	if got := activeDingTalkGatewayEndpointWithBase("https://mcp-gw.dingtalk.com/server/contact", "%"); got != "https://mcp-gw.dingtalk.com/server/contact" {
+		t.Fatalf("invalid gateway base rewrote endpoint to %q", got)
+	}
 	server := mcptypes.ServerDescriptor{
 		Endpoint: "https://one.test",
 		CLI: mcptypes.CLIOverlay{
@@ -356,7 +381,7 @@ func TestCrossPlatformCoverageDirectRuntimeCoverage(t *testing.T) {
 	if normalizeDirectRuntimeProductID("alias") != "one" || normalizeDirectRuntimeProductID("tb") != "teambition" || normalizeDirectRuntimeProductID("plain") != "plain" {
 		t.Fatal("direct runtime alias mismatch")
 	}
-	if ids := DirectRuntimeProductIDs(); !ids["one"] || !ids[defaultPATProductID] || !ids[devappProductID] {
+	if ids := DirectRuntimeProductIDs(); !ids["one"] || !ids[defaultPATProductID] || !ids[devappProductID] || !ids[recruitProductID] {
 		t.Fatalf("direct runtime IDs = %#v", ids)
 	}
 
@@ -913,12 +938,21 @@ func TestCrossPlatformCoverageAuthCommandPureCoverage(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageAuthLoginTokenCommandCoverage(t *testing.T) {
+	t.Setenv(keychain.DisableKeychainEnv, "1")
+	t.Setenv(keychain.StorageDirEnv, t.TempDir())
 	oldInteractive := authLoginInteractiveTerminal
 	authLoginInteractiveTerminal = func() bool { return false }
 	t.Cleanup(func() { authLoginInteractiveTerminal = oldInteractive; authpkg.SetRuntimeProfile("") })
-	for _, format := range []string{"table", "json"} {
-		t.Run(format, func(t *testing.T) {
-			t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+	for _, tc := range []struct {
+		format        string
+		international bool
+	}{
+		{format: "table"},
+		{format: "json", international: true},
+	} {
+		t.Run(tc.format, func(t *testing.T) {
+			configDir := t.TempDir()
+			t.Setenv("DWS_CONFIG_DIR", configDir)
 			root := &cobra.Command{Use: "dws"}
 			root.PersistentFlags().String("format", "table", "")
 			root.PersistentFlags().Bool("yes", false, "")
@@ -929,15 +963,89 @@ func TestCrossPlatformCoverageAuthLoginTokenCommandCoverage(t *testing.T) {
 			root.SetOut(&output)
 			root.SetErr(io.Discard)
 			args := []string{"login", "--token", "manual-token", "--yes"}
-			if format == "json" {
+			if tc.international {
+				args = append(args, "--intl")
+			}
+			if tc.format == "json" {
 				args = append(args, "--format", "json")
 			}
 			root.SetArgs(args)
 			if err := root.Execute(); err != nil || output.Len() == 0 {
 				t.Fatalf("token login = %q %v", output.String(), err)
 			}
+			data, err := authpkg.LoadTokenData(configDir)
+			if err != nil {
+				t.Fatalf("LoadTokenData error = %v", err)
+			}
+			wantRegion := ""
+			if tc.international {
+				wantRegion = string(authpkg.LoginRegionInternational)
+			}
+			if data.LoginRegion != wantRegion {
+				t.Fatalf("LoginRegion = %q, want %q", data.LoginRegion, wantRegion)
+			}
+			if tc.international {
+				snapshot, err := resolveAccessTokenSnapshotFromDir(context.Background(), configDir, "")
+				if err != nil {
+					t.Fatalf("resolveAccessTokenSnapshotFromDir error = %v", err)
+				}
+				gotEndpoint := activeDingTalkGatewayEndpointForLoginRegion(
+					"https://mcp-gw.dingtalk.com/server/contact",
+					snapshot.LoginRegion,
+				)
+				if wantEndpoint := "https://mcp-gw.dingtalk.io/server/contact"; gotEndpoint != wantEndpoint {
+					t.Fatalf("international manual-token endpoint = %q, want %q", gotEndpoint, wantEndpoint)
+				}
+			}
 		})
 	}
+
+	t.Run("international then domestic login restores domestic MCP URL", func(t *testing.T) {
+		configDir := t.TempDir()
+		t.Setenv("DWS_CONFIG_DIR", configDir)
+		runLogin := func(international bool) {
+			t.Helper()
+			root := &cobra.Command{Use: "dws"}
+			root.PersistentFlags().String("format", "table", "")
+			root.PersistentFlags().Bool("yes", false, "")
+			root.PersistentFlags().String("profile", "", "")
+			root.AddCommand(newAuthLoginCommand(nil))
+			args := []string{"login", "--token", "manual-token", "--yes"}
+			if international {
+				args = append(args, "--intl")
+			}
+			root.SetArgs(args)
+			root.SetOut(io.Discard)
+			root.SetErr(io.Discard)
+			if err := root.Execute(); err != nil {
+				t.Fatalf("international=%v login error = %v", international, err)
+			}
+		}
+
+		runLogin(true)
+		if data, err := os.ReadFile(filepath.Join(configDir, "mcp_url")); err != nil || string(data) != authpkg.InternationalMCPBaseURL {
+			t.Fatalf("international mcp_url = %q, %v", string(data), err)
+		}
+		runLogin(false)
+		if data, err := os.ReadFile(filepath.Join(configDir, "mcp_url")); err != nil || string(data) != authpkg.DefaultMCPBaseURL {
+			t.Fatalf("domestic mcp_url = %q, %v", string(data), err)
+		}
+		if _, err := os.Stat(filepath.Join(configDir, config.ManagedMCPURLRegionFileName)); !os.IsNotExist(err) {
+			t.Fatalf("managed MCP region marker remains: %v", err)
+		}
+
+		const customURL = "https://private-mcp.example.com"
+		if err := os.WriteFile(filepath.Join(configDir, "mcp_url"), []byte(customURL), config.FilePerm); err != nil {
+			t.Fatal(err)
+		}
+		runLogin(true)
+		if data, err := os.ReadFile(filepath.Join(configDir, "mcp_url")); err != nil || string(data) != customURL {
+			t.Fatalf("explicit mcp_url after international login = %q, %v; want preserved custom URL", string(data), err)
+		}
+		if _, err := os.Stat(filepath.Join(configDir, config.ManagedMCPURLRegionFileName)); !os.IsNotExist(err) {
+			t.Fatalf("explicit mcp_url acquired a managed marker: %v", err)
+		}
+	})
 
 	for _, hidden := range []bool{false, true} {
 		old := edition.Get()

@@ -80,6 +80,12 @@ func newEventCommand(globalFlags ...*GlobalFlags) *cobra.Command {
 	// products.event). Catalog assembly stamps provenance contract_final.
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "event",
+		HelpReferences: contract.HelpReferences{
+			RelatedSkills: []string{"dingtalk-event"},
+			Documentation: []contract.HelpDocumentation{
+				contract.SkillDocumentation("事件订阅深度指南", "dingtalk-event", "references/event-im.md"),
+			},
+		},
 		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "实时监听当前用户相关的个人 IM 与 OA 审批事件，并管理订阅生命周期",
 			UseWhen: []string{
@@ -403,7 +409,7 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 			Selection: contract.SelectionSpec{
 				AgentSummary: "消费 OA、群生命周期或需要底层控制的个人事件流；Agent 通常使用 --flatten 输出 NDJSON",
 				UseWhen: []string{
-					"需要监听六个公开 OA 审批任务/实例 EventKey 中的一个或多个事件",
+					"需要监听七个公开 OA 审批任务/实例 EventKey 中的一个或多个事件",
 					"需要监听指定群的标题变更、成员进退群或群解散事件",
 					"用户显式给出原始 EventKey、Filter DSL、subscribe_id，要求原始 transport envelope，或需要普通 IM facade 不提供的高级多事件控制",
 				},
@@ -1220,7 +1226,8 @@ func newEventStopCommandWithFlags(globalFlags ...*GlobalFlags) *cobra.Command {
 			editionName := editionNameOrDefault()
 			clientIDHash := dwsevent.ClientIDHash(clientID)
 			workDir := eventWorkDir(configDir, editionName, dwsevent.SourceKindAppStream, clientIDHash)
-			if err := eventStopBus(busctl.StopConfig{WorkDir: workDir}); err != nil {
+			ipcEndpoint := defaultIPCEndpoint(workDir, editionName, dwsevent.SourceKindAppStream, clientIDHash)
+			if err := eventStopBus(busctl.StopConfig{WorkDir: workDir, IPCEndpoint: ipcEndpoint}); err != nil {
 				if errors.Is(err, busctl.ErrNotRunning) {
 					fmt.Fprintln(c.OutOrStdout(), "bus is not running")
 					return nil

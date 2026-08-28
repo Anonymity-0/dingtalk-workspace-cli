@@ -48,11 +48,12 @@
 | `user_oa_approval_task_finished` | 审批任务已完成 | 无 |
 | `user_oa_approval_task_redirected` | 审批任务已转交 | 无 |
 | `user_oa_approval_instance_started` | 审批实例已发起 | 无 |
+| `user_oa_approval_instance_cc` | 审批实例到达抄送节点，发送给被抄送人 | 无 |
 | `user_oa_approval_instance_terminated` | 审批实例已终止 | 无 |
 | `user_oa_approval_instance_finished` | 审批实例完成，发送给审批单发起人 | 无 |
 | `user_voip_call_receive_invite` | 当前用户作为被叫收到语音通话邀请 | 无 |
 
-只承认上表 23 个事件码。默认身份就是当前用户，使用当前用户 OAuth 登录态，不要额外加身份切换 flag。六个 OA 事件与一个 VoIP 事件均使用 `all` 规则和空 `filterRule`，不需要目标参数。
+只承认上表 24 个事件码。默认身份就是当前用户，使用当前用户 OAuth 登录态，不要额外加身份切换 flag。七个 OA 事件与一个 VoIP 事件均使用 `all` 规则和空 `filterRule`，不需要目标参数。
 
 ## Intent mapping
 
@@ -78,9 +79,10 @@
 | "审批任务完成时通知我" | `event consume`，事件码 `user_oa_approval_task_finished`，参数 `--flatten -f ndjson` |
 | "审批任务被转交时通知我" | `event consume`，事件码 `user_oa_approval_task_redirected`，参数 `--flatten -f ndjson` |
 | "有审批单发起时通知我" | `event consume`，事件码 `user_oa_approval_instance_started`，参数 `--flatten -f ndjson` |
+| "有审批抄送给我时通知我" | `event consume`，事件码 `user_oa_approval_instance_cc`，参数 `--flatten -f ndjson` |
 | "有审批单终止时通知我" | `event consume`，事件码 `user_oa_approval_instance_terminated`，参数 `--flatten -f ndjson` |
 | "监听我发起的审批何时完成" / "审批实例完成时通知我" | `event consume`，事件码 `user_oa_approval_instance_finished`，参数 `--flatten -f ndjson` |
-| "同时监听全部已公开 OA 事件" | 一个 consume 放入六个 OA event key，不加目标或消息过滤参数 |
+| "同时监听全部已公开 OA 事件" | 一个 consume 放入七个 OA event key，不加目标或消息过滤参数 |
 | "收到语音通话邀请时通知我" / "监听 VoIP 来电" | `dws event consume user_voip_call_receive_invite --flatten -f ndjson` |
 | "查看 VoIP 事件目录" | `dws event list --category voip` |
 | "查看个人事件 schema" | `dws event schema <event_key> --flatten` |
@@ -134,6 +136,7 @@ dws event schema user_oa_approval_task_created --flatten
 dws event schema user_oa_approval_task_finished --flatten
 dws event schema user_oa_approval_task_redirected --flatten
 dws event schema user_oa_approval_instance_started --flatten
+dws event schema user_oa_approval_instance_cc --flatten
 dws event schema user_oa_approval_instance_terminated --flatten
 dws event schema user_oa_approval_instance_finished --flatten
 dws event schema user_voip_call_receive_invite --flatten
@@ -162,6 +165,7 @@ dws event consume user_oa_approval_task_created --flatten -f ndjson
 dws event consume user_oa_approval_task_finished --flatten -f ndjson
 dws event consume user_oa_approval_task_redirected --flatten -f ndjson
 dws event consume user_oa_approval_instance_started --flatten -f ndjson
+dws event consume user_oa_approval_instance_cc --flatten -f ndjson
 dws event consume user_oa_approval_instance_terminated --flatten -f ndjson
 dws event consume user_oa_approval_instance_finished --flatten -f ndjson
 dws event consume user_voip_call_receive_invite --flatten -f ndjson
@@ -191,13 +195,14 @@ dws event consume \
   user_oa_approval_task_finished \
   user_oa_approval_task_redirected \
   user_oa_approval_instance_started \
+  user_oa_approval_instance_cc \
   user_oa_approval_instance_terminated \
   user_oa_approval_instance_finished \
   --flatten \
   -f ndjson
 ```
 
-用户类事件共享 `--user` 或 `--open-dingtalk-id`，群类事件共享 `--group`，无目标 IM 事件可加入任一组合。用户类与群类、不同目标或不同过滤条件要拆成多个进程。六个 OA 事件与 VoIP 事件都可共享 personal bus，但每个 EventKey 建立独立订阅。多事件共享 `--query` / `--filter-json` 时，所选事件必须全部是 IM 消息接收事件；OA 与 VoIP 事件单独或组合消费都禁止使用这两个消息过滤参数。
+用户类事件共享 `--user` 或 `--open-dingtalk-id`，群类事件共享 `--group`，无目标 IM 事件可加入任一组合。用户类与群类、不同目标或不同过滤条件要拆成多个进程。七个 OA 事件与 VoIP 事件都可共享 personal bus，但每个 EventKey 建立独立订阅。多事件共享 `--query` / `--filter-json` 时，所选事件必须全部是 IM 消息接收事件；OA 与 VoIP 事件单独或组合消费都禁止使用这两个消息过滤参数。
 
 上述所有 `*_o2o` 命令和 `user_im_message_receive_user` 都可将 `--user <userId>` 替换为 `--open-dingtalk-id <openDingtalkId>`，但两个参数不能同时使用。
 
@@ -222,7 +227,7 @@ dws event stop --all --yes
 
 ## 订阅创建失败与重试预算
 
-以下约束适用于上表全部 23 个公开个人事件（16 个 IM + 6 个 OA + 1 个 VoIP）以及多事件命令中的每一项，只治理 `[event] ready` 之前的订阅创建；ready 之后的 Stream 断线由长连接重连机制处理。
+以下约束适用于上表全部 24 个公开个人事件（16 个 IM + 7 个 OA + 1 个 VoIP）以及多事件命令中的每一项，只治理 `[event] ready` 之前的订阅创建；ready 之后的 Stream 断线由长连接重连机制处理。
 
 - `0/2/1` 是 **Agent/host 编排约束**，不是 CLI 持久化硬总次数上限。每次 `dws event consume` 调用对每个逻辑订阅最多发送一次订阅创建 HTTP 请求，进程内不会自动重试。CLI 本地状态只持久化 `in_flight`、`cooldown`、`terminal_hold` 三种保护状态，不持久化或计算跨调用的 Agent/host 尝试次数。
 - 解析人名或群名、执行 `event consume` 以及后续 `event status/stop` 必须使用同一个 `--profile`。不得把其它 profile 下解析出的 userId、openDingtalkId 或 openConversationId 直接带入当前 profile 的订阅。
