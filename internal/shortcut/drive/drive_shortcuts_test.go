@@ -475,6 +475,46 @@ func TestCrossPlatformCoverageDrivePaginationValidationAndSchema(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageDrivePaginationDefensiveDefaultsAndRecentFilters(t *testing.T) {
+	caller := &driveCoverageCaller{responses: map[string][]string{
+		"list_files": {`{"success":true,"items":[{"name":"anonymous"}],"hasMore":false}`},
+	}}
+	helpers.InitDeps(caller)
+	cmd := &cobra.Command{Use: "list"}
+	result, err := collectDrivePages(shortcut.RuntimeContextForTest(cmd, List), nil, drivePageOptions{
+		PageSize:      1,
+		MaxPages:      0,
+		MaxItems:      0,
+		Server:        "drive",
+		Tool:          "list_files",
+		OutputKey:     "files",
+		PageSizeParam: "maxResults",
+		CursorParam:   "nextToken",
+		CollectionKeys: []string{
+			"items",
+		},
+		Project: func(items []any) []map[string]any {
+			return projectDriveRows(items, map[string][]string{"name": {"name"}})
+		},
+	})
+	if err != nil || result.Items != 1 || !result.EndpointExhausted {
+		t.Fatalf("defensive defaults result=%#v err=%v", result, err)
+	}
+	if key := drivePageItemKey(map[string]any{"name": "anonymous"}); key != "" {
+		t.Fatalf("anonymous item key=%q", key)
+	}
+
+	recent := &driveCoverageCaller{responses: map[string][]string{
+		"get_recent_list": {`{"success":true,"recentItems":[],"hasMore":false}`},
+	}}
+	if err := runDriveCoverage(t, Recent, recent, "--operate-type", "1", "--creator-type", "2"); err != nil {
+		t.Fatal(err)
+	}
+	if len(recent.calls) != 1 || fmt.Sprint(recent.calls[0].args["operateTypes"]) != "[1]" || recent.calls[0].args["creatorType"] != 2 {
+		t.Fatalf("recent filter params=%#v", recent.calls)
+	}
+}
+
 func TestCrossPlatformCoverageDrivePaginationRejectsContradictionsWithoutUnsafeCursor(t *testing.T) {
 	contradictory := &driveCoverageCaller{responses: map[string][]string{
 		"list_files": {`{"success":true,"items":[],"hasMore":false,"nextToken":"stale"}`},
