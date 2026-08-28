@@ -25,13 +25,11 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 - **Beta shortcut response contracts** (#1167) — fixes HRbrain talent-pool business-page parsing and Mail template draft-mode input, while keeping OA form listing and other incompletely proven operations fail-closed.
 
+- **Doc output compatibility** — preserves the empty pagination failure ledger and lets completed import recovery report an unverified result when the original target is unavailable.
+
 - **Markdown routing and diff guidance** — makes `markdown create --folder`
   detect the Drive or Doc destination before upload, clarifies `markdown diff`
   parameter validation, and improves mono/multi Agent routing.
-
-- **Doc output compatibility** — preserves the empty pagination failure ledger and
-  lets completed import recovery report an unverified result when the original
-  target is unavailable.
 
 
 ## [1.0.61-beta.1] - 2026-08-28
