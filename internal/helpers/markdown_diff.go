@@ -402,10 +402,6 @@ func newMarkdownDiffCmd() *cobra.Command {
 	RegisterCrossProductAliases(cmd)
 
 	cli.AnnotateRuntimeRequiredFlags(cmd, "node")
-	cli.AnnotateRuntimeConstraints(cmd, cli.RuntimeSchemaConstraints{
-		MutuallyExclusive: [][]string{{"file", "version2"}},
-		RequireOneOf:      [][]string{{"file", "version", "version2"}},
-	})
 	DeclareLeafMetadata(cmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",

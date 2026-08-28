@@ -131,8 +131,6 @@ func assertMarkdownLarkTasksRouteWithoutDuplicateShortcuts(t *testing.T, root *c
 			t.Errorf("markdown %s is missing the reviewed composite routing reason", name)
 		}
 		if name == "diff" {
-			assertSchemaContractConstraintGroup(t, tool, "mutually_exclusive", []string{"file", "version2"})
-			assertSchemaContractConstraintGroup(t, tool, "require_one_of", []string{"file", "version", "version2"})
 			parameters := schemaContractMap(tool["parameters"])
 			for parameter, phrase := range map[string]string{
 				"version":  "正整数",
