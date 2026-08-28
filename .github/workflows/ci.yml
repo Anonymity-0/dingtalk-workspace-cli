@@ -1411,7 +1411,8 @@ jobs:
           )"
           impacted_output="$(
             # Smoke has no production statements and launches a subprocess;
-            # focused Test owns it, while -cover only adds runtime stderr noise.
+            # the always-on non-full-suite focused smoke shard owns it, while
+            # -cover only adds runtime stderr noise.
             ./scripts/ci/changed-test-packages.sh \
               list "$COVERAGE_BASE_REF" "$COVERAGE_HEAD_REF" |
               awk '$0 != "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/test/smoke"'
