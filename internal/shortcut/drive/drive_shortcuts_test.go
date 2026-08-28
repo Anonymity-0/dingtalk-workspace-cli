@@ -175,6 +175,23 @@ func TestCrossPlatformCoverageDriveCreateAndInspectReadback(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "部分读取") {
 		t.Fatalf("metadata-only stats error = %v", err)
 	}
+
+	nestedStats := &driveCoverageCaller{responses: map[string][]string{
+		"get_file_info":  {`{"success":true,"result":{"fileId":"n3","name":"x"}}`},
+		"get_node_stats": {`{"success":true,"stats":{"views":1}}`},
+	}}
+	if err := runDriveCoverage(t, Inspect, nestedStats, "--node", "n3", "--include-stats"); err != nil {
+		t.Fatalf("nested stats error = %v", err)
+	}
+
+	invalidStats := &driveCoverageCaller{responses: map[string][]string{
+		"get_file_info":  {`{"success":true,"result":{"fileId":"n4","name":"x"}}`},
+		"get_node_stats": {`{"success":true}`},
+	}}
+	err = runDriveCoverage(t, Inspect, invalidStats, "--node", "n4", "--include-stats")
+	if err == nil || !strings.Contains(err.Error(), "部分读取") {
+		t.Fatalf("invalid stats error = %v", err)
+	}
 }
 
 func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
@@ -256,6 +273,66 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 	}
 	if len(maxPages.calls) != 2 {
 		t.Fatalf("max-pages calls = %#v", maxPages.calls)
+	}
+
+	for _, tc := range []struct {
+		name      string
+		args      []string
+		responses []string
+		want      string
+	}{
+		{
+			name: "non-positive bounds use defensive defaults",
+			args: []string{"--limit", "1", "--page-all", "--max-pages", "0", "--max-items", "0"},
+			responses: []string{
+				`{"success":true,"items":[{"name":"anonymous"}],"hasMore":false}`,
+			},
+		},
+		{
+			name: "server exceeds requested page size",
+			args: []string{"--limit", "2", "--page-all", "--max-items", "1"},
+			responses: []string{
+				`{"success":true,"items":[{"fileId":"n1"},{"fileId":"n2"}],"hasMore":false}`,
+			},
+			want: "drive_pagination_page_size_exceeded",
+		},
+		{
+			name: "pagination cannot be proven",
+			args: []string{"--limit", "1", "--page-all"},
+			responses: []string{
+				`{"success":true,"items":[{"fileId":"n1"}]}`,
+			},
+			want: "drive_pagination_pagination_unproven",
+		},
+		{
+			name: "max items returns a bounded partial result",
+			args: []string{"--limit", "1", "--page-all", "--max-items", "1"},
+			responses: []string{
+				`{"success":true,"items":[{"fileId":"n1"}],"hasMore":true,"nextToken":"c2"}`,
+			},
+		},
+		{
+			name: "missing continuation cursor",
+			args: []string{"--limit", "1", "--page-all"},
+			responses: []string{
+				`{"success":true,"items":[],"hasMore":true}`,
+			},
+			want: "drive_pagination_missing_next_cursor",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &driveCoverageCaller{responses: map[string][]string{"list_files": tc.responses}}
+			err := runDriveCoverage(t, List, caller, tc.args...)
+			if tc.want == "" && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if tc.want != "" {
+				var typed *apperrors.Error
+				if err == nil || !errors.As(err, &typed) || typed.Reason != tc.want {
+					t.Fatalf("error = %#v, want reason %q", err, tc.want)
+				}
+			}
+		})
 	}
 }
 
