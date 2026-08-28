@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
@@ -194,14 +195,36 @@ func runChatEmotionFavorite(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 		payload := buildPersonalEmotionFavoritePayload(uploadedMediaID, cmd)
-		if err := callMCPToolOnServer("im", "favorite_personal_emotion", payload); err != nil {
+		text, err := callMCPToolReturnTextOnServer(cmd.Context(), "im", "favorite_personal_emotion", payload)
+		if err != nil {
 			return fmt.Errorf("本地图片已上传 (mediaId=%s)，但收藏失败: %w；可用 --media-id %s 重试收藏，无需重新上传", uploadedMediaID, err, uploadedMediaID)
 		}
-		return nil
+		return renderPersonalEmotionFavoriteWithMediaID(text, uploadedMediaID)
 	}
 
 	payload := buildPersonalEmotionFavoritePayload(mediaID, cmd)
 	return callMCPToolOnServer("im", "favorite_personal_emotion", payload)
+}
+
+func renderPersonalEmotionFavoriteWithMediaID(text, mediaID string) error {
+	augmented := text
+	var payload map[string]any
+	if json.Unmarshal([]byte(text), &payload) == nil {
+		if result, ok := payload["result"].(map[string]any); ok {
+			existing, _ := result["mediaId"].(string)
+			if strings.TrimSpace(existing) == "" {
+				result["mediaId"] = mediaID
+			}
+		} else {
+			existing, _ := payload["mediaId"].(string)
+			if strings.TrimSpace(existing) == "" {
+				payload["mediaId"] = mediaID
+			}
+		}
+		encoded, _ := json.Marshal(payload)
+		augmented = string(encoded)
+	}
+	return renderLegacyMCPText("favorite_personal_emotion", augmented, false)
 }
 
 func buildPersonalEmotionFavoritePayload(mediaID string, cmd *cobra.Command) map[string]any {

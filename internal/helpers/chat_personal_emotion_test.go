@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -271,6 +272,7 @@ type personalEmotionUploadCaller struct {
 	personalEmotionCaller
 	uploadText    string
 	uploadErr     error
+	favoriteText  string
 	favoriteErr   error
 	favoriteCalls []map[string]any
 	uploadArgs    []map[string]any
@@ -344,7 +346,10 @@ func (c *personalEmotionUploadCaller) CallTool(ctx context.Context, server, tool
 		if c.favoriteErr != nil {
 			return nil, c.favoriteErr
 		}
-		return textToolResult(`{"ok":true}`), nil
+		if c.favoriteText != "" {
+			return textToolResult(c.favoriteText), nil
+		}
+		return textToolResult(`{"result":{"emotionId":"emotion-1","success":true,"version":1},"success":true}`), nil
 	}
 	return c.personalEmotionCaller.CallTool(ctx, server, tool, args)
 }
@@ -438,11 +443,14 @@ func TestChatEmotionFavoriteFilePathUploadsThenFavorites(t *testing.T) {
 	// AC-01: --file-path 先经钉钉文件服务 upload_media (chat_emoticon) 取 mediaId，再复用收藏链路。
 	imagePath := writePersonalEmotionTestImage(t, "sticker.png", 16)
 	caller := &personalEmotionUploadCaller{uploadText: `{"success":true,"logId":"log-1","mediaIdV2":"$v2-media","mediaIdV2Url":"https://down.dingtalk.com/ddmedia/v2.jpg","message":"图片上传成功。","imageType":"png","bizType":"chat_emoticon"}`}
-	err := executePersonalEmotionCallerCommand(t, caller,
-		"emotion", "favorite",
-		"--file-path", imagePath,
-		"--name", "本地表情",
-	)
+	out, _ := installHelpersCoreDeps(t, caller)
+	root := newChatCommand()
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetArgs([]string{"emotion", "favorite", "--file-path", imagePath, "--name", "本地表情"})
+	err := root.ExecuteContext(context.Background())
 	if err != nil {
 		t.Fatalf("chat emotion favorite --file-path returned error: %v", err)
 	}
@@ -470,6 +478,62 @@ func TestChatEmotionFavoriteFilePathUploadsThenFavorites(t *testing.T) {
 	want := map[string]any{"mediaId": "$v2-media", "name": "本地表情"}
 	if !reflect.DeepEqual(caller.favoriteCalls[0], want) {
 		t.Fatalf("favorite args = %#v, want %#v", caller.favoriteCalls[0], want)
+	}
+	var printed struct {
+		Result struct {
+			EmotionID string `json:"emotionId"`
+			MediaID   string `json:"mediaId"`
+			Success   bool   `json:"success"`
+		} `json:"result"`
+		Success bool `json:"success"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &printed); err != nil {
+		t.Fatalf("favorite output is not json: %v\n%s", err, out.String())
+	}
+	if printed.Result.MediaID != "$v2-media" || printed.Result.EmotionID != "emotion-1" || !printed.Result.Success || !printed.Success {
+		t.Fatalf("favorite output = %+v, want mediaId and original favorite fields", printed)
+	}
+}
+
+func TestChatEmotionFavoriteFilePathKeepsFavoriteMediaIDWhenReturned(t *testing.T) {
+	imagePath := writePersonalEmotionTestImage(t, "sticker.png", 8)
+	caller := &personalEmotionUploadCaller{
+		uploadText:   `{"success":true,"mediaIdV2":"$uploaded-media"}`,
+		favoriteText: `{"result":{"emotionId":"emotion-2","mediaId":"@favorite-media","success":true},"success":true}`,
+	}
+	out, _ := installHelpersCoreDeps(t, caller)
+	root := newChatCommand()
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetArgs([]string{"emotion", "favorite", "--file-path", imagePath})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("chat emotion favorite --file-path returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), `"mediaId": "@favorite-media"`) {
+		t.Fatalf("favorite output = %s, want server mediaId preserved", out.String())
+	}
+	if strings.Contains(out.String(), "$uploaded-media") {
+		t.Fatalf("favorite output = %s, should not overwrite server mediaId", out.String())
+	}
+}
+
+func TestRenderPersonalEmotionFavoriteWithMediaIDHandlesLegacyShapes(t *testing.T) {
+	out, _ := installHelpersCoreDeps(t, &personalEmotionCaller{})
+	if err := renderPersonalEmotionFavoriteWithMediaID(`{"success":true}`, "$uploaded-media"); err != nil {
+		t.Fatalf("render root payload error = %v", err)
+	}
+	if !strings.Contains(out.String(), `"mediaId": "$uploaded-media"`) {
+		t.Fatalf("root payload output = %s, want mediaId", out.String())
+	}
+
+	out.Reset()
+	if err := renderPersonalEmotionFavoriteWithMediaID(`not-json`, "$uploaded-media"); err != nil {
+		t.Fatalf("render non-json error = %v", err)
+	}
+	if got := out.String(); got != "not-json" {
+		t.Fatalf("non-json output = %q, want raw text", got)
 	}
 }
 
