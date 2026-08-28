@@ -579,6 +579,17 @@ func normalizeFilters(parsed any) any {
 	if !ok {
 		return parsed
 	}
+	if fieldID, hasFieldID := filterMap["fieldId"]; hasFieldID {
+		// MCP shorthand leaf: {fieldId,operator,value} becomes the persisted
+		// view/record leaf shape before any strict structure validation runs.
+		normalized := map[string]any{"operator": filterMap["operator"]}
+		if value, hasValue := filterMap["value"]; hasValue {
+			normalized["operands"] = []any{fieldID, value}
+		} else {
+			normalized["operands"] = []any{fieldID}
+		}
+		return normalized
+	}
 
 	operands, has := filterMap["operands"]
 	if !has {
@@ -596,28 +607,7 @@ func normalizeFilters(parsed any) any {
 			normalized = append(normalized, item)
 			continue
 		}
-		// 检测是否是 MCP 格式（有 fieldId 字段）
-		fieldID, hasFieldID := cond["fieldId"]
-		if hasFieldID {
-			// MCP 格式：{fieldId, operator, value} → {operator, operands:[fieldId, value]}
-			childOp := cond["operator"]
-			value, hasValue := cond["value"]
-			newCond := map[string]any{
-				"operator": childOp,
-			}
-			if hasValue {
-				newCond["operands"] = []any{fieldID, value}
-			} else {
-				// exist/un_exist 没有 value
-				newCond["operands"] = []any{fieldID}
-			}
-			normalized = append(normalized, newCond)
-		} else if _, hasChildOperands := cond["operands"]; hasChildOperands {
-			// 已经是 operands 格式，递归处理嵌套
-			normalized = append(normalized, normalizeFilters(cond))
-		} else {
-			normalized = append(normalized, cond)
-		}
+		normalized = append(normalized, normalizeFilters(cond))
 	}
 
 	return map[string]any{

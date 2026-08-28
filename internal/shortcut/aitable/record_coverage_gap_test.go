@@ -77,10 +77,24 @@ func TestCrossPlatformCoverageRecordUpdateAcceptsSelectReadBackProjectionE2E(t *
 	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
 		{text: `{"updatedCount":1}`},
 		{text: `{"records":[{"recordId":"r1","cells":{"status":{"id":"opt-1","name":"跟进中"}}}]}`},
+		{text: `{"fields":[{"fieldId":"status","type":"singleSelect"}]}`},
 	}}
 	out, err := runRecordBatchCLI(t, caller, "+record-update", records)
-	if err != nil || !strings.Contains(out, `"status": "verified"`) || len(caller.calls) != 2 {
+	if err != nil || !strings.Contains(out, `"status": "verified"`) || len(caller.calls) != 3 || caller.calls[2].tool != "get_fields" {
 		t.Fatalf("select update read-back = output:%q err:%v calls:%#v", out, err, caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageRecordUpsertCreateAcceptsSelectReadBackProjectionE2E(t *testing.T) {
+	records := []map[string]any{{"cells": map[string]any{"status": "跟进中"}}}
+	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+		{text: `{"createdRecords":[{"recordId":"r1"}]}`},
+		{text: `{"records":[{"recordId":"r1","cells":{"status":{"id":"opt-1","name":"跟进中"}}}]}`},
+		{text: `{"fields":[{"fieldId":"status","type":"singleSelect"}]}`},
+	}}
+	out, err := runRecordBatchCLI(t, caller, "+record-upsert", records)
+	if err != nil || !strings.Contains(out, `"status": "verified"`) || len(caller.calls) != 3 || caller.calls[2].tool != "get_fields" {
+		t.Fatalf("select create read-back = output:%q err:%v calls:%#v", out, err, caller.calls)
 	}
 }
 
@@ -307,12 +321,13 @@ func TestCrossPlatformCoverageRecordBatchVerificationEdgesE2E(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageRecordBatchPureHelpers(t *testing.T) {
-	if err := matchCreatedCells([]map[string]any{{"cells": map[string]any{"f": 1}}}, nil); err == nil {
+	if err := matchCreatedCells([]map[string]any{{"cells": map[string]any{"f": 1}}}, nil, nil); err == nil {
 		t.Fatal("created result count mismatch must fail")
 	}
 	if err := matchCreatedCells(
 		[]map[string]any{{"cells": map[string]any{"f": 1}}},
 		[]map[string]any{{"recordId": "r", "cells": map[string]any{"f": 2}}},
+		nil,
 	); err == nil {
 		t.Fatal("unmatched created cells must fail")
 	}
@@ -335,6 +350,7 @@ func TestCrossPlatformCoverageRecordBatchPureHelpers(t *testing.T) {
 	if recordCellValueEqual(
 		[]any{map[string]any{"id": "left"}},
 		[]any{map[string]any{"id": "right"}},
+		"multipleSelect",
 	) {
 		t.Fatal("recordCellValueEqual matched different selection lists")
 	}
@@ -519,7 +535,7 @@ func TestCrossPlatformCoverageRecordShapeHelpers(t *testing.T) {
 	if responseHasMore(nil) || !responseHasMore(map[string]any{"cursor": "next"}) || !responseHasMore(map[string]any{"pagination": map[string]any{"hasMore": true}}) {
 		t.Fatal("responseHasMore shape mismatch")
 	}
-	if err := verifyRecordCells(map[string]any{"recordId": "r"}, map[string]any{"f": 1}); err == nil {
+	if err := verifyRecordCells(map[string]any{"recordId": "r"}, map[string]any{"f": 1}, nil); err == nil {
 		t.Fatal("missing cells must fail")
 	}
 	selectRecord := map[string]any{"recordId": "r", "cells": map[string]any{
@@ -530,15 +546,41 @@ func TestCrossPlatformCoverageRecordShapeHelpers(t *testing.T) {
 			map[string]any{"id": "opt-b", "name": "B"},
 		},
 	}}
+	fieldTypes := map[string]string{
+		"singleByName": "singleSelect",
+		"singleByID":   "singleSelect",
+		"multi":        "multipleSelect",
+	}
 	if err := verifyRecordCells(selectRecord, map[string]any{
 		"singleByName": "跟进中",
 		"singleByID":   "opt-2",
 		"multi":        []any{"B", "A"},
-	}); err != nil {
+	}, fieldTypes); err != nil {
 		t.Fatalf("select semantic read-back must match: %v", err)
 	}
-	if err := verifyRecordCells(selectRecord, map[string]any{"singleByName": "未开始"}); err == nil {
+	if err := verifyRecordCells(selectRecord, map[string]any{"singleByName": "未开始"}, fieldTypes); err == nil {
 		t.Fatal("different select option must fail")
+	}
+	if err := verifyRecordCells(
+		map[string]any{"recordId": "r", "cells": map[string]any{"text": map[string]any{"name": "A"}}},
+		map[string]any{"text": "A"},
+		map[string]string{"text": "text"},
+	); err == nil {
+		t.Fatal("non-select object projection must not match a scalar")
+	}
+	if err := verifyRecordCells(
+		map[string]any{"recordId": "r", "cells": map[string]any{"select": "A"}},
+		map[string]any{"select": map[string]any{"id": "opt-1", "name": "A"}},
+		map[string]string{"select": "singleSelect"},
+	); err == nil {
+		t.Fatal("scalar read-back must not verify an object select write")
+	}
+	if err := verifyRecordCells(
+		map[string]any{"recordId": "r", "cells": map[string]any{"select": map[string]any{"id": "opt-2", "name": "A"}}},
+		map[string]any{"select": map[string]any{"id": "opt-1", "name": "A"}},
+		map[string]string{"select": "singleSelect"},
+	); err == nil {
+		t.Fatal("same-name selections with different IDs must not match")
 	}
 	if responseCursor(nil) != "" || responseCursor(map[string]any{"data": map[string]any{"next_cursor": " next "}}) != "next" ||
 		responseCursor(map[string]any{"result": map[string]any{"cursor": " legacy "}}) != "legacy" {

@@ -292,6 +292,46 @@ func TestCrossPlatformCoverageAitableViewConfigAndHelpers(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageAitableViewConfigFilterShorthandLeaves(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+		want  []any
+	}{
+		{
+			name:  "array leaf with value",
+			input: []any{map[string]any{"fieldId": "fldText", "operator": "eq", "value": "done"}},
+			want:  []any{map[string]any{"operator": "eq", "operands": []any{"fldText", "done"}}},
+		},
+		{
+			name:  "single object leaf with value",
+			input: map[string]any{"fieldId": "fldCount", "operator": "gt", "value": float64(3)},
+			want:  []any{map[string]any{"operator": "gt", "operands": []any{"fldCount", float64(3)}}},
+		},
+		{
+			name:  "exist leaf without value",
+			input: []any{map[string]any{"fieldId": "fldOwner", "operator": "exist"}},
+			want:  []any{map[string]any{"operator": "exist", "operands": []any{"fldOwner"}}},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeViewConfigFilter(tc.input)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("normalizeViewConfigFilter() = %#v, want %#v", got, tc.want)
+			}
+			if err := validateViewConfigFilter(got); err != nil {
+				t.Fatalf("validate normalized filter: %v", err)
+			}
+		})
+	}
+
+	invalid := normalizeViewConfigFilter([]any{map[string]any{"fieldId": "fldText", "operator": "equals", "value": "done"}})
+	if err := validateViewConfigFilter(invalid); err == nil || !strings.Contains(err.Error(), "不支持") {
+		t.Fatalf("invalid shorthand operator must still fail strict validation: %v", err)
+	}
+}
+
 func TestCrossPlatformCoverageAitableToolResponseAndPaginationHelpers(t *testing.T) {
 	caller := &aitableTestCaller{responses: []string{`{"data":{"views":[{"viewId":"v","viewType":"Grid"}]}}`}}
 	installAitableDeps(t, caller)
