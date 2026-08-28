@@ -402,7 +402,7 @@ func TestChatSchemaSeparatesSendAndReply(t *testing.T) {
 		"chat.send_personal_message",
 		"chat.send_robot_message",
 		"chat.reply_personal_message",
-		"chat.upload_conversation_file",
+		"chat.upload_local_conversation_file",
 	)
 
 	send, ok := snapshot.Tools["chat.send_personal_message"]
@@ -417,8 +417,11 @@ func TestChatSchemaSeparatesSendAndReply(t *testing.T) {
 	if schemaContractString(interfaceRef["product_id"]) != "chat" || schemaContractString(interfaceRef["rpc_name"]) != "send_personal_message" {
 		t.Fatalf("reply interface = %#v", interfaceRef)
 	}
-	upload, exists := snapshot.Tools["chat.upload_conversation_file"]
-	if !exists || schemaContractString(upload["primary_cli_path"]) != "chat file upload" {
+	if _, exists := snapshot.Tools["chat.upload_conversation_file"]; exists {
+		t.Fatal("downlined chat file upload must not be advertised in Schema")
+	}
+	upload, exists := snapshot.Tools["chat.upload_local_conversation_file"]
+	if !exists || schemaContractString(upload["primary_cli_path"]) != "chat conversation-file upload" {
 		t.Fatalf("upload definition = %#v", upload)
 	}
 	if schemaContractString(upload["interface_mode"]) != "composite" || schemaContractString(upload["availability"]) != "available" {

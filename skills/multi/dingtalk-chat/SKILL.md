@@ -61,7 +61,7 @@ metadata:
 |---|---|
 | 已知消息 ID 批量读取详情 | `dws chat +messages-mget` |
 | 已知资源引用单独下载 | `dws chat +messages-resource-download` |
-| 上传本地文件到会话空间且不发消息 | `dws chat file upload --conversation-id <cid> --file <路径>`；返回 `dentryId`/`spaceId`，不支持 URL |
+| 上传本地文件到会话空间且不发消息 | `dws chat conversation-file upload --conversation-id <cid> --file <路径>`；返回 `dentryId`/`spaceId`，不支持 URL |
 | 按关键词搜索群 | `dws chat +chat-search` |
 | 查看消息收藏 | `dws chat +flag-list` |
 | <!-- dws-intent: chat.reply.quote -->引用回复 | 人：`dws chat +messages-reply`；成功结果保留新消息/会话/投递与原消息来源上下文。Bot 群：`dws chat message send-by-bot --conversation-id <cid> --reply <mid> --ref-sender <sid>` |
@@ -77,7 +77,7 @@ metadata:
 - Markdown 中的公网图片必须写成 `![图片标题](https://example.com/image.png)` 才会内联展示；
   省略开头的 `!` 时只会显示为链接。
 - `+messages-send`：文件、Bot、Webhook、复杂 @ 或幂等控制。user 已知 ID 可直接传，也可用 `--user-query` / `--chat-query` 运行同一只读解析链；Bot 多群使用 `--groups/--groups-file`，返回 `im.batch-write.v1`；bot/webhook 只使用下层真实支持的文本/Markdown 能力。
-- 发文件消息用 `+messages-send --file <路径>`；只存会话空间、不发消息才用 `chat file upload`，返回 `dentryId`/`spaceId`。
+- 发文件消息用 `+messages-send --file <路径>`；只存会话空间、不发消息才用 `chat conversation-file upload`，返回 `dentryId`/`spaceId`。
 - Webhook 使用 `+messages-send --as webhook --webhook-token <token>`；不要退回原子 Webhook 命令。
 - 流式卡片用 `+messages-send-card`；群聊@传 ID/`--at-all`，Runtime 把 create 返回前缀加到 `--content`；禁写占位符；仅 text。
 

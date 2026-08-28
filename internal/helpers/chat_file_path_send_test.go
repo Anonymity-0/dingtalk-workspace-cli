@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
@@ -78,7 +77,7 @@ func executeChatFilePathCommand(t *testing.T, caller *chatFilePathCaller, args .
 	return stdout.String(), err
 }
 
-func TestCrossPlatformCoverageChatFileUploadOnlyUsesCurrentUploadSequence(t *testing.T) {
+func TestCrossPlatformCoverageChatConversationFileUploadUsesCurrentUploadSequence(t *testing.T) {
 	t.Chdir(t.TempDir())
 	payload := []byte("pdf payload")
 	if err := os.WriteFile("report.pdf", payload, 0o600); err != nil {
@@ -98,7 +97,7 @@ func TestCrossPlatformCoverageChatFileUploadOnlyUsesCurrentUploadSequence(t *tes
 	})
 
 	got, err := executeChatFilePathCommand(t, caller,
-		"file", "upload", "--conversation-id=cid", "--file=report.pdf", "--format=json")
+		"conversation-file", "upload", "--conversation-id=cid", "--file=report.pdf", "--format=json")
 	if err != nil {
 		t.Fatalf("chat file upload: %v\n%s", err, got)
 	}
@@ -126,14 +125,14 @@ func TestCrossPlatformCoverageChatFileUploadOnlyUsesCurrentUploadSequence(t *tes
 	}
 }
 
-func TestCrossPlatformCoverageChatFileUploadOnlyDryRunSkipsRemoteCalls(t *testing.T) {
+func TestCrossPlatformCoverageChatConversationFileUploadDryRunSkipsRemoteCalls(t *testing.T) {
 	t.Chdir(t.TempDir())
 	if err := os.WriteFile("report.pdf", []byte("pdf payload"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	caller := &chatFilePathCaller{dryRun: true}
 	got, err := executeChatFilePathCommand(t, caller,
-		"file", "upload", "--open-dingtalk-id="+helperCurrentDOpenID, "--file=report.pdf", "--format=json")
+		"conversation-file", "upload", "--open-dingtalk-id="+helperCurrentDOpenID, "--file=report.pdf", "--format=json")
 	if err != nil {
 		t.Fatalf("chat file upload dry-run: %v\n%s", err, got)
 	}
@@ -148,18 +147,6 @@ func TestCrossPlatformCoverageChatFileUploadOnlyDryRunSkipsRemoteCalls(t *testin
 	target, _ := data["target"].(map[string]any)
 	if envelope["dry_run"] != true || data["executed"] != false || target["openDingTalkId"] != helperCurrentDOpenID {
 		t.Fatalf("dry-run envelope = %#v", envelope)
-	}
-}
-
-func TestCrossPlatformCoverageChatFileUploadOnlyRejectsRetiredURLPath(t *testing.T) {
-	caller := &chatFilePathCaller{}
-	got, err := executeChatFilePathCommand(t, caller,
-		"file", "upload", "--conversation-id=cid", "--url=https://example.com/report.pdf", "--format=json")
-	if err == nil || !strings.Contains(err.Error(), "--url 仅为历史兼容保留") {
-		t.Fatalf("url upload error = %v\n%s", err, got)
-	}
-	if len(caller.calls) != 0 {
-		t.Fatalf("retired URL path made remote calls: %#v", caller.calls)
 	}
 }
 

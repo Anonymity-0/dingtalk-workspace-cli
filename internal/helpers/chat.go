@@ -2226,9 +2226,6 @@ func uploadConversationLocalFile(ctx context.Context, targetArgs map[string]any,
 }
 
 func uploadConversationFileOnlyResult(cmd *cobra.Command, _ string, args map[string]any) (output.CommandResult, error) {
-	if cmd.Flags().Changed("url") {
-		return nil, fmt.Errorf("--url 仅为历史兼容保留，远程 URL 代传当前不受支持；请先下载到工作目录，再使用 --file")
-	}
 	filePath, err := apperrors.SafeInputPath(stringFromJSONScalar(args["filePath"]))
 	if err != nil {
 		return nil, err
@@ -5276,24 +5273,64 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 		RequireOneOf:      [][]string{{"group", "user", "open-dingtalk-id"}},
 	})
 
-	// ── file 子命令（上传到会话文件空间，不发送消息）───────────────
+	// ── file 子命令（历史接口，保持隐藏下线）─────────────────────
 
-	chatFileCmd := newGroupCommand(&cobra.Command{Use: "file", Short: "会话文件空间管理", RunE: groupRunE})
+	chatFileCmd := newGroupCommand(&cobra.Command{
+		Use:    "file",
+		Short:  "会话文件上传（已下线）",
+		Hidden: true,
+		RunE:   groupRunE,
+	})
 
-	chatFileUploadCmd := NewLeafCommand(LeafSpec{
+	chatFileUploadCmd := &cobra.Command{
+		Use:    "upload",
+		Short:  "上传本地文件或 URL 文件到会话文件空间（已下线）",
+		Hidden: true,
+		Long: `chat file upload 已下线，不再调用 chat/upload_conversation_file_by_url。
+
+发送本地文件消息请改用 chat message send --msg-type file --file；该路径仍然可用，CLI 内部会完成本地文件上传和消息发送。`,
+		Example: `  dws chat message send --conversation-id <openConversationId> --msg-type file --file ./report.pdf --format json
+  dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file ./report.pdf --format json`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return fmt.Errorf("chat file upload 已下线；chat/upload_conversation_file_by_url 当前不可用。发送本地文件请改用: dws chat message send --msg-type file --file <本地路径>")
+		},
+	}
+	chatFileUploadCmd.Flags().String("conversation-id", "", "群聊 openConversationId（群聊时使用）")
+	chatFileUploadCmd.Flags().String("group", "", "--conversation-id 的别名")
+	_ = chatFileUploadCmd.Flags().MarkHidden("group")
+	chatFileUploadCmd.Flags().String("id", "", "--group 的别名")
+	_ = chatFileUploadCmd.Flags().MarkHidden("id")
+	chatFileUploadCmd.Flags().String("chat", "", "--group 的别名")
+	_ = chatFileUploadCmd.Flags().MarkHidden("chat")
+	chatFileUploadCmd.Flags().String("user", "", "单聊对方 userId（单聊时使用）")
+	chatFileUploadCmd.Flags().String("userId", "", "--user 的别名")
+	_ = chatFileUploadCmd.Flags().MarkHidden("userId")
+	chatFileUploadCmd.Flags().String("open-dingtalk-id", "", "单聊对方 openDingTalkId（单聊时使用）")
+	chatFileUploadCmd.Flags().String("file", "", "本地文件路径（与 --url 二选一）")
+	chatFileUploadCmd.Flags().String("url", "", "远程文件 URL（与 --file 二选一，服务端代传）")
+	chatFileUploadCmd.Flags().String("file-name", "", "文件名（可选，本地文件默认取文件名，URL 默认从 URL 推断）")
+	chatFileUploadCmd.Flags().String("md5", "", "文件 MD5（可选，本地文件不传时自动计算）")
+	chatFileUploadCmd.Flags().String("uuid", "", "幂等 UUID（可选）")
+	chatFileCmd.AddCommand(chatFileUploadCmd)
+
+	// ── conversation-file 子命令（只上传，不发送消息）─────────────
+
+	chatConversationFileCmd := newGroupCommand(&cobra.Command{Use: "conversation-file", Short: "会话文件空间管理", RunE: groupRunE})
+
+	chatConversationFileUploadCmd := NewLeafCommand(LeafSpec{
 		Use:           "upload",
 		Short:         "上传本地文件到会话文件空间，不发送消息",
 		Long:          "把本地文件上传到指定群聊或单聊的会话文件空间，只返回文件标识，不发送聊天消息。URL 代传不受支持。",
-		Example:       "  dws chat file upload --conversation-id <openConversationId> --file ./report.pdf --format json\n  dws chat file upload --open-dingtalk-id <openDingTalkId> --file ./report.pdf --format json",
+		Example:       "  dws chat conversation-file upload --conversation-id <openConversationId> --file ./report.pdf --format json\n  dws chat conversation-file upload --open-dingtalk-id <openDingTalkId> --file ./report.pdf --format json",
 		OutputRollout: output.RolloutUnifiedActive,
 		Flags: []LeafFlag{
 			{Name: "conversation-id", Usage: "群聊 openConversationId", Aliases: []string{"group", "id", "chat"}, Bind: "openConversationId", Trim: true, OmitEmpty: true},
 			{Name: "user", Usage: "单聊对方 userId", Aliases: []string{"userId"}, Bind: "userId", Trim: true, OmitEmpty: true},
 			{Name: "open-dingtalk-id", Usage: "单聊对方 openDingTalkId", Bind: "openDingTalkId", Trim: true, OmitEmpty: true},
-			{Name: "file", Usage: "工作目录内的本地文件路径（必填）", Aliases: []string{"file-path", "url"}, Bind: "filePath", Required: true, Trim: true, Format: "file-path"},
+			{Name: "file", Usage: "工作目录内的本地文件路径（必填）", Aliases: []string{"file-path"}, Bind: "filePath", Required: true, Trim: true, Format: "file-path"},
 			{Name: "file-name", Usage: "上传后的文件名；省略时使用本地文件名", Bind: "fileName", Trim: true, OmitEmpty: true},
 			{Name: "md5", Usage: "文件 MD5；省略时由 CLI 计算", Bind: "md5", Trim: true, OmitEmpty: true},
-			{Name: "idempotency-key", Usage: "幂等键", Aliases: []string{"uuid"}, Bind: "uuid", Trim: true, OmitEmpty: true},
+			{Name: "idempotency-key", Usage: "幂等键", Bind: "uuid", Trim: true, OmitEmpty: true},
 		},
 		Constraints: []LeafConstraint{{Kind: LeafExactlyOne, Flags: []string{"conversation-id", "user", "open-dingtalk-id"}}},
 		Safety: contract.SafetySpec{
@@ -5304,10 +5341,10 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
 				ProductID:      "chat",
-				Name:           "upload_conversation_file",
-				CanonicalPath:  "chat.upload_conversation_file",
-				CLIPath:        "chat file upload",
-				PrimaryCLIPath: "chat file upload",
+				Name:           "upload_local_conversation_file",
+				CanonicalPath:  "chat.upload_local_conversation_file",
+				CLIPath:        "chat conversation-file upload",
+				PrimaryCLIPath: "chat conversation-file upload",
 			},
 			Description: "上传本地文件到会话文件空间但不发送聊天消息",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
@@ -5324,8 +5361,8 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 					"远程 URL 文件代传不受支持；先把文件下载到工作目录，再使用本命令",
 				},
 				Examples: []string{
-					"dws chat file upload --conversation-id <openConversationId> --file ./report.pdf --format json",
-					"dws chat file upload --open-dingtalk-id <openDingTalkId> --file ./report.pdf --format json",
+					"dws chat conversation-file upload --conversation-id <openConversationId> --file ./report.pdf --format json",
+					"dws chat conversation-file upload --open-dingtalk-id <openDingTalkId> --file ./report.pdf --format json",
 				},
 			},
 			Parameters: []contract.ParamDecl{
@@ -5343,7 +5380,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 			},
 		},
 	})
-	chatFileCmd.AddCommand(chatFileUploadCmd)
+	chatConversationFileCmd.AddCommand(chatConversationFileUploadCmd)
 
 	// ── category 子命令（会话分组，走 IM MCP）───────────────────
 
@@ -10636,7 +10673,7 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 	chatCategoryCmd.AddCommand(chatCategoryCreateSmartCmd)
 	chatMessageCmd.AddCommand(chatMessageListDirectCmd, chatMessageSearchCommonCmd, chatMessageCombineForwardCmd, chatMessageForwardTopicCmd, chatMessageSetPinCmd, chatMessageUnsetPinCmd, chatMessageListPinCmd, chatMessageAddFavoriteCmd, chatMessageRemoveFavoriteCmd, chatMessageListFavoritesCmd, chatMessageSetTopMsgCmd, chatMessageUnsetTopMsgCmd, chatMessageListEmotionRepliesCmd)
 
-	root.AddCommand(chatChmodCmd, chatDataAuthCmd, chatGroupCmd, chatSearchCmd, chatSearchCommonCmd, chatMessageCmd, newChatThreadCommand(chatMessageSendRunE), chatFileCmd, newChatMediaGroup(), chatBotCmd, chatMessageListTopConversationsCmd, chatConversationInfoCmd, chatCategoryCmd, chatGroupRoleCmd, chatMuteCmd, chatSetTopCmd, chatGroupMuteCmd, chatGroupMuteMemberCmd, chatHideCmd, chatMuteAtAllCmd, chatMuteRedEnvelopeCmd, chatMarkUnreadCmd, chatClearRedPointCmd, chatClearAllRedPointCmd, chatListAllConversationsCmd, chatClearMessagesCmd, chatMarkReadCmd, chatTextCmd, newChatToolbarCommand(), newChatEmotionCommand())
+	root.AddCommand(chatChmodCmd, chatDataAuthCmd, chatGroupCmd, chatSearchCmd, chatSearchCommonCmd, chatMessageCmd, newChatThreadCommand(chatMessageSendRunE), chatFileCmd, chatConversationFileCmd, newChatMediaGroup(), chatBotCmd, chatMessageListTopConversationsCmd, chatConversationInfoCmd, chatCategoryCmd, chatGroupRoleCmd, chatMuteCmd, chatSetTopCmd, chatGroupMuteCmd, chatGroupMuteMemberCmd, chatHideCmd, chatMuteAtAllCmd, chatMuteRedEnvelopeCmd, chatMarkUnreadCmd, chatClearRedPointCmd, chatClearAllRedPointCmd, chatListAllConversationsCmd, chatClearMessagesCmd, chatMarkReadCmd, chatTextCmd, newChatToolbarCommand(), newChatEmotionCommand())
 
 	// Keep the v1.0.56 command surface recognizable while directing callers to
 	// the supported nested commands. The chat root's "im" alias makes these

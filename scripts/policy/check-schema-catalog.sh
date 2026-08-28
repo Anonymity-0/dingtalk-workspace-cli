@@ -150,8 +150,9 @@ if ! jq -e '
     "product_id": "chat",
     "rpc_name": "send_personal_message"
   } and
-  .tools["chat.upload_conversation_file"].primary_cli_path == "chat file upload" and
-  .tools["chat.upload_conversation_file"].interface_mode == "composite"
+  (.tools | has("chat.upload_conversation_file") | not) and
+  .tools["chat.upload_local_conversation_file"].primary_cli_path == "chat conversation-file upload" and
+  .tools["chat.upload_local_conversation_file"].interface_mode == "composite"
 ' "$catalog" >/dev/null; then
 	printf '%s\n' 'chat send/reply/upload schema identities are inconsistent' >&2
 	exit 1
