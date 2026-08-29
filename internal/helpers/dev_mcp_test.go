@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestDevMCPCommandTree(t *testing.T) {
@@ -619,6 +621,25 @@ func TestConnectorMCPLegacyFlagRenameHints(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDevMCPExamplesDoNotBypassConfirmation(t *testing.T) {
+	dev := devHandler{}.Command(&captureRunner{})
+	mcp, _, err := dev.Find([]string{"mcp"})
+	if err != nil {
+		t.Fatalf("Find(mcp) error = %v", err)
+	}
+
+	var walk func(*cobra.Command)
+	walk = func(cmd *cobra.Command) {
+		if cmd.Runnable() && strings.Contains(cmd.Example, "--yes") {
+			t.Errorf("%q example contains --yes confirmation bypass:\n%s", cmd.CommandPath(), cmd.Example)
+		}
+		for _, child := range cmd.Commands() {
+			walk(child)
+		}
+	}
+	walk(mcp)
 }
 
 func TestConnectorMCPWriteGuard(t *testing.T) {

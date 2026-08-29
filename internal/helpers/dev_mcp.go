@@ -676,7 +676,7 @@ func newDevMCPAuthConfigSaveCommand(runner executor.Runner) *cobra.Command {
 		Short: "保存 MCP 下游鉴权配置",
 		Example: `  dws dev mcp auth save --mcp-id 10520 --auth-type NO_AUTH --dry-run --format json
   # 静态 API key（SIGNATURE 直引）：authQuery/authHeaders 的 value 用 #("<authFields 的 dataId>")，key 放 header 则把 authQuery 换成 authHeaders
-  dws dev mcp auth save --mcp-id 10520 --auth-type SIGNATURE --signature-auth-config '{"authFields":[{"dataId":"apiKey","type":"password","required":true}],"authQuery":[{"key":"api_key","type":"authField","value":"#(\"apiKey\")"}]}' --yes --format json`,
+  dws dev mcp auth save --mcp-id 10520 --auth-type SIGNATURE --signature-auth-config '{"authFields":[{"dataId":"apiKey","type":"password","required":true}],"authQuery":[{"key":"api_key","type":"authField","value":"#(\"apiKey\")"}]}' --dry-run --format json`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
