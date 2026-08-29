@@ -1112,7 +1112,7 @@ func runDevMCPTool(runner executor.Runner, cmd *cobra.Command, tool string, para
 	if err != nil {
 		return err
 	}
-	return writeCommandPayload(cmd, result)
+	return writeDevAppEnvelope(cmd, result)
 }
 
 func devMCPToolLocatorParams(cmd *cobra.Command) (map[string]any, error) {

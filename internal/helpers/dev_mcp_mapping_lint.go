@@ -383,7 +383,7 @@ func runDevMCPURLGet(runner executor.Runner, cmd *cobra.Command, params map[stri
 	if !commandDryRun(cmd) && devMCPResponseLacksURL(res.Response) {
 		fmt.Fprintln(cmd.ErrOrStderr(), "提示：本次返回 success 但无接入地址（mcpUrl）。常见原因：服务处于草稿态——带鉴权的服务须在「发布工具之前」先 credential bind，先发布后 bind 会卡草稿态且事后 bind 也不生效（只能重建工具按正确顺序重发布）。请确认凭证已在发布前绑定；无鉴权服务不受此影响。")
 	}
-	return writeCommandPayload(cmd, res)
+	return writeDevAppEnvelope(cmd, res)
 }
 
 // devMCPResponseLacksURL reports whether a mcp_server_url_get response came back

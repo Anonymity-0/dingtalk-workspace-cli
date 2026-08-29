@@ -99,8 +99,8 @@ dws dev mcp member remove --mcp-id <mcpId> --user-ids <staffId> --dry-run --form
 dws mcp published tools <mcpId> --format json
 dws mcp published invoke <mcpId> <toolName> \
   --params '{"query":"example"}' --dry-run --format json
-dws mcp published invoke <mcpId> <toolName> \
-  --params '{"query":"example"}' --yes --format json
 ```
+
+检查 dry-run 后，只有用户明确同意本次真实调用，调用方才可在执行时追加确认标志；不要把确认标志固化进模板、脚本或可复制示例。
 
 `tools` 返回当前身份看到的实时工具列表。`invoke` 不接受动态命令别名，不根据工具名猜读写属性，也不持久化含凭据的 endpoint。

@@ -27,8 +27,9 @@ dws dev mcp tool publish --mcp-id <mcpId> --tool-id <toolId> --dry-run --format 
 # 已发布工具：先查 Schema，再 dry-run，最后显式确认
 dws mcp published tools <mcpId> --format json
 dws mcp published invoke <mcpId> <toolName> --params '{}' --dry-run --format json
-dws mcp published invoke <mcpId> <toolName> --params '{}' --yes --format json
 ```
+
+`published invoke` 无法静态判断远端工具副作用。检查 dry-run 后，只有用户明确同意本次真实调用，调用方才可在执行时追加确认标志；不要把确认标志固化进模板、脚本或可复制示例。
 
 详细规则见 multi skill 的 `references/dev/mcp.md`。
 
