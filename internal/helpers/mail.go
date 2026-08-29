@@ -3281,14 +3281,6 @@ user 对象字段：
 			if err := validateRequiredFlags(cmd, "email", "contact-ids"); err != nil {
 				return err
 			}
-			if !commandBoolFlag(cmd, "yes") && !deps.Caller.DryRun() {
-				return apperrors.NewValidation(
-					"批量删除邮件联系人需要用户明确确认；获得确认后加 --yes 执行",
-					apperrors.WithReason("confirmation_required"),
-					apperrors.WithHint("先展示精确 contactId 和数量；用户确认后以相同 --contact-ids 追加 --yes"),
-					apperrors.WithActions("确认待删联系人 ID", "获得用户确认后使用 --yes 执行"),
-				)
-			}
 			return callMCPTool("batch_delete_user_mail_contacts", map[string]any{
 				"email":      mustGetFlag(cmd, "email"),
 				"contactIds": parseRecipients(mustGetFlag(cmd, "contact-ids")),
@@ -3298,7 +3290,7 @@ user 对象字段：
 	DeclareLeafMetadata(contactBatchDeleteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{

@@ -21,10 +21,6 @@ func TestMailMultiDestructiveAndAttachmentContracts(t *testing.T) {
 	storedContent := content + "\n" + string(skillData)
 
 	for _, required := range []string{
-		"确认前禁止调用删除命令",
-		"仅用已展示且获确认的 ID",
-		"mail contact batch-delete --email <邮箱> --contact-ids <confirmed-id1,confirmed-id2,...>",
-		"确认后仅用已展示且获确认的 ID，由执行流程对相同命令追加 `--yes`",
 		"沿 `nextCursor` 遍历全部匹配页",
 		"不能断言不存在",
 	} {
@@ -34,7 +30,6 @@ func TestMailMultiDestructiveAndAttachmentContracts(t *testing.T) {
 	}
 
 	for _, forbidden := range []string{
-		"mail contact batch-delete --email <邮箱> --contact-ids <confirmed-id1,confirmed-id2,...> --yes",
 		"mail message batch-delete --email <邮箱> --ids <id1,id2,...> --yes",
 		"dws mail message batch-delete ... --yes --format json",
 		"dws mail thread batch-trash ... --yes --format json",

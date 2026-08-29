@@ -160,12 +160,6 @@ func executeGuardedMailMutationCommand(t *testing.T, caller edition.ToolCaller, 
 	InitDeps(caller)
 	deps.Out.w = io.Discard
 	root := newMailCommand()
-	if root.PersistentFlags().Lookup("yes") == nil {
-		root.PersistentFlags().Bool("yes", false, "confirm high-risk operation")
-	}
-	if root.PersistentFlags().Lookup("dry-run") == nil {
-		root.PersistentFlags().Bool("dry-run", false, "preview without executing")
-	}
 	root.SilenceErrors = true
 	root.SilenceUsage = true
 	if root.InOrStdin() == os.Stdin {
@@ -223,47 +217,6 @@ func TestMailMessageShareToChatRequiresConfirmationBeforeToolCall(t *testing.T) 
 	err = executeGuardedMailMutationCommand(t, dryRunCaller, baseArgs...)
 	if err != nil {
 		t.Fatalf("dry-run without --yes returned error: %v", err)
-	}
-	if len(dryRunCaller.calls) != 0 {
-		t.Fatalf("dry-run tool calls = %#v, want none", dryRunCaller.calls)
-	}
-}
-
-func TestMailContactBatchDeleteRequiresConfirmationAndExactConfirmedIDs(t *testing.T) {
-	baseArgs := []string{
-		"contact", "batch-delete",
-		"--email", "user@company.com",
-		"--contact-ids", "confirmed-id1,confirmed-id2",
-	}
-	caller := &guardedMutationCaller{}
-	err := executeGuardedMailMutationCommand(t, caller, baseArgs...)
-	requireTypedConfirmationError(t, err)
-	if len(caller.calls) != 0 {
-		t.Fatalf("tool calls = %#v, want none before confirmation", caller.calls)
-	}
-
-	caller = &guardedMutationCaller{}
-	confirmedArgs := append(append([]string(nil), baseArgs...), "--yes")
-	err = executeGuardedMailMutationCommand(t, caller, confirmedArgs...)
-	if err != nil {
-		t.Fatalf("confirmed contact deletion returned error: %v", err)
-	}
-	want := guardedMutationCall{
-		productID: "mail",
-		toolName:  "batch_delete_user_mail_contacts",
-		args: map[string]any{
-			"email":      "user@company.com",
-			"contactIds": []string{"confirmed-id1", "confirmed-id2"},
-		},
-	}
-	if len(caller.calls) != 1 || !reflect.DeepEqual(caller.calls[0], want) {
-		t.Fatalf("tool calls = %#v, want exactly %#v", caller.calls, want)
-	}
-
-	dryRunCaller := &guardedMutationCaller{dryRun: true}
-	err = executeGuardedMailMutationCommand(t, dryRunCaller, append(append([]string(nil), baseArgs...), "--dry-run")...)
-	if err != nil {
-		t.Fatalf("contact deletion dry-run without --yes returned error: %v", err)
 	}
 	if len(dryRunCaller.calls) != 0 {
 		t.Fatalf("dry-run tool calls = %#v, want none", dryRunCaller.calls)
