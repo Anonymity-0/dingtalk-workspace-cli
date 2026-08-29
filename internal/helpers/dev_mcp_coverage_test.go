@@ -242,6 +242,10 @@ func TestDevMCPCoverageToolUpsertJSONEdges(t *testing.T) {
 		{name: "tool outputs", flag: "tool-outputs", value: `{}`, wantErr: "JSON 数组"},
 		{name: "input mappings", flag: "input-mappings", value: `{}`, wantErr: "JSON 数组"},
 		{name: "output mappings", flag: "output-mappings", value: `{}`, wantErr: "JSON 数组"},
+		{name: "tool inputs null", flag: "tool-inputs", value: `null`, wantErr: "JSON 数组"},
+		{name: "tool outputs null", flag: "tool-outputs", value: `null`, wantErr: "JSON 数组"},
+		{name: "input mappings null", flag: "input-mappings", value: `null`, wantErr: "JSON 数组"},
+		{name: "output mappings null", flag: "output-mappings", value: `null`, wantErr: "JSON 数组"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

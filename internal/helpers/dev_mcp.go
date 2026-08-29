@@ -1472,7 +1472,7 @@ func devMCPPutJSONArrayFlag(cmd *cobra.Command, params map[string]any, flag, key
 		return nil
 	}
 	var out []any
-	if err := json.Unmarshal([]byte(value), &out); err != nil {
+	if err := json.Unmarshal([]byte(value), &out); err != nil || out == nil {
 		return apperrors.NewValidation(fmt.Sprintf("--%s 必须是 JSON 数组", flag))
 	}
 	params[key] = out
