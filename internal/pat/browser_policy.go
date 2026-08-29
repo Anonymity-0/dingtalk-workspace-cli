@@ -22,12 +22,20 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
 const browserPolicyFile = "pat_policy.json"
+
+var (
+	patPolicyReadFile    = os.ReadFile
+	patPolicyUserHomeDir = os.UserHomeDir
+	patPolicyMarshal     = json.MarshalIndent
+	patPolicyAtomicWrite = helpers.AtomicWriteJSON
+)
 
 type browserPolicyValue struct {
 	OpenBrowser bool `json:"openBrowser"`
@@ -56,16 +64,23 @@ func patConfigDir() string {
 	if fn := edition.Get().ConfigDir; fn != nil {
 		return fn()
 	}
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := patPolicyUserHomeDir()
 	if err != nil {
 		return ".dws"
 	}
 	return filepath.Join(homeDir, ".dws")
 }
 
+// BrowserPolicyConfigDir returns the exact configuration directory used by
+// the native PAT command. Shortcut adapters use this narrow seam so their
+// write/readback cycle cannot drift to a different policy file.
+func BrowserPolicyConfigDir() string {
+	return patConfigDir()
+}
+
 func LoadBrowserPolicy(configDir string) (*BrowserPolicy, error) {
 	path := patPolicyPath(configDir)
-	data, err := os.ReadFile(path)
+	data, err := patPolicyReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return &BrowserPolicy{}, nil
@@ -90,12 +105,12 @@ func saveBrowserPolicy(configDir string, policy *BrowserPolicy) error {
 	if policy.Agents == nil {
 		policy.Agents = map[string]browserPolicyValue{}
 	}
-	data, err := json.MarshalIndent(policy, "", "  ")
+	data, err := patPolicyMarshal(policy, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling PAT browser policy: %w", err)
 	}
 	data = append(data, '\n')
-	if err := helpers.AtomicWriteJSON(patPolicyPath(configDir), data); err != nil {
+	if err := patPolicyAtomicWrite(patPolicyPath(configDir), data); err != nil {
 		return fmt.Errorf("writing PAT browser policy: %w", err)
 	}
 	return nil
@@ -195,6 +210,32 @@ func SetBrowserPolicy(configDir, explicitAgentCode string, enabled bool) (Browse
 	}, nil
 }
 
+// ReadStoredBrowserPolicy reads the exact default or explicitly named agent
+// entry without consulting the process agent-code environment. This is the
+// verification companion to SetBrowserPolicy: callers can prove the same
+// target was persisted rather than observing an environment-selected fallback.
+func ReadStoredBrowserPolicy(configDir, explicitAgentCode string) (BrowserPolicySelection, error) {
+	agentCode, err := resolveBrowserPolicyWriteAgentCode(explicitAgentCode)
+	if err != nil {
+		return BrowserPolicySelection{}, err
+	}
+	policy, err := LoadBrowserPolicy(configDir)
+	if err != nil {
+		return BrowserPolicySelection{}, err
+	}
+	if agentCode != "" {
+		entry, ok := policy.Agents[agentCode]
+		if !ok {
+			return BrowserPolicySelection{}, fmt.Errorf("PAT browser policy agent entry was not persisted")
+		}
+		return BrowserPolicySelection{Scope: "agent", AgentCode: agentCode, OpenBrowser: entry.OpenBrowser, Source: "agent"}, nil
+	}
+	if policy.Default == nil {
+		return BrowserPolicySelection{}, fmt.Errorf("PAT browser policy default entry was not persisted")
+	}
+	return BrowserPolicySelection{Scope: "default", OpenBrowser: policy.Default.OpenBrowser, Source: "default"}, nil
+}
+
 func newBrowserPolicyCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "browser-policy",
@@ -205,14 +246,8 @@ func newBrowserPolicyCommand() *cobra.Command {
 				return fmt.Errorf("--enabled is required")
 			}
 
-			enabled, err := cmd.Flags().GetBool("enabled")
-			if err != nil {
-				return err
-			}
-			agentCode, err := cmd.Flags().GetString("agentCode")
-			if err != nil {
-				return err
-			}
+			enabled, _ := cmd.Flags().GetBool("enabled")
+			agentCode, _ := cmd.Flags().GetString("agentCode")
 
 			selection, err := SetBrowserPolicy(patConfigDir(), agentCode, enabled)
 			if err != nil {
@@ -224,5 +259,35 @@ func newBrowserPolicyCommand() *cobra.Command {
 
 	cmd.Flags().Bool("enabled", false, "PAT 撞墙时是否允许本地打开浏览器")
 	cmd.Flags().String("agentCode", "", "Agent 唯一标识（可选；不填则写入全局默认策略，不从 env DINGTALK_DWS_AGENTCODE 回退）")
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "pat",
+				Name:           "browser_policy",
+				CanonicalPath:  "pat.browser_policy",
+				CLIPath:        "pat browser-policy",
+				PrimaryCLIPath: "pat browser-policy",
+			},
+			Description: "配置 PAT 授权流程是否允许打开本地浏览器",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令仅操作本地进程或策略文件，不调用 MCP 接口",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "配置 PAT 授权流程是否允许打开本地浏览器",
+				UseWhen:      []string{"需要允许或禁止某 Agent 在 PAT 授权时打开浏览器"},
+				AvoidWhen:    []string{"需要授予产品 scope 时用 pat chmod，而不是改浏览器策略"},
+				Examples: []string{
+					"dws pat browser-policy --enabled --format json",
+					"dws pat browser-policy --enabled=false --agentCode <AGENT_CODE> --format json",
+				},
+			},
+		},
+	})
 	return cmd
 }

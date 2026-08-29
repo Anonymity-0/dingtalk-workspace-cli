@@ -43,22 +43,72 @@ const (
 	maxPollTotalWait = 10 * time.Minute
 )
 
+var (
+	deviceFlowAfter     = time.After
+	deviceOpenBrowser   = openBrowser
+	deviceFetchClientID = FetchClientIDFromMCP
+	deviceLoginOnce     = func(p *DeviceFlowProvider, ctx context.Context, attempt int) (*TokenData, error) {
+		return p.loginOnce(ctx, attempt)
+	}
+	deviceRequestCode = func(p *DeviceFlowProvider, ctx context.Context) (*DeviceAuthResponse, error) {
+		return p.requestDeviceCode(ctx)
+	}
+	deviceWaitAuth = func(p *DeviceFlowProvider, ctx context.Context, auth *DeviceAuthResponse) (*DeviceTokenResponse, error) {
+		return p.waitForAuthorization(ctx, auth)
+	}
+	deviceExchangeCode = func(p *OAuthProvider, ctx context.Context, code string) (*TokenData, error) {
+		return p.exchangeCode(ctx, code)
+	}
+	deviceCheckCLIAuth = func(p *OAuthProvider, ctx context.Context, token string) (*CLIAuthStatus, error) {
+		return p.CheckCLIAuthEnabled(ctx, token)
+	}
+	deviceGetAdmins     = GetSuperAdmins
+	deviceSaveToken     = SaveTokenData
+	deviceHasAppConfig  = HasAppConfig
+	deviceSaveAppConfig = SaveAppConfig
+	devicePollStatus    = func(p *DeviceFlowProvider, ctx context.Context, flowID string) (*DevicePollResponse, error) {
+		return p.pollDeviceStatus(ctx, flowID)
+	}
+	devicePollToken = func(p *DeviceFlowProvider, ctx context.Context, code string) (*DeviceTokenResponse, error) {
+		return p.pollDeviceToken(ctx, code)
+	}
+)
+
+func deviceFetchClientIDForLoginRegion(ctx context.Context, region LoginRegion) (string, error) {
+	if region.IsInternational() {
+		return FetchClientIDFromMCPForLoginRegion(ctx, region)
+	}
+	return deviceFetchClientID(ctx)
+}
+
+func deviceGetAdminsForLoginRegion(ctx context.Context, accessToken string, region LoginRegion) (*SuperAdminResponse, error) {
+	if region.IsInternational() {
+		return GetSuperAdminsForLoginRegion(ctx, accessToken, region)
+	}
+	return deviceGetAdmins(ctx, accessToken)
+}
+
 type DeviceFlowProvider struct {
-	configDir       string
-	clientID        string
-	scope           string
-	baseURL         string
-	terminalBaseURL string
-	logger          *slog.Logger
-	Output          io.Writer
-	httpClient      *http.Client
-	NoBrowser       bool
+	configDir        string
+	clientID         string
+	credentials      *AppCredentialPair
+	credentialErr    error
+	scope            string
+	baseURL          string
+	terminalBaseURL  string
+	logger           *slog.Logger
+	Output           io.Writer
+	httpClient       *http.Client
+	NoBrowser        bool
+	IdentityEnricher func(context.Context, *TokenData) error
+	LoginRegion      LoginRegion
 }
 
 func NewDeviceFlowProvider(configDir string, logger *slog.Logger) *DeviceFlowProvider {
-	return &DeviceFlowProvider{
+	pair, err := resolveOAuthCredentialPair(configDir)
+	p := &DeviceFlowProvider{
 		configDir:       configDir,
-		clientID:        ClientID(),
+		credentialErr:   err,
 		scope:           DefaultScopes,
 		baseURL:         DefaultDeviceBaseURL,
 		terminalBaseURL: GetMCPBaseURL(),
@@ -66,10 +116,24 @@ func NewDeviceFlowProvider(configDir string, logger *slog.Logger) *DeviceFlowPro
 		Output:          os.Stderr,
 		httpClient:      &http.Client{Timeout: 30 * time.Second},
 	}
+	if pair != nil {
+		copy := *pair
+		p.credentials = &copy
+		p.clientID = copy.ClientID
+	} else {
+		p.clientID = ClientID()
+	}
+	return p
 }
 
 func (p *DeviceFlowProvider) SetBaseURL(baseURL string) {
 	p.baseURL = strings.TrimRight(baseURL, "/")
+}
+
+func (p *DeviceFlowProvider) SetLoginRegion(region LoginRegion) {
+	p.LoginRegion = region
+	p.baseURL = DeviceBaseURLForLoginRegion(region)
+	p.terminalBaseURL = MCPBaseURLForLoginRegion(region)
 }
 
 // SetTerminalBaseURL sets the terminal API base URL for device flow polling.
@@ -157,21 +221,29 @@ type serviceResult struct {
 // overrides intentionally skip this reset.
 func (p *DeviceFlowProvider) resetCredentialState() {
 	p.clientID = ""
-	clientMu.Lock()
-	clientIDFromMCP = false
-	clientMu.Unlock()
+	p.credentials = nil
+	clearRuntimeCredentials()
 }
 
 func (p *DeviceFlowProvider) Login(ctx context.Context) (*TokenData, error) {
-	if err := preflightTokenPersistence(p.configDir); err != nil {
+	pair, pairErr := resolveOAuthCredentialPair(p.configDir)
+	p.credentials = nil
+	p.credentialErr = pairErr
+	if pair != nil {
+		copy := *pair
+		p.credentials = &copy
+		p.clientID = copy.ClientID
+	}
+	if p.credentialErr != nil {
+		return nil, fmt.Errorf("应用凭证配置无效: %w", p.credentialErr)
+	}
+	if err := prepareLoginPersistence(p.configDir); err != nil {
 		return nil, fmt.Errorf("%s: %w", i18n.T("本地登录态无法安全更新"), err)
 	}
 
-	if runtimeClientID, _, ok := getCompleteRuntimeCredentials(); ok {
-		p.clientID = runtimeClientID
-		clientMu.Lock()
-		clientIDFromMCP = false
-		clientMu.Unlock()
+	if p.credentials != nil {
+		p.clientID = p.credentials.ClientID
+		clearMCPRuntimeCredentials()
 	} else {
 		// Defensive reset: clear any stale credential state from previous login
 		// methods (OAuth scan, PAT, etc.) so we can re-fetch from MCP. This
@@ -181,7 +253,7 @@ func (p *DeviceFlowProvider) Login(ctx context.Context) (*TokenData, error) {
 		if p.logger != nil {
 			p.logger.Debug("fetching client ID from MCP server (device flow always re-fetches)")
 		}
-		mcpClientID, mcpErr := FetchClientIDFromMCP(ctx)
+		mcpClientID, mcpErr := deviceFetchClientIDForLoginRegion(ctx, p.LoginRegion)
 		if mcpErr != nil {
 			return nil, fmt.Errorf("%s: %w", i18n.T("获取 Client ID 失败"), mcpErr)
 		}
@@ -193,8 +265,8 @@ func (p *DeviceFlowProvider) Login(ctx context.Context) (*TokenData, error) {
 	}
 
 	const maxAttempts = 3
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		tokenData, err := p.loginOnce(ctx, attempt)
+	for attempt := 1; ; attempt++ {
+		tokenData, err := deviceLoginOnce(p, ctx, attempt)
 		if err == nil {
 			return tokenData, nil
 		}
@@ -205,21 +277,20 @@ func (p *DeviceFlowProvider) Login(ctx context.Context) (*TokenData, error) {
 		}
 		return nil, err
 	}
-	return nil, fmt.Errorf("%s", i18n.Tf("设备授权流程失败（已重试 %d 次）", maxAttempts))
 }
 
 func (p *DeviceFlowProvider) loginOnce(ctx context.Context, attempt int) (*TokenData, error) {
 	dfPrintStep(p.output(), 1, i18n.T("请求设备授权码..."), attempt)
 	_, _ = fmt.Fprintln(p.output(), "")
 
-	authResp, err := p.requestDeviceCode(ctx)
+	authResp, err := deviceRequestCode(p, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", i18n.T("请求设备授权码失败"), err)
 	}
 	dfPrintDeviceCodeBox(p.output(), authResp)
 
 	if authResp.VerificationURIComplete != "" && !p.NoBrowser {
-		if bErr := openBrowser(authResp.VerificationURIComplete); bErr != nil && p.logger != nil {
+		if bErr := deviceOpenBrowser(authResp.VerificationURIComplete); bErr != nil && p.logger != nil {
 			p.logger.Debug("could not open browser", "error", bErr)
 		}
 	}
@@ -228,7 +299,7 @@ func (p *DeviceFlowProvider) loginOnce(ctx context.Context, attempt int) (*Token
 	dfPrintDim(p.output(), fmt.Sprintf(i18n.T("  (每 %d 秒轮询一次)"), authResp.Interval))
 	_, _ = fmt.Fprintln(p.output(), "")
 
-	tokenResult, err := p.waitForAuthorization(ctx, authResp)
+	tokenResult, err := deviceWaitAuth(p, ctx, authResp)
 	if err != nil {
 		return nil, err
 	}
@@ -237,18 +308,21 @@ func (p *DeviceFlowProvider) loginOnce(ctx context.Context, attempt int) (*Token
 	dfPrintStep(p.output(), 3, i18n.T("使用授权码换取 Access Token..."), 0)
 
 	oauthProvider := &OAuthProvider{
-		configDir: p.configDir,
-		clientID:  p.clientID,
-		logger:    p.logger,
+		configDir:        p.configDir,
+		clientID:         p.clientID,
+		credentials:      p.credentials,
+		logger:           p.logger,
+		IdentityEnricher: p.IdentityEnricher,
+		LoginRegion:      p.LoginRegion,
 	}
-	tokenData, err := oauthProvider.exchangeCode(ctx, tokenResult.AuthCode)
+	tokenData, err := deviceExchangeCode(oauthProvider, ctx, tokenResult.AuthCode)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", i18n.T("换取 token 失败"), err)
 	}
 
 	// Check if CLI auth is enabled for this organization (fail-closed: block on error)
 	dfPrintStep(p.output(), 4, i18n.T("检查组织 CLI 授权状态..."), 0)
-	authStatus, authErr := oauthProvider.CheckCLIAuthEnabled(ctx, tokenData.AccessToken)
+	authStatus, authErr := deviceCheckCLIAuth(oauthProvider, ctx, tokenData.AccessToken)
 	if authErr != nil {
 		_, _ = fmt.Fprintln(p.output(), "")
 		_, _ = fmt.Fprintln(p.output(), dfRed(i18n.T("⚠️  无法检查 CLI 数据访问权限状态")))
@@ -299,7 +373,7 @@ func (p *DeviceFlowProvider) loginOnce(ctx context.Context, attempt int) (*Token
 			_, _ = fmt.Fprintln(p.output(), i18n.T("   你所选择的组织管理员尚未开启「允许成员通过 CLI 访问其个人数据」的权限。"))
 			_, _ = fmt.Fprintln(p.output(), "")
 
-			admins, adminErr := GetSuperAdmins(ctx, tokenData.AccessToken)
+			admins, adminErr := deviceGetAdminsForLoginRegion(ctx, tokenData.AccessToken, p.LoginRegion)
 			if adminErr == nil && admins.Success && len(admins.Result) > 0 {
 				maxAdmins := 3
 				if len(admins.Result) < maxAdmins {
@@ -322,22 +396,21 @@ func (p *DeviceFlowProvider) loginOnce(ctx context.Context, attempt int) (*Token
 
 	// Save token data with associated client ID for refresh
 	tokenData.ClientID = p.clientID
-	if err := SaveTokenData(p.configDir, tokenData); err != nil {
+	if err := oauthProvider.prepareLoginToken(ctx, tokenData); err != nil {
+		return nil, fmt.Errorf("%s: %w", i18n.T("保存 token 失败"), err)
+	}
+	if err := repairLoginCiphertextMismatchTargets(p.configDir, tokenData); err != nil {
+		return nil, fmt.Errorf("%s: %w", i18n.T("本地登录态无法安全更新"), err)
+	}
+	if err := preflightTokenWritePersistence(p.configDir, tokenData); err != nil {
+		return nil, fmt.Errorf("%s: %w", i18n.T("本地登录态无法安全更新"), err)
+	}
+	if err := deviceSaveToken(p.configDir, tokenData); err != nil {
 		return nil, fmt.Errorf("%s: %w", i18n.T("保存 token 失败"), err)
 	}
 
-	// Persist app credentials (with secret) if using custom client credentials.
-	// MUST run BEFORE os.Setenv below to avoid env-matching short circuit.
+	// Persist the exact pair snapshotted before authorization began.
 	oauthProvider.persistAppConfigIfNeeded()
-
-	// Always persist clientId to app.json so future process startups
-	// can load it via ResolveAppCredentials and populate DWS_CLIENT_ID env.
-	if p.clientID != "" {
-		_ = os.Setenv("DWS_CLIENT_ID", p.clientID)
-		if !HasAppConfig(p.configDir) {
-			_ = SaveAppConfig(p.configDir, &AppConfig{ClientID: p.clientID})
-		}
-	}
 
 	return tokenData, nil
 }
@@ -454,14 +527,14 @@ func (p *DeviceFlowProvider) waitForAuthorizationByFlowID(ctx context.Context, a
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(interval):
+		case <-deviceFlowAfter(interval):
 		}
 
 		pollCount++
 		elapsedSec := int(time.Since(startTime).Seconds())
 		dfPrintPollStatus(p.output(), pollCount, elapsedSec)
 
-		pollResp, err := p.pollDeviceStatus(ctx, auth.FlowID)
+		pollResp, err := devicePollStatus(p, ctx, auth.FlowID)
 		if err != nil {
 			dfPrintPollResult(p.output(), "network_error", i18n.T("网络错误，继续重试..."))
 			if p.logger != nil {
@@ -505,14 +578,14 @@ func (p *DeviceFlowProvider) waitForAuthorizationByDeviceCode(ctx context.Contex
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(interval):
+		case <-deviceFlowAfter(interval):
 		}
 
 		pollCount++
 		elapsedSec := int(time.Since(startTime).Seconds())
 		dfPrintPollStatus(p.output(), pollCount, elapsedSec)
 
-		resp, err := p.pollDeviceToken(ctx, auth.DeviceCode)
+		resp, err := devicePollToken(p, ctx, auth.DeviceCode)
 		if err != nil {
 			dfPrintPollResult(p.output(), "network_error", i18n.T("网络错误，继续重试..."))
 			if p.logger != nil {
@@ -655,9 +728,6 @@ func dfPrintBox(w io.Writer, lines []string) {
 	_, _ = fmt.Fprintf(w, "  %s\n", tui.Blue("╭"+border+"╮"))
 	for _, line := range lines {
 		pad := maxLen - tui.PlainRuneWidth(line)
-		if pad < 0 {
-			pad = 0
-		}
 		_, _ = fmt.Fprintf(w, "  %s  %s%s  %s\n", tui.Blue("│"), line, strings.Repeat(" ", pad), tui.Blue("│"))
 	}
 	_, _ = fmt.Fprintf(w, "  %s\n", tui.Blue("╰"+border+"╯"))
@@ -690,6 +760,6 @@ func isInvalidGrantError(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := strings.ToLower(err.Error())
+	msg := strings.ToLower(err.Error() + " " + httpStatusResponseBody(err))
 	return strings.Contains(msg, "invalid_grant") || (strings.Contains(msg, "code") && strings.Contains(msg, "expired"))
 }

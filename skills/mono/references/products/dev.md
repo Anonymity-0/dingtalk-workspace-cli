@@ -1,15 +1,36 @@
 # dev — 开放平台开发者命令
 
-开放平台开发相关命令主要分为以下入口：
+`dws dev` 是面向**开发者**的命令组，分四个子树：
 
-| 入口 | 职责 |
+| 子命令 | 职责 |
 |--------|------|
 | `dev app` | 应用生命周期（创建/查询/更新/删除/凭证/权限/成员/安全/网页/机器人/**建号**/版本/事件订阅） |
 | `dev connect` | **建联**：把现成机器人接到当前本地 agent（起 Stream，不建号） |
 | `dev doc` | 开放平台开发文档搜索入口（当前网关未注册该工具键，`dev doc search` 会报「未找到指定工具」不可用；文档搜索一律走 `dws devdoc article search --query <关键词>`） |
-| `connector mcp` | MCP 服务与工具管理（服务创建/查询/更新/删除，工具创建/查询/调试/发布/版本，接入地址获取） |
+| `dev mcp` | MCP 服务、工具、鉴权、凭证、协作者与 HSF 方法的开发管理 |
 
 > ⚠️ **关键区分**：`dws chat bot search/find` 只查询已有机器人（IM 视角）；**创建/建号**机器人走 `dws dev app robot submit`；**建联**走 `dws dev connect`。"创建机器人"/"建联"一律走 `dev`，禁止走 `chat`。
+
+---
+
+## dev mcp — MCP 开发与发布
+
+`dev mcp` 是固定、可审计的开发命令树，不会把远端 `serverName` 或工具名注入为新的 Cobra 命令。已发布工具统一通过 `dws mcp published tools/invoke` 消费。
+
+```bash
+# 服务与工具
+dws dev mcp service list --format json
+dws dev mcp service create --name 示例服务 --description "示例" --server-name example-service --dry-run --format json
+dws dev mcp tool list --mcp-id <mcpId> --format json
+dws dev mcp tool publish --mcp-id <mcpId> --tool-id <toolId> --dry-run --format json
+
+# 已发布工具：先查 Schema，再 dry-run，最后显式确认
+dws mcp published tools <mcpId> --format json
+dws mcp published invoke <mcpId> <toolName> --params '{}' --dry-run --format json
+dws mcp published invoke <mcpId> <toolName> --params '{}' --yes --format json
+```
+
+详细规则见 multi skill 的 `references/dev/mcp.md`。
 
 ---
 
@@ -72,6 +93,7 @@ dws dev app list --format json
 
 # 查询单个应用详情
 dws dev app get --unified-app-id <unifiedAppId> --format json
+dws dev app get --app-key <appKey> --format json
 
 # 创建应用
 dws dev app create --name <名称> --desc <描述> --format json
@@ -122,74 +144,6 @@ dws dev app robot disable --unified-app-id <unifiedAppId> --format json
 # 查询 clientId/clientSecret（credentials 下只有 get 子命令）
 dws dev app credentials get --unified-app-id <unifiedAppId> --format json
 ```
-
----
-
-## connector mcp — MCP 服务与工具
-
-```bash
-# 先看当前二进制命令树和 flag
-dws connector mcp --help
-dws connector mcp service --help
-dws connector mcp tool --help
-
-# 服务；list 返回顶层 services[].serverName（V4 分页平铺），作为动态命令一级路径
-dws connector mcp service list --keyword <关键词> --format json
-dws connector mcp service get --mcp-id <mcpId> --format json
-dws connector mcp service create --name <服务名> --description <描述> --server-name <kebab-case> --dry-run --format json
-dws connector mcp service update --mcp-id <mcpId> --description <新描述> --server-name <kebab-case> --dry-run --format json
-dws connector mcp service delete --mcp-id <mcpId> --dry-run --format json
-
-# 工具（工具 ID flag 统一 --tool-id；create/update 用 --http-info；0720 起 title/description/api-inputs/tool-inputs/input-mappings + 出参三件套 api-outputs/tool-outputs/output-mappings 均必填，tool-outputs 不精修传 []）
-dws connector mcp tool list --mcp-id <mcpId> --page-size 100 --format json
-dws connector mcp tool get --mcp-id <mcpId> --tool-id <toolId> --format json
-dws connector mcp tool create --mcp-id <mcpId> --name <snake_case_name> --http-info '{"method":"GET","url":"https://example.com","auth":{"type":"NO_AUTH"}}' --dry-run --format json
-dws connector mcp tool update --mcp-id <mcpId> --tool-id <toolId> --name <snake_case_name> --http-info '{"method":"GET","url":"https://example.com","auth":{"type":"NO_AUTH"}}' --dry-run --format json
-dws connector mcp tool debug --mcp-id <mcpId> --tool-id <toolId> --value '{}' --credential-id <credentialId> --dry-run --format json
-dws connector mcp tool publish --mcp-id <mcpId> --tool-id <toolId> --dry-run --format json
-dws connector mcp tool versions --mcp-id <mcpId> --tool-id <toolId> --format json
-
-# HSF 型工具（V5）：方法发现→建造→部分更新（update-hsf=只传要改的；http 版 update=全量提交，勿混用）
-dws connector mcp hsf method-list --interface-name <接口全限定名> --format json
-dws connector mcp tool create-hsf --mcp-id <mcpId> --name <snake_case> --hsf-info '{"interfaceName":"…","methodName":"…"}' --tool-inputs '[...]' --input-mappings '[...]' --tool-outputs '[]' --output-mappings '[...]' --dry-run --format json
-dws connector mcp tool update-hsf --mcp-id <mcpId> --tool-id <toolId> --description <只传要改的> --dry-run --format json
-
-# 接入地址：按调用者个人身份生成的实例地址（非组织公共地址），含 ?key= 个人敏感凭证，勿外发；只返回 success 无 mcpUrl＝服务已删/不可用（平台缺口），先 service get 核实
-dws connector mcp url get --mcp-id <mcpId> --source MARKET --format json
-
-# 下游鉴权配置、凭证账号、开发协作者
-dws connector mcp auth get --mcp-id <mcpId> --format json
-dws connector mcp auth save --mcp-id <mcpId> --auth-type TOKEN --token-auth-config '<JSON>' --dry-run --format json
-dws connector mcp credential list --mcp-id <mcpId> --format json
-dws connector mcp credential save --mcp-id <mcpId> --name <账号名> --content-file credentials.json --dry-run --format json
-dws connector mcp credential debug --mcp-id <mcpId> --credential-id <id> --dry-run --format json
-dws connector mcp credential bind --mcp-id <mcpId> --credential-id <id> --dry-run --format json
-dws connector mcp credential unbind --mcp-id <mcpId> --dry-run --format json
-dws connector mcp credential delete --mcp-id <mcpId> --credential-id <id> --dry-run --format json
-dws connector mcp member list --mcp-id <mcpId> --format json
-dws connector mcp member add --mcp-id <mcpId> --user-ids <staffId1,staffId2> --dry-run --format json
-dws connector mcp member remove --mcp-id <mcpId> --user-ids <staffId1,staffId2> --dry-run --format json
-
-# 只读探测指定地址的协议、服务能力和工具 Schema
-DINGTALK_MCPDEV_MCP_URL='<含凭证的 MCP 地址>' dws connector mcp inspect --format json
-
-# 已发布 MCP 动态命令
-dws connector mcp refresh --format json
-dws <service-or-tool-slug> <tool-slug> --format json
-dws connector mcp published <service-or-tool-slug> <tool-slug> --format json
-```
-
-规则：
-
-- `?key=` 是敏感凭证，不能写进文档、日志、代码或回答全文。
-- `inspect` 只执行 MCP 握手和 `tools/list`，不调用业务工具；含凭证地址优先通过 `DINGTALK_MCPDEV_MCP_URL` 传入，输出会脱敏。
-- 凭证密钥优先用 `--content-file` 或 stdin 传入；dry-run 不回显密钥值。`credential debug` 会真实调用下游测试接口。
-- 成员命令的 `--user-ids` 必须传 staffId；新增/移除前先 `member list` 核对。
-- 动态命令一级路径优先用合法 ASCII `serverName`，缺失或不合法时用 `mcp-<mcpId>`，没有 mcpId 才退到工具 `name`；不使用中文服务名。
-- `refresh` 单服务独立超时并支持部分成功；检查 `partial`、`failedServices`、`cacheUpdated`，失败服务会保留旧缓存。
-- 写操作和 `tool debug` 必须先 `--dry-run`，确认后再 `--yes`。
-- 复杂字段直接传 JSON：`--http`/`--api-inputs`/`--api-outputs` 为 object，`--tool-inputs`/`--tool-outputs`/`--input-mappings`/`--output-mappings` 为 array，`--value` 为 object。
-- 发布前必须先调试通过；删除服务前先 `service get` + `tool list` 核对。
 
 ---
 
@@ -277,4 +231,4 @@ dws dev app version status         --unified-app-id <unifiedAppId> --version-id 
 - **`clientSecret` 只在 `robot result` 返回一次**，务必立即保存；dws 只能 `credentials get` 读取，不支持重置，遗失后到开放平台控制台重置密钥
 - 改配置后机器人不自动生效，需走 `version create → publish` 才上线
 - `hermes`/`openclaw` 渠道走官方建联，`dws dev connect` 不代建机器人，会输出指引后退出
-- 应用名在企业内唯一；`app list/get` 用 `--app-key` 过滤但不能定位单应用，定位单应用须用 `--unified-app-id`
+- 应用名在企业内唯一；`app get` 支持 `--unified-app-id` 或只读 `--app-key` 查详情；写操作定位单应用须用 `--unified-app-id`

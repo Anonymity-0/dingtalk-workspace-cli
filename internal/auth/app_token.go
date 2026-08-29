@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/keychain"
@@ -34,6 +36,15 @@ const (
 	// tokenExpiryBuffer is the buffer time before actual expiry to consider
 	// the token as expired (same as user token: 5 minutes).
 	tokenExpiryBuffer = 5 * time.Minute
+)
+
+var (
+	appTokenMarshalIndent  = json.MarshalIndent
+	appTokenMarshal        = json.Marshal
+	appTokenNewRequest     = http.NewRequestWithContext
+	appTokenKeychainSet    = keychain.Set
+	appTokenKeychainGet    = keychain.Get
+	appTokenKeychainRemove = keychain.Remove
 )
 
 // AppTokenData stores the app-level access token obtained from the unified
@@ -63,7 +74,7 @@ func SaveAppTokenData(data *AppTokenData) error {
 		return fmt.Errorf("clientID is required for saving app token data")
 	}
 	data.UpdatedAt = time.Now()
-	jsonData, err := json.MarshalIndent(data, "", "  ")
+	jsonData, err := appTokenMarshalIndent(data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal app token data: %w", err)
 	}
@@ -74,7 +85,7 @@ func SaveAppTokenData(data *AppTokenData) error {
 	}()
 
 	account := appTokenPrefix + data.ClientID
-	if err := keychain.Set(keychain.Service, account, string(jsonData)); err != nil {
+	if err := appTokenKeychainSet(keychain.Service, account, string(jsonData)); err != nil {
 		return fmt.Errorf("save app token to keychain: %w", err)
 	}
 	return nil
@@ -87,7 +98,7 @@ func LoadAppTokenData(clientID string) (*AppTokenData, error) {
 		return nil, fmt.Errorf("clientID is required for loading app token data")
 	}
 	account := appTokenPrefix + clientID
-	jsonStr, err := keychain.Get(keychain.Service, account)
+	jsonStr, err := appTokenKeychainGet(keychain.Service, account)
 	if err != nil {
 		return nil, nil // Not found is not an error
 	}
@@ -108,7 +119,7 @@ func DeleteAppTokenData(clientID string) error {
 		return nil
 	}
 	account := appTokenPrefix + clientID
-	return keychain.Remove(keychain.Service, account)
+	return appTokenKeychainRemove(keychain.Service, account)
 }
 
 // --- Token Fetch Function ---
@@ -125,12 +136,12 @@ func FetchAppToken(ctx context.Context, appKey, appSecret string) (token string,
 		"appKey":    appKey,
 		"appSecret": appSecret,
 	}
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := appTokenMarshal(body)
 	if err != nil {
 		return "", 0, fmt.Errorf("marshal request body: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, AppAccessTokenURL, bytes.NewReader(bodyBytes))
+	req, err := appTokenNewRequest(ctx, http.MethodPost, AppAccessTokenURL, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return "", 0, fmt.Errorf("creating request: %w", err)
 	}
@@ -142,9 +153,12 @@ func FetchAppToken(ctx context.Context, appKey, appSecret string) (token string,
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, config.MaxResponseBodySize))
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, config.MaxResponseBodySize+1))
 	if err != nil {
 		return "", 0, fmt.Errorf("reading response: %w", err)
+	}
+	if len(respBody) > config.MaxResponseBodySize {
+		return "", 0, fmt.Errorf("app token 响应超过安全上限 %d 字节", config.MaxResponseBodySize)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -229,5 +243,34 @@ func truncateStr(s string, maxLen int) string {
 
 // appTokenHTTPClient is the default HTTP client for app token operations.
 var appTokenHTTPClient = &http.Client{
-	Timeout: 15 * time.Second,
+	Timeout:       15 * time.Second,
+	CheckRedirect: appTokenRedirectPolicy,
+}
+
+func appTokenRedirectPolicy(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return fmt.Errorf("安全限制: app token 重定向次数超过 10 次")
+	}
+	if len(via) == 0 {
+		return nil
+	}
+	origin := via[0].URL
+	if !sameAppTokenOrigin(origin, req.URL) {
+		return fmt.Errorf("安全限制: 拒绝 app token 跨域或 HTTPS 降级重定向")
+	}
+	return nil
+}
+
+func sameAppTokenOrigin(a, b *url.URL) bool {
+	return a != nil && b != nil && a.User == nil && b.User == nil &&
+		strings.EqualFold(a.Scheme, "https") && strings.EqualFold(b.Scheme, "https") &&
+		strings.EqualFold(a.Hostname(), "api.dingtalk.com") && strings.EqualFold(b.Hostname(), "api.dingtalk.com") &&
+		appTokenPort(a) == appTokenPort(b)
+}
+
+func appTokenPort(u *url.URL) string {
+	if u == nil || u.Port() == "" {
+		return "443"
+	}
+	return u.Port()
 }

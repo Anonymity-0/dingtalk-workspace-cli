@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -119,7 +120,7 @@ func validateChartProperties(props map[string]any) error {
 // ─── Chart subcommands ──────────────────────────────────────────────────────
 
 func newChartCmd() *cobra.Command {
-	chartCmd := &cobra.Command{Use: "chart", Short: "浮动图表管理"}
+	chartCmd := newDeepGroupCommand(&cobra.Command{Use: "chart", Short: "浮动图表管理"})
 
 	// ── chart list ──────────────────────────────────────────────────────
 	chartListCmd := &cobra.Command{
@@ -148,6 +149,33 @@ func newChartCmd() *cobra.Command {
 			return callMCPTool("list_float_charts", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chartListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "chart_list",
+				CanonicalPath:  "sheet.chart_list",
+				CLIPath:        "sheet chart list",
+				PrimaryCLIPath: "sheet chart list",
+			},
+			Description: "列出工作表浮动图表。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "列出工作表浮动图表。",
+				UseWhen:      []string{"需要枚举图表 ID 以便 update/delete 时"},
+				AvoidWhen:    []string{"创建用 chart create；AI 表格图表用 aitable chart"},
+				Examples:     []string{"dws sheet chart list --node <NODE_ID> --sheet-id <SHEET_ID>"},
+			},
+		},
+	})
 	chartListCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	chartListCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	chartListCmd.Flags().String("chart-id", "", "浮动图表 ID (可选，不传则返回全部)")
@@ -223,6 +251,33 @@ position.col 使用列字母表示法（如 "A"、"AA"），不支持数字形�
 			})
 		},
 	}
+	DeclareLeafMetadata(chartCreateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "chart_create",
+				CanonicalPath:  "sheet.chart_create",
+				CLIPath:        "sheet chart create",
+				PrimaryCLIPath: "sheet chart create",
+			},
+			Description: "创建浮动图表。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "创建浮动图表。",
+				UseWhen:      []string{"需要在电子表格工作表上新建柱状/折线等浮动图表时"},
+				AvoidWhen:    []string{"更新已有图表用 chart update；删除用 chart delete；AI 表格图表走 aitable"},
+				Examples:     []string{"dws sheet chart create --node NODE_ID --sheet-id SHEET_ID --properties '{\"chartType\":\"bar\",\"range\":\"A1:B10\"}'"},
+			},
+		},
+	})
 	chartCreateCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	chartCreateCmd.Flags().String("sheet-id", "", "工作表 ID (必填)")
 	chartCreateCmd.Flags().String("properties", "", "图表完整配置 JSON (必填，含 position/dimensions/chart)")
@@ -280,6 +335,33 @@ position.col 使用列字母表示法（如 "A"、"AA"），不支持数字形�
 			})
 		},
 	}
+	DeclareLeafMetadata(chartUpdateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "chart_update",
+				CanonicalPath:  "sheet.chart_update",
+				CLIPath:        "sheet chart update",
+				PrimaryCLIPath: "sheet chart update",
+			},
+			Description: "更新浮动图表属性。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "更新浮动图表属性。",
+				UseWhen:      []string{"已知 chart-id，需要调整图表配置时"},
+				AvoidWhen:    []string{"新建用 create；删除用 delete"},
+				Examples:     []string{"dws sheet chart update --node <NODE_ID> --sheet-id <SHEET_ID> --chart-id <CHART_ID> --properties '{\"title\":\"新标题\"}'"},
+			},
+		},
+	})
 	chartUpdateCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	chartUpdateCmd.Flags().String("sheet-id", "", "工作表 ID (必填)")
 	chartUpdateCmd.Flags().String("chart-id", "", "浮动图表 ID (必填，可通过 chart list 获取)")
@@ -293,20 +375,45 @@ position.col 使用列字母表示法（如 "A"、"AA"），不支持数字形�
 
 注意: 这是一个危险操作，删除后图表不可恢复。执行前需要确认，或传入 --yes 跳过确认。
 chart-id 可通过 chart list 获取。`,
-		Example: `  dws sheet chart delete --node NODE_ID --sheet-id SHEET_ID --chart-id CHART_ID --yes
-  dws sheet chart delete --node NODE_ID --sheet-id SHEET_ID --chart-id CHART_ID`,
+		Example: `  dws sheet chart delete --node NODE_ID --sheet-id SHEET_ID --chart-id CHART_ID --yes`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			chartID := mustGetFlag(cmd, "chart-id")
-			if !confirmDelete("浮动图表", chartID) {
-				return nil
-			}
-			return callMCPTool("delete_float_chart", map[string]any{
-				"nodeId":       mustGetFlag(cmd, "node"),
-				"sheetId":      mustGetFlag(cmd, "sheet-id"),
-				"floatChartId": chartID,
+			toolArgs, err := BuildBatchDeleteFloatChartArgs(map[string]any{
+				"sheet-id": mustGetFlag(cmd, "sheet-id"), "chart-id": mustGetFlag(cmd, "chart-id"),
 			})
+			if err != nil {
+				return err
+			}
+			toolArgs["nodeId"] = mustGetFlag(cmd, "node")
+			return callMCPTool("delete_float_chart", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(chartDeleteCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "chart_delete",
+				CanonicalPath:  "sheet.chart_delete",
+				CLIPath:        "sheet chart delete",
+				PrimaryCLIPath: "sheet chart delete",
+			},
+			Description: "删除浮动图表（需确认后加 --yes）。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "删除浮动图表（需确认后加 --yes）。",
+				UseWhen:      []string{"用户明确要求删除某浮动图表时"},
+				AvoidWhen:    []string{"列目录用 chart list"},
+				Examples:     []string{"dws sheet chart delete --node NODE_ID --sheet-id SHEET_ID --chart-id CHART_ID"},
+			},
+		},
+	})
 	chartDeleteCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	chartDeleteCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	chartDeleteCmd.Flags().String("chart-id", "", "浮动图表 ID (必填，可通过 chart list 获取)")

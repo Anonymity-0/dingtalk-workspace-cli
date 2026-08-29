@@ -14,9 +14,14 @@
 package pipeline
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -27,44 +32,84 @@ import (
 // SetArgs so that Cobra's subsequent ExecuteC uses the corrected
 // values.
 //
-// If the target command cannot be resolved (e.g. the user typed a
-// non-existent command), PreParse is skipped silently and Cobra will
-// handle the error.
-func RunPreParse(root *cobra.Command, engine *Engine) {
-	if engine == nil || !engine.HasHandlers(PreParse) {
-		return
-	}
+// Explicit +shortcut tokens and groups whose typed GroupPolicy enables
+// recovery are validated before flag parsing so an unknown command cannot be
+// misreported as an unknown flag on its nearest parent. Other unresolved paths
+// remain Cobra's responsibility.
+func RunPreParse(root *cobra.Command, engine *Engine) error {
+	_, err := RunPreParseArgs(root, engine, os.Args[1:])
+	return err
+}
 
-	rawArgs := os.Args[1:]
+// RunPreParseArgs is the testable form of RunPreParse. Production passes
+// os.Args[1:]; end-to-end tests can pass an isolated argv while exercising the
+// exact same command traversal, FlagInfo extraction, handler chain, and
+// root.SetArgs delivery path.
+func RunPreParseArgs(root *cobra.Command, engine *Engine, rawArgs []string) (*Context, error) {
 	if len(rawArgs) == 0 {
-		return
+		return nil, nil
+	}
+	normalizedArgs, commandCorrection, fallbackErr := normalizeCommandPathFallback(root, engine, rawArgs)
+	if fallbackErr != nil {
+		ctx := &Context{Args: append([]string{}, rawArgs...)}
+		if presentationErr := primeEarlyErrorPresentation(root, root, rawArgs); presentationErr != nil {
+			slog.Debug("pipeline command-fallback presentation flags", "error", presentationErr)
+		}
+		return ctx, fallbackErr
 	}
 
-	// Traverse the command tree to find the target command.
-	target, _, err := root.Traverse(rawArgs)
-	if err != nil || target == nil {
-		return
+	// Cobra's Traverse does not merge root persistent flags before deciding
+	// whether a leading flag consumes the next token. For example, it can treat
+	// the command name in `--dry-run calendar event list` as a value and resolve
+	// the unrelated root command `event list`. Remove only known root-persistent
+	// flags from the traversal copy; the original argv remains intact for the
+	// handlers and Cobra's real parse.
+	target, remaining, err := root.Traverse(argsForCommandTraversalForEngine(root, engine, normalizedArgs))
+	if err != nil {
+		return nil, nil
 	}
-
-	// Cobra adds the built-in help flag lazily during execution, after this
-	// pre-parse phase. Initialize it before collecting known flags so --help is
-	// never mistaken for a nearby application flag such as --http.
-	target.InitDefaultHelpFlag()
+	if err := validateUnresolvedCommand(target, remaining); err != nil {
+		ctx := &Context{
+			Args:    append([]string{}, normalizedArgs...),
+			Command: target.CommandPath(),
+		}
+		if presentationErr := primeEarlyErrorPresentation(root, target, ctx.Args); presentationErr != nil {
+			slog.Debug("pipeline command-resolution presentation flags", "error", presentationErr)
+		}
+		return ctx, err
+	}
 
 	// Build FlagInfo from the target command's registered flags.
 	flagInfos := FlagInfoFromCommand(target)
-	if len(flagInfos) == 0 {
-		return
+	if (engine == nil || !engine.HasHandlers(PreParse) || len(flagInfos) == 0) && commandCorrection == nil {
+		return nil, nil
 	}
 
 	ctx := &Context{
-		Args:      append([]string{}, rawArgs...),
+		Args: append([]string{}, normalizedArgs...),
+		// target.CommandPath() still carries the "dws" prefix; PreParse
+		// handlers that key off a command (e.g. the semantic-alias table)
+		// normalize it themselves, so the runtime key matches the build key.
+		Command:   target.CommandPath(),
 		FlagSpecs: flagInfos,
 	}
+	if commandCorrection != nil {
+		ctx.Corrections = append(ctx.Corrections, *commandCorrection)
+	}
 
-	if err := engine.RunPhase(PreParse, ctx); err != nil {
-		slog.Debug("pipeline pre-parse", "error", err)
-		return
+	if engine != nil && engine.HasHandlers(PreParse) && len(flagInfos) > 0 {
+		if err := engine.RunPhase(PreParse, ctx); err != nil {
+			// Cobra has not parsed persistent flags yet, but this error is rendered
+			// immediately by app.Execute. Prime only the presentation controls so
+			// --format/--debug/--verbose affect this early error exactly as they do
+			// errors returned after Cobra parsing. No credentials, profiles, output
+			// paths, or execution controls are applied here.
+			if presentationErr := primeEarlyErrorPresentation(root, target, ctx.Args); presentationErr != nil {
+				slog.Debug("pipeline pre-parse presentation flags", "error", presentationErr)
+			}
+			slog.Debug("pipeline pre-parse", "error", err)
+			return ctx, err
+		}
 	}
 
 	// Only set corrected args if PreParse actually changed something.
@@ -80,6 +125,331 @@ func RunPreParse(root *cobra.Command, engine *Engine) {
 			)
 		}
 	}
+	return ctx, nil
+}
+
+func argsForCommandTraversal(root *cobra.Command, rawArgs []string) []string {
+	args, _ := argsForCommandTraversalWithPositionsForEngine(root, nil, rawArgs)
+	return args
+}
+
+func argsForCommandTraversalForEngine(root *cobra.Command, engine *Engine, rawArgs []string) []string {
+	args, _ := argsForCommandTraversalWithPositionsForEngine(root, engine, rawArgs)
+	return args
+}
+
+func argsForCommandTraversalWithPositions(root *cobra.Command, rawArgs []string) ([]string, []int) {
+	return argsForCommandTraversalWithPositionsForEngine(root, nil, rawArgs)
+}
+
+func argsForCommandTraversalWithPositionsForEngine(root *cobra.Command, engine *Engine, rawArgs []string) ([]string, []int) {
+	if root == nil || len(rawArgs) == 0 {
+		positions := make([]int, len(rawArgs))
+		for index := range positions {
+			positions[index] = index
+		}
+		return rawArgs, positions
+	}
+	flags := root.PersistentFlags()
+	if flags == nil || !flags.HasFlags() {
+		positions := make([]int, len(rawArgs))
+		for index := range positions {
+			positions[index] = index
+		}
+		return rawArgs, positions
+	}
+
+	matcher := newFlagTokenMatcher(flags)
+	out := make([]string, 0, len(rawArgs))
+	positions := make([]int, 0, len(rawArgs))
+	target := root
+	commandPathOpen := true
+	unresolvedCommandToken := ""
+	unresolvedCommandPosition := -1
+	commandTokens := make([]string, 0, len(rawArgs))
+	commandPositions := make([]int, 0, len(rawArgs))
+	commandFlagMatchers := make(map[*cobra.Command]*flagTokenMatcher)
+	commandFlagValueIndex := -1
+	for index := 0; index < len(rawArgs); index++ {
+		argument := rawArgs[index]
+		if argument == "--" {
+			out = append(out, rawArgs[index:]...)
+			for position := index; position < len(rawArgs); position++ {
+				positions = append(positions, position)
+			}
+			break
+		}
+		if index == commandFlagValueIndex {
+			out = append(out, argument)
+			positions = append(positions, index)
+			commandFlagValueIndex = -1
+			continue
+		}
+		flag, inlineValue, matched := matcher.matchTraversalToken(argument)
+		if !matched {
+			out = append(out, argument)
+			positions = append(positions, index)
+			if commandPathOpen {
+				if strings.HasPrefix(argument, "-") {
+					commandMatcher := commandFlagMatchers[target]
+					if commandMatcher == nil {
+						commandMatcher = newFlagTokenMatcher(target.Flags(), target.InheritedFlags())
+						commandFlagMatchers[target] = commandMatcher
+					}
+					commandFlag, commandInlineValue, commandMatched := commandMatcher.matchTraversalToken(argument)
+					if commandMatched {
+						if index+1 < len(rawArgs) {
+							if _, ok := separatedBoolValue(argument, rawArgs[index+1], commandFlag, commandInlineValue); ok ||
+								(!commandInlineValue && commandFlag.NoOptDefVal == "") {
+								commandFlagValueIndex = index + 1
+							}
+						}
+						continue
+					}
+				}
+				child := exactTraversalChild(target, argument)
+				if child == nil {
+					commandPathOpen = false
+					if !strings.HasPrefix(argument, "-") {
+						unresolvedCommandToken = argument
+						unresolvedCommandPosition = index
+					}
+				} else {
+					target = child
+					commandTokens = append(commandTokens, argument)
+					commandPositions = append(commandPositions, index)
+				}
+			}
+			continue
+		}
+		// Fuzzy matching is useful for a misspelled root boolean before a
+		// command (`--dry-rnu calendar ...`), but after a product has already
+		// resolved the same spelling may be an unknown local value flag. For
+		// example, `aisearch --types value` is deliberately protected from
+		// alias correction, while root traversal can otherwise fuzz `--types`
+		// to the global boolean `--yes` and expose `value` as a fake command.
+		// Preserve the token when the owning command's reviewed semantic table
+		// protects that spelling. Protection wins even for detached boolean
+		// literals and inline values: treating `--types false` as fuzzy
+		// `--yes false` would otherwise bypass the reviewed parent guard. An
+		// ordinary unprotected fuzzy root boolean such as `group --yess child`
+		// remains traversable.
+		if strings.HasPrefix(argument, "--") && flag != nil && flag.NoOptDefVal != "" &&
+			matcher.matchLongToken(argument).fuzzy && target != root {
+			name := strings.TrimPrefix(argument, "--")
+			if separator := strings.IndexByte(name, '='); separator >= 0 {
+				name = name[:separator]
+			}
+			_, protected := engine.resolveFlagProtection(target.CommandPath(), cmdutil.Morph(name))
+			if protected {
+				// Freeze traversal at the exact command prefix. Passing the
+				// protected unknown flag to Cobra can itself fail (notably when
+				// its value is a boolean literal), while retaining earlier local
+				// flags can let their values masquerade as children. The synthetic
+				// terminator affects only this traversal copy; handlers and Cobra's
+				// real parse still receive the original argv.
+				out = append(out[:0], commandTokens...)
+				positions = append(positions[:0], commandPositions...)
+				if unresolvedCommandToken != "" {
+					out = append(out, unresolvedCommandToken)
+					positions = append(positions, unresolvedCommandPosition)
+				}
+				out = append(out, "--")
+				positions = append(positions, index)
+				break
+			}
+		}
+		if index+1 < len(rawArgs) {
+			if _, ok := separatedBoolValue(argument, rawArgs[index+1], flag, inlineValue); ok {
+				index++
+				continue
+			}
+		}
+		if !inlineValue && flag.NoOptDefVal == "" && index+1 < len(rawArgs) {
+			index++
+		}
+	}
+	return out, positions
+}
+
+func exactTraversalChild(parent *cobra.Command, token string) *cobra.Command {
+	for _, child := range parent.Commands() {
+		if child.Name() == token || child.HasAlias(token) {
+			return child
+		}
+	}
+	return nil
+}
+
+// separatedBoolValue recognises model-friendly `--flag false` and exact
+// shorthand `-f false` spellings without mistaking an already attached value
+// or a shorthand cluster for a detached value. pflag otherwise treats a bare
+// bool flag as true and leaves the following token positional.
+func separatedBoolValue(argument, following string, flag *pflag.Flag, inlineValue bool) (string, bool) {
+	if flag == nil || (flag.Value.Type() != "bool" && flag.Value.Type() != "boolean") {
+		return "", false
+	}
+	if strings.HasPrefix(argument, "--") {
+		if inlineValue || strings.Contains(argument, "=") {
+			return "", false
+		}
+	} else if flag.Shorthand == "" || argument != "-"+flag.Shorthand {
+		return "", false
+	}
+	return cmdutil.NormalizeBoolLiteral(following)
+}
+
+type longFlagMatch struct {
+	flag       *pflag.Flag
+	value      string
+	hasValue   bool
+	recognized bool
+	fuzzy      bool
+}
+
+type flagTokenMatcher struct {
+	byName      map[string]*pflag.Flag
+	byShorthand map[string]*pflag.Flag
+	known       map[string]bool
+	candidates  []string
+	specByName  map[string]FlagInfo
+}
+
+func newFlagTokenMatcher(flagSets ...*pflag.FlagSet) *flagTokenMatcher {
+	matcher := &flagTokenMatcher{
+		byName:      make(map[string]*pflag.Flag),
+		byShorthand: make(map[string]*pflag.Flag),
+		known:       make(map[string]bool),
+		specByName:  make(map[string]FlagInfo),
+	}
+	for _, flags := range flagSets {
+		if flags == nil {
+			continue
+		}
+		flags.VisitAll(func(flag *pflag.Flag) {
+			if _, exists := matcher.byName[flag.Name]; exists {
+				return
+			}
+			matcher.byName[flag.Name] = flag
+			matcher.known[flag.Name] = true
+			matcher.candidates = append(matcher.candidates, flag.Name)
+			matcher.specByName[flag.Name] = flagInfoFromPflag(flag)
+			if flag.Shorthand != "" {
+				matcher.byShorthand[flag.Shorthand] = flag
+			}
+		})
+	}
+	return matcher
+}
+
+func (m *flagTokenMatcher) matchLongToken(argument string) longFlagMatch {
+	if m == nil || !strings.HasPrefix(argument, "--") || argument == "--" {
+		return longFlagMatch{}
+	}
+
+	canonical := argument
+	body := strings.TrimPrefix(canonical, "--")
+	name, value, hasValue := strings.Cut(body, "=")
+	if flag := m.byName[name]; flag != nil {
+		return longFlagMatch{flag: flag, value: value, hasValue: hasValue, recognized: true}
+	}
+
+	fuzzyMatch := false
+	if normalized, ok := NormalizeFlagToken(argument, m.known); ok {
+		canonical = normalized
+	} else if split, ok := SplitStickyFlag(argument, m.specByName); ok {
+		name = strings.TrimPrefix(split.Flag, "--")
+		return longFlagMatch{flag: m.byName[name], value: split.Value, hasValue: true, recognized: true}
+	} else if fuzzy, ok := FuzzyMatchFlag(argument, m.known, m.candidates); ok {
+		canonical = fuzzy
+		fuzzyMatch = true
+	} else {
+		return longFlagMatch{}
+	}
+
+	body = strings.TrimPrefix(canonical, "--")
+	name, value, hasValue = strings.Cut(body, "=")
+	flag := m.byName[name]
+	return longFlagMatch{flag: flag, value: value, hasValue: hasValue, recognized: flag != nil, fuzzy: fuzzyMatch}
+}
+
+func (m *flagTokenMatcher) matchTraversalToken(argument string) (*pflag.Flag, bool, bool) {
+	if m == nil || argument == "" || argument == "-" || argument == "--" {
+		return nil, false, false
+	}
+	if strings.HasPrefix(argument, "--") {
+		match := m.matchLongToken(argument)
+		return match.flag, match.hasValue, match.recognized
+	}
+	if !strings.HasPrefix(argument, "-") {
+		return nil, false, false
+	}
+
+	body := strings.TrimPrefix(argument, "-")
+	shorthands := []rune(body)
+	for index, shorthand := range shorthands {
+		flag := m.byShorthand[string(shorthand)]
+		if flag == nil {
+			return nil, false, false
+		}
+		if flag.NoOptDefVal == "" {
+			// A value-taking shorthand consumes the next token only when it is
+			// last; otherwise the remainder is its attached value (`-vfjson`).
+			return flag, index < len(shorthands)-1, true
+		}
+	}
+	return m.byShorthand[string(shorthands[0])], true, true
+}
+
+func primeEarlyErrorPresentation(root, target *cobra.Command, rawArgs []string) error {
+	if root == nil || target == nil || len(rawArgs) == 0 {
+		return nil
+	}
+	rootFlags := root.PersistentFlags()
+	presentationFlags := pflag.NewFlagSet("early-error-presentation", pflag.ContinueOnError)
+	presentationFlags.SetOutput(io.Discard)
+	presentationFlags.ParseErrorsWhitelist.UnknownFlags = true
+	presentationFlags.SetNormalizeFunc(func(_ *pflag.FlagSet, name string) pflag.NormalizedName {
+		return pflag.NormalizedName(cmdutil.Morph(name))
+	})
+
+	names := make([]string, 0, 3)
+	if source := rootFlags.Lookup("format"); source != nil {
+		value, err := rootFlags.GetString("format")
+		if err != nil {
+			return fmt.Errorf("read presentation flag --format: %w", err)
+		}
+		presentationFlags.StringP("format", source.Shorthand, value, source.Usage)
+		names = append(names, "format")
+	}
+	for _, name := range []string{"debug", "verbose"} {
+		source := rootFlags.Lookup(name)
+		if source == nil {
+			continue
+		}
+		value, err := rootFlags.GetBool(name)
+		if err != nil {
+			return fmt.Errorf("read presentation flag --%s: %w", name, err)
+		}
+		presentationFlags.BoolP(name, source.Shorthand, value, source.Usage)
+		names = append(names, name)
+	}
+	// Keep the existing contract in which a PreParse conflict wins over help;
+	// registering help prevents pflag's special unknown-help early return.
+	presentationFlags.BoolP("help", "h", false, "")
+
+	parseErr := presentationFlags.Parse(rawArgs)
+	errs := []error{parseErr}
+	for _, name := range names {
+		if !presentationFlags.Changed(name) {
+			continue
+		}
+		value := presentationFlags.Lookup(name).Value.String()
+		if err := rootFlags.Set(name, value); err != nil {
+			errs = append(errs, fmt.Errorf("apply presentation flag --%s: %w", name, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // FlagInfoFromCommand extracts FlagInfo entries from a Cobra
@@ -99,22 +469,22 @@ func FlagInfoFromCommand(cmd *cobra.Command) []FlagInfo {
 	var infos []FlagInfo
 
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if seen[f.Name] {
-			return
-		}
-		seen[f.Name] = true
-		infos = append(infos, flagInfoFromPflag(f))
+		appendFlagInfo(&infos, seen, f)
 	})
 
 	cmd.InheritedFlags().VisitAll(func(f *pflag.Flag) {
-		if seen[f.Name] {
-			return
-		}
-		seen[f.Name] = true
-		infos = append(infos, flagInfoFromPflag(f))
+		appendFlagInfo(&infos, seen, f)
 	})
 
 	return infos
+}
+
+func appendFlagInfo(infos *[]FlagInfo, seen map[string]bool, flag *pflag.Flag) {
+	if seen[flag.Name] {
+		return
+	}
+	seen[flag.Name] = true
+	*infos = append(*infos, flagInfoFromPflag(flag))
 }
 
 // flagInfoFromPflag builds a FlagInfo from a pflag.Flag, copying
@@ -122,6 +492,7 @@ func FlagInfoFromCommand(cmd *cobra.Command) []FlagInfo {
 func flagInfoFromPflag(f *pflag.Flag) FlagInfo {
 	fi := FlagInfo{
 		Name:         f.Name,
+		Shorthand:    f.Shorthand,
 		PropertyName: f.Name,
 		Type:         f.Value.Type(),
 	}

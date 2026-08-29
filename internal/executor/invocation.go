@@ -91,36 +91,17 @@ func NewHelperInvocation(legacyPath, canonicalProduct, tool string, params map[s
 	}
 }
 
-func NewWorkflowInvocation(legacyPath, workflowName string, steps []Invocation) Invocation {
-	stepDescriptions := make([]any, 0, len(steps))
-	for _, step := range steps {
-		stepDescriptions = append(stepDescriptions, map[string]any{
-			"product": step.CanonicalProduct,
-			"tool":    step.Tool,
-		})
-	}
-	return Invocation{
-		Kind:             "workflow_invocation",
-		Stage:            "workflow",
-		Implemented:      false,
-		CanonicalProduct: "workflow",
-		Tool:             workflowName,
-		CanonicalPath:    "workflow." + workflowName,
-		LegacyPath:       legacyPath,
-		Params: map[string]any{
-			"steps": stepDescriptions,
-		},
-	}
-}
-
 func MergePayloads(jsonPayload, paramsPayload string, overrides map[string]any) (map[string]any, error) {
 	merged := make(map[string]any)
 
-	for label, payload := range map[string]string{
-		"--json":   jsonPayload,
-		"--params": paramsPayload,
+	for _, payload := range []struct {
+		label string
+		raw   string
+	}{
+		{label: "--json", raw: jsonPayload},
+		{label: "--params", raw: paramsPayload},
 	} {
-		value, err := parseJSONObject(label, payload)
+		value, err := parseJSONObject(payload.label, payload.raw)
 		if err != nil {
 			return nil, err
 		}

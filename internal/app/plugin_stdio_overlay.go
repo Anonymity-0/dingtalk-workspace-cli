@@ -14,15 +14,10 @@
 package app
 
 import (
-	"encoding/json"
 	"log/slog"
-	"os"
-	"path/filepath"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/plugin"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/mcptypes"
-	"github.com/spf13/cobra"
 )
 
 // resolveStdioOverlay resolves the CLIOverlay for a stdio plugin server
@@ -35,64 +30,26 @@ import (
 // When no CLI metadata is present, a minimal overlay keyed by the server
 // name is returned so callers can still build an identity descriptor.
 func resolveStdioOverlay(p *plugin.Plugin, sc plugin.StdioServerClient) mcptypes.CLIOverlay {
-	serverID := sc.Key
-	overlay := mcptypes.CLIOverlay{
-		ID:      serverID,
-		Command: serverID,
-	}
-	srv, ok := p.Manifest.MCPServers[sc.Key]
-	if !ok || len(srv.CLI) == 0 {
-		return overlay
-	}
-
-	cliData := srv.CLI
-	// A JSON string is interpreted as a relative path to an external
-	// overlay file (e.g. "overlay.json") anchored at the plugin root.
-	if len(cliData) > 0 && cliData[0] == '"' {
-		var cliPath string
-		if err := json.Unmarshal(cliData, &cliPath); err == nil && cliPath != "" {
-			absPath := filepath.Join(p.Root, cliPath)
-			if fileData, readErr := os.ReadFile(absPath); readErr == nil {
-				cliData = fileData
-			} else {
-				slog.Warn("plugin: failed to read CLI overlay file",
-					"plugin", p.Manifest.Name, "path", absPath, "error", readErr)
-			}
+	overlay, ok := p.ResolveCLIOverlay(sc.Key)
+	if !ok {
+		return mcptypes.CLIOverlay{
+			ID:      sc.Key,
+			Command: sc.Key,
+			Skip:    true,
 		}
-	}
-	if err := json.Unmarshal(cliData, &overlay); err != nil {
-		slog.Warn("plugin: failed to parse CLI overlay for stdio server",
-			"plugin", p.Manifest.Name, "server", sc.Key, "error", err)
-	}
-	if overlay.ID == "" {
-		overlay.ID = serverID
-	}
-	if overlay.Command == "" {
-		overlay.Command = serverID
 	}
 	return overlay
 }
 
-// registerStdioServerFromOverlay builds cobra commands for a stdio plugin
-// server using only its manifest + overlay.json.
-//
-// Returns (cmds, descriptor, true) when the overlay carries toolOverrides,
-// otherwise (nil, zero, false) so the caller can fall back to discovery-first
-// registration (legacy path).
-//
-// Dynamic command building has been removed; this now simply registers the
-// server descriptor and returns nil commands.
-func registerStdioServerFromOverlay(
+func stdioServerDescriptorFromManifest(
 	p *plugin.Plugin,
 	sc plugin.StdioServerClient,
-	runner executor.Runner,
-) ([]*cobra.Command, mcptypes.ServerDescriptor, bool) {
-	overlay := resolveStdioOverlay(p, sc)
-	if len(overlay.ToolOverrides) == 0 {
-		return nil, mcptypes.ServerDescriptor{}, false
+) (mcptypes.ServerDescriptor, bool) {
+	overlay, ok := p.ResolveCLIOverlay(sc.Key)
+	if !ok {
+		return mcptypes.ServerDescriptor{}, false
 	}
-
-	descriptor := mcptypes.ServerDescriptor{
+	return mcptypes.ServerDescriptor{
 		Key:         sc.Key,
 		DisplayName: p.Manifest.Name + "/" + sc.Key,
 		Description: p.Manifest.Description,
@@ -100,16 +57,30 @@ func registerStdioServerFromOverlay(
 		Source:      "plugin",
 		CLI:         overlay,
 		HasCLIMeta:  true,
-	}
+	}, true
+}
 
+func registerResolvedStdioServer(
+	p *plugin.Plugin,
+	sc plugin.StdioServerClient,
+	descriptor mcptypes.ServerDescriptor,
+) {
 	AppendDynamicServer(descriptor)
 	RegisterStdioClient(p.Manifest.Name+"/"+sc.Key, sc.Client)
 
-	slog.Debug("plugin: stdio server registered from overlay",
+	slog.Debug("plugin: stdio server registered from manifest",
 		"plugin", p.Manifest.Name, "server", sc.Key,
-		"toolOverrides", len(overlay.ToolOverrides))
+		"toolOverrides", len(descriptor.CLI.ToolOverrides))
+}
 
-	// Dynamic command tree building has been removed.
-	_ = runner
-	return nil, descriptor, true
+// registerStdioServerFromManifest registers an endpoint descriptor and an
+// unstarted client from versioned plugin metadata. Tool discovery is not part
+// of command-tree construction; execution starts and initializes the client.
+func registerStdioServerFromManifest(p *plugin.Plugin, sc plugin.StdioServerClient) mcptypes.ServerDescriptor {
+	descriptor, ok := stdioServerDescriptorFromManifest(p, sc)
+	if !ok {
+		return mcptypes.ServerDescriptor{}
+	}
+	registerResolvedStdioServer(p, sc, descriptor)
+	return descriptor
 }

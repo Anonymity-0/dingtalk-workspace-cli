@@ -2,15 +2,23 @@ package app
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"text/tabwriter"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/i18n"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/tui"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
+
+// feedbackFormURL points at the DingTalk Notable form collecting dws CLI
+// user-experience feedback. The source parameter tags submissions that
+// originated from the CLI help output so they can be told apart from
+// responses arriving through other channels.
+const feedbackFormURL = "https://alidocs.dingtalk.com/notable/share/form/v01eLbnj1bw1ELb0laN_dv19yqvsgs3oebp3pcjys_1qX0QQ0?source=dws-cli"
 
 func configureRootHelp(root *cobra.Command) {
 	if root == nil {
@@ -41,6 +49,7 @@ func configureRootHelp(root *cobra.Command) {
 	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		if cmd != root {
 			defaultHelpFunc(cmd, args)
+			cli.RenderHelpAffordances(cmd)
 			return
 		}
 		renderRootHelp(root)
@@ -88,6 +97,8 @@ func renderRootHelp(root *cobra.Command) {
 		_, _ = fmt.Fprintln(w)
 	}
 	renderRootGlobalFlags(root)
+	renderAgentQuickstart(w)
+	renderSafetyModel(w)
 	_, _ = fmt.Fprintf(w, "%s %s\n", tui.Key("Next"), `Use "dws <service> --help" for more information about a discovered MCP service or "dws <command> --help" for utility commands.`)
 
 	// Render root.Long after the command list so agents see the upgrade
@@ -99,6 +110,48 @@ func renderRootHelp(root *cobra.Command) {
 		_, _ = fmt.Fprintln(w)
 		_, _ = fmt.Fprintln(w, tui.Dim(long))
 	}
+
+	// Keep the feedback entry last: everything above it is operational guidance
+	// an agent acts on, while the survey is addressed to human readers who
+	// scroll to the end.
+	_, _ = fmt.Fprintln(w)
+	renderRootFeedback(w)
+}
+
+func renderAgentQuickstart(w io.Writer) {
+	_, _ = fmt.Fprintln(w, tui.Section("Agent Quickstart:"))
+	_, _ = fmt.Fprintln(w, "  1. Browse a product: dws <service> --help")
+	_, _ = fmt.Fprintln(w, "  2. Inspect leaf parameters and semantics: dws <path> --help")
+	_, _ = fmt.Fprintln(w, `  3. Read the machine contract: dws schema --cli-path "<path>" --compact -f json`)
+	_, _ = fmt.Fprintln(w, "  4. Prefer structured output. Use dry-run only when the leaf explicitly supports it.")
+	_, _ = fmt.Fprintln(w, "  5. Never add --yes without explicit user confirmation.")
+	_, _ = fmt.Fprintln(w)
+}
+
+func renderSafetyModel(w io.Writer) {
+	_, _ = fmt.Fprintln(w, tui.Section("Safety model:"))
+	_, _ = fmt.Fprintln(w, "  effect=read|write|destructive — whether the command reads, changes, or irreversibly removes state")
+	_, _ = fmt.Fprintln(w, "  risk=low|medium|high — expected impact if the command is used incorrectly")
+	_, _ = fmt.Fprintln(w, "  confirmation=not_required|user_required — whether explicit user approval is required")
+	_, _ = fmt.Fprintln(w, "  idempotency=idempotent|retryable|non_idempotent|unknown — whether repeating the command is safe")
+	_, _ = fmt.Fprintln(w)
+}
+
+// renderRootFeedback prints the user-experience survey entry. The URL occupies
+// its own line and is never wrapped or padded through a tabwriter: it is longer
+// than the help rule width, and breaking it would stop terminals from
+// recognizing it as a clickable hyperlink. Soft wrapping performed by the
+// terminal itself keeps the link intact.
+//
+// The label is intentionally not routed through i18n. Everything surrounding it
+// in this listing — service descriptions, utility descriptions, global flag
+// usage — is hardcoded Chinese, so translating this one line would render it in
+// English on any host whose LANG is not zh_*, leaving a single English line
+// inside an otherwise Chinese screen.
+func renderRootFeedback(w io.Writer) {
+	_, _ = fmt.Fprintln(w, tui.Section("Feedback:"))
+	_, _ = fmt.Fprintf(w, "  %s %s\n", tui.Bullet(), tui.Dim("使用体验反馈问卷（1 分钟）"))
+	_, _ = fmt.Fprintf(w, "    %s\n", tui.Cyan(feedbackFormURL))
 }
 
 func renderRootGlobalFlags(root *cobra.Command) {
@@ -161,14 +214,28 @@ func commandShort(cmd *cobra.Command) string {
 
 // resolveVisibleProducts returns the set of top-level product IDs that should
 // be treated as visible. It unions the edition's VisibleProducts hook (when
-// set) with DirectRuntimeProductIDs(), so dynamically-registered products —
-// including plugins loaded via AppendDynamicServer — are never silently hidden
-// by a static VisibleProducts list.
+// set), StaticServers product IDs, and DirectRuntimeProductIDs(), so
+// dynamically-registered products — including plugins loaded via
+// AppendDynamicServer — are never silently hidden by a static VisibleProducts
+// list.
+//
+// StaticServers are consulted directly (without injectStaticServers) so the
+// declaration-only Schema source root can keep reviewed products visible
+// without mutating the process-global dynamic endpoint registry.
+// SupplementServers stay out of this set: they are helper-only endpoints and
+// must not synthesize top-level product visibility.
 func resolveVisibleProducts() map[string]bool {
 	allowed := map[string]bool{}
 	if fn := edition.Get().VisibleProducts; fn != nil {
 		for _, p := range fn() {
 			allowed[p] = true
+		}
+	}
+	if fn := edition.Get().StaticServers; fn != nil {
+		for _, server := range fn() {
+			if id := strings.TrimSpace(server.ID); id != "" {
+				allowed[id] = true
+			}
 		}
 	}
 	for id := range DirectRuntimeProductIDs() {
@@ -183,9 +250,6 @@ func visibleMCPRootCommands(root *cobra.Command) []*cobra.Command {
 	}
 
 	allowed := resolveVisibleProducts()
-	if len(allowed) == 0 {
-		return nil
-	}
 
 	commands := make([]*cobra.Command, 0)
 	for _, cmd := range root.Commands() {

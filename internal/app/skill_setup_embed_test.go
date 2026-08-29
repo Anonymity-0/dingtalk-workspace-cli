@@ -44,11 +44,53 @@ func TestMaterializeEmbeddedSkillSourceMono(t *testing.T) {
 			t.Errorf("expected embedded skill to contain %s: %v", rel, err)
 		}
 	}
+	if _, err := os.Stat(filepath.Join(dir, "schema-hints")); err == nil {
+		t.Fatal("embedded mono skill must not contain build-only schema-hints")
+	} else if !os.IsNotExist(err) {
+		t.Fatalf("stat embedded mono schema-hints: %v", err)
+	}
 
 	// cleanup must actually remove the temp dir.
 	cleanup()
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
 		t.Errorf("cleanup did not remove temp dir %s (err=%v)", dir, err)
+	}
+}
+
+// TestMaterializeEmbeddedSkillSourceMulti verifies that the peer multi bundle
+// contains the standalone Event skill, shared routing skill, and clean misc
+// (including PAT docs). Structured Schema hints are build inputs and must not
+// become a third installable mode.
+func TestMaterializeEmbeddedSkillSourceMulti(t *testing.T) {
+	dir, cleanup, err := materializeEmbeddedSkillSource(skillSetupModeMulti)
+	if err != nil {
+		t.Fatalf("materializeEmbeddedSkillSource: %v", err)
+	}
+	defer cleanup()
+
+	if !isSkillSourceRoot(dir, skillSetupModeMulti) {
+		t.Fatalf("extracted dir %s is not a valid multi skill source root", dir)
+	}
+	for _, rel := range []string{
+		filepath.Join("dingtalk-event", "SKILL.md"),
+		filepath.Join("dingtalk-event", "references", "event-oa.md"),
+		filepath.Join("dingtalk-shared", "SKILL.md"),
+		filepath.Join("dingtalk-misc", "SKILL.md"),
+		filepath.Join("dingtalk-misc", "references", "pat.md"),
+	} {
+		if _, err := os.Stat(filepath.Join(dir, rel)); err != nil {
+			t.Errorf("expected embedded multi skill to contain %s: %v", rel, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "dingtalk-misc", "references", "event.md")); err == nil {
+		t.Fatal("embedded misc must not retain the folded personal Event reference")
+	} else if !os.IsNotExist(err) {
+		t.Fatalf("stat embedded misc event reference: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "schema-hints")); err == nil {
+		t.Fatal("embedded multi skill must not contain build-only schema-hints")
+	} else if !os.IsNotExist(err) {
+		t.Fatalf("stat embedded multi schema-hints: %v", err)
 	}
 }
 

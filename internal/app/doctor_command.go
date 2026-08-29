@@ -30,7 +30,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var doctorKeychainDiagnose = keychain.Diagnose
+var (
+	doctorKeychainDiagnose   = keychain.Diagnose
+	doctorAuthStatus         = (*authpkg.OAuthProvider).Status
+	doctorAuthAccessToken    = (*authpkg.OAuthProvider).GetAccessToken
+	doctorHTTPDo             = (*http.Client).Do
+	doctorFetchLatestRelease = func() (*upgrade.ReleaseInfo, error) { return upgrade.NewClient().FetchLatestRelease() }
+	doctorNeedsUpgrade       = upgrade.NeedsUpgrade
+)
 
 // checkStatus represents the outcome of a single doctor check.
 type checkStatus string
@@ -54,7 +61,7 @@ func newDoctorCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "doctor",
 		Short:             "环境健康检查",
-		Long:              "一键检查登录态、网络连通性、缓存状态和版本更新，快速定位常见问题。",
+		Long:              "一键检查登录态、网络连通性和版本更新，快速定位常见问题。",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE:              runDoctor,
@@ -84,9 +91,6 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	networkResult := doctorCheckNetwork(cmd.Context(), w, jsonOut, networkTimeout)
 	checks = append(checks, networkResult)
-
-	cacheResult := doctorCheckCache(w, jsonOut)
-	checks = append(checks, cacheResult)
 
 	versionResult := doctorCheckVersion(w, jsonOut, networkTimeout)
 	checks = append(checks, versionResult)
@@ -136,7 +140,7 @@ func doctorCheckAuth(ctx context.Context, w io.Writer, jsonOut bool) checkResult
 	provider := authpkg.NewOAuthProvider(configDir, nil)
 	configureOAuthProviderCompatibility(provider, configDir)
 
-	data, err := provider.Status()
+	data, err := doctorAuthStatus(provider)
 	if err != nil || data == nil {
 		if diagnostic := authStatusDiagnosticFromError(err); diagnostic != nil {
 			r := checkResult{
@@ -164,7 +168,7 @@ func doctorCheckAuth(ctx context.Context, w io.Writer, jsonOut bool) checkResult
 	if data.IsAccessTokenValid() || data.IsRefreshTokenValid() {
 		if !data.IsAccessTokenValid() {
 			refreshCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-			_, refreshErr := provider.GetAccessToken(refreshCtx)
+			_, refreshErr := doctorAuthAccessToken(provider, refreshCtx)
 			cancel()
 			if refreshErr != nil {
 				r := checkResult{
@@ -263,7 +267,7 @@ func doctorCheckNetwork(ctx context.Context, w io.Writer, jsonOut bool, timeout 
 		return r
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := doctorHTTPDo(httpClient, req)
 	latency := time.Since(start)
 	if err != nil {
 		r := checkResult{
@@ -290,24 +294,6 @@ func doctorCheckNetwork(ctx context.Context, w io.Writer, jsonOut bool, timeout 
 	return r
 }
 
-// ── Cache check ─────────────────────────────────────────────────────────
-
-func doctorCheckCache(w io.Writer, jsonOut bool) checkResult {
-	if !jsonOut {
-		fmt.Fprint(w, tui.Dim("检查缓存状态...       "))
-	}
-
-	r := checkResult{
-		Name:    "cache",
-		Status:  statusPass,
-		Message: "静态端点模式, 无需缓存",
-	}
-	if !jsonOut {
-		printCheckResult(w, r)
-	}
-	return r
-}
-
 // ── Version check ───────────────────────────────────────────────────────
 
 func doctorCheckVersion(w io.Writer, jsonOut bool, timeout time.Duration) checkResult {
@@ -317,8 +303,7 @@ func doctorCheckVersion(w io.Writer, jsonOut bool, timeout time.Duration) checkR
 
 	currentVer := version
 
-	client := upgrade.NewClient()
-	latest, err := client.FetchLatestRelease()
+	latest, err := doctorFetchLatestRelease()
 	if err != nil {
 		r := checkResult{
 			Name:    "version",
@@ -332,7 +317,7 @@ func doctorCheckVersion(w io.Writer, jsonOut bool, timeout time.Duration) checkR
 		return r
 	}
 
-	if upgrade.NeedsUpgrade(currentVer, latest.Version) {
+	if doctorNeedsUpgrade(currentVer, latest.Version) {
 		r := checkResult{
 			Name:    "version",
 			Status:  statusWarn,

@@ -19,6 +19,11 @@ test/cli_compat/testdata/
 /internal/compat/testdata/*
 .gitignore
 .worktrees/
+.qoder/
+_logs/
+_docs/
+_output/
+vendor/
 
 # Secrets & credentials
 .env
@@ -47,3 +52,24 @@ test/dev_functional/results.jsonl
 /.qoder/
 .vercel
 .env*
+# Local Go coverage output
+/coverage.txt
+/coverage-base.txt
+/coverage-policy.txt
+/coverage.html
+dwsbin
+
+# Local shortcut eval / real-backend capture artifacts — may contain real PII
+# (employee names/emails, userIds, conversation & message IDs). Never commit.
+/docs/shortcut-real-read-results.json
+/docs/shortcut-real-write-results.json
+/docs/shortcut-comparison.html
+/docs/shortcut-gsb-eval.*
+/scripts/run_shortcut_real_read_matrix.py
+
+# Local coverage artifacts
+coverage-shortcut.txt
+coverage-*.txt
+
+# stray compiled generator binary (source lives in internal/generator/cmd_param_aliases/)
+/cmd_param_aliases

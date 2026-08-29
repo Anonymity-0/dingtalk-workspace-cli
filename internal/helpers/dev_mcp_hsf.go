@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 )
 
 // V5 契约（2026-07-21）：hsf 型工具三件套 + 凭证解绑。
@@ -29,7 +30,7 @@ func newDevMCPHsfMethodListCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "method-list",
 		Short:             "查询 HSF 接口的方法清单（建 hsf 工具前的方法发现，含每方法出入参 schema）",
-		Example:           "  dws connector mcp hsf method-list --interface-name com.dingtalk.open.connect.workbench.api.service.hsf.MCPHsfService --format json",
+		Example:           "  dws dev mcp hsf method-list --interface-name com.dingtalk.open.connect.workbench.api.service.hsf.MCPHsfService --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -46,6 +47,11 @@ func newDevMCPHsfMethodListCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("version", "", "可选。HSF 服务版本号，缺省 1.0.0")
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPHsfMethodListTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPHsfMethodListTool, "dev mcp hsf method-list", "查询 HSF 接口方法和参数 Schema", false),
+	})
 	return cmd
 }
 
@@ -53,13 +59,10 @@ func newDevMCPToolCreateHsfCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "create-hsf",
 		Short:             "新建 HSF 型 MCP 工具草稿（apiInputs/apiOutputs 由服务端按方法 schema 自动生成）",
-		Example:           "  dws connector mcp tool create-hsf --mcp-id 10520 --name search_mcp_services --title 搜索MCP服务 --description 按名称关键词搜索MCP服务 --hsf-info '{\"interfaceName\":\"com.dingtalk...MCPHsfService\",\"methodName\":\"searchMCPs\",\"version\":\"1.0.0\"}' --tool-inputs '[...]' --input-mappings '[...]' --tool-outputs '[]' --output-mappings '[...]' --dry-run --format json",
+		Example:           `  dws dev mcp tool create-hsf --mcp-id 10520 --name search_mcp_services --title 搜索MCP服务 --description 按名称关键词搜索MCP服务 --hsf-info '{"interfaceName":"com.dingtalk.open.connect.workbench.api.service.hsf.MCPHsfService","methodName":"searchMCPs","version":"1.0.0"}' --tool-inputs '[]' --input-mappings '[]' --tool-outputs '[]' --output-mappings '[]' --dry-run --format json`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp tool create-hsf"); err != nil {
-				return err
-			}
 			params, err := devMCPToolHsfCreateParams(cmd)
 			if err != nil {
 				return err
@@ -79,6 +82,12 @@ func newDevMCPToolCreateHsfCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPTimeoutOOKFlags(cmd, false)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPToolCreateHsfTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPHsfCreate,
+		Contract:      devMCPContract(cmd, devMCPToolCreateHsfTool, "dev mcp tool create-hsf", "创建 HSF 类型的 MCP 工具草稿", true),
+	})
 	return cmd
 }
 
@@ -86,13 +95,10 @@ func newDevMCPToolUpdateHsfCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "update-hsf",
 		Short:             "编辑 HSF 型工具（⚠️部分更新语义：只传要改的字段，未传保持原值——与 http 版全量提交完全相反）",
-		Example:           "  dws connector mcp tool update-hsf --mcp-id 10520 --tool-id G-ACT-xxx --description 更准确的新描述 --dry-run --format json",
+		Example:           "  dws dev mcp tool update-hsf --mcp-id 10520 --tool-id G-ACT-xxx --description 更准确的新描述 --dry-run --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp tool update-hsf"); err != nil {
-				return err
-			}
 			params, err := devMCPToolHsfUpdateParams(cmd)
 			if err != nil {
 				return err
@@ -112,6 +118,12 @@ func newDevMCPToolUpdateHsfCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPTimeoutOOKFlags(cmd, true)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPToolUpdateHsfTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPHsfUpdate,
+		Contract:      devMCPContract(cmd, devMCPToolUpdateHsfTool, "dev mcp tool update-hsf", "更新 HSF 类型的 MCP 工具草稿", true),
+	})
 	return cmd
 }
 
@@ -233,13 +245,10 @@ func newDevMCPCredentialUnbindCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "unbind",
 		Short:             "解绑发布实例的生效凭证（bind 的逆操作；credential delete 报 credential_in_use 时先走本命令）",
-		Example:           "  dws connector mcp credential unbind --mcp-id 10520 --dry-run --format json",
+		Example:           "  dws dev mcp credential unbind --mcp-id 10520 --dry-run --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp credential unbind"); err != nil {
-				return err
-			}
 			mcpID, err := devMCPRequiredInt(cmd, "mcp-id")
 			if err != nil {
 				return err
@@ -250,5 +259,11 @@ func newDevMCPCredentialUnbindCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPMCPIDFlag(cmd)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPCredentialUnbindTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPRequiredIntFlag("mcp-id"),
+		Contract:      devMCPContract(cmd, devMCPCredentialUnbindTool, "dev mcp credential unbind", "解绑 MCP 发布实例当前使用的凭证账号", true),
+	})
 	return cmd
 }

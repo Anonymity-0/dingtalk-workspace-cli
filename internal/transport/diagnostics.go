@@ -42,14 +42,74 @@ func ExtractServerDiagnosticsFromMap(content map[string]any) apperrors.ServerDia
 		return apperrors.ServerDiagnostics{}
 	}
 	diag := apperrors.ServerDiagnostics{
-		TraceID:         stringFromMap(content, "trace_id", "traceId"),
+		TraceID:         stringFromMapRecursive(content, 0, "trace_id", "traceId", "request_id", "requestId"),
 		ServerErrorCode: serverErrorCodeFromMap(content, 0),
-		TechnicalDetail: stringFromMap(content, "technical_detail"),
+		TechnicalDetail: stringFromMapRecursive(content, 0, "technical_detail", "technicalDetail"),
+		FriendlyHint:    stringFromMapRecursive(content, 0, "friendly_hint", "friendlyHint"),
+		ActionURL:       stringFromMapRecursive(content, 0, "action_url", "actionUrl"),
 	}
-	if v, ok := content["retryable"].(bool); ok {
+	if v, ok := boolFromMapRecursive(content, 0, "retryable", "server_retryable", "serverRetryable"); ok {
 		diag.ServerRetryable = &v
 	}
 	return diag
+}
+
+func boolFromMapRecursive(content map[string]any, depth int, keys ...string) (bool, bool) {
+	if content == nil || depth > 8 {
+		return false, false
+	}
+	for _, key := range keys {
+		if value, ok := content[key].(bool); ok {
+			return value, true
+		}
+	}
+	for _, key := range []string{"content", "result", "data"} {
+		switch child := content[key].(type) {
+		case map[string]any:
+			if value, ok := boolFromMapRecursive(child, depth+1, keys...); ok {
+				return value, true
+			}
+		case []any:
+			for _, item := range child {
+				childMap, ok := item.(map[string]any)
+				if !ok {
+					continue
+				}
+				if value, ok := boolFromMapRecursive(childMap, depth+1, keys...); ok {
+					return value, true
+				}
+			}
+		}
+	}
+	return false, false
+}
+
+func stringFromMapRecursive(content map[string]any, depth int, keys ...string) string {
+	if content == nil || depth > 8 {
+		return ""
+	}
+	if value := stringFromMap(content, keys...); value != "" {
+		return value
+	}
+	for _, key := range []string{"content", "result", "data"} {
+		switch child := content[key].(type) {
+		case map[string]any:
+			if value := stringFromMapRecursive(child, depth+1, keys...); value != "" {
+				return value
+			}
+		case []any:
+			for _, item := range child {
+				childMap, ok := item.(map[string]any)
+				if !ok {
+					continue
+				}
+				if value := stringFromMapRecursive(childMap, depth+1, keys...); value != "" {
+					return value
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // ExtractTraceIDFromHeaders reads a trace ID from standard HTTP response

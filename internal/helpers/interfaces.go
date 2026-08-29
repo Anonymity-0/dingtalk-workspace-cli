@@ -72,7 +72,8 @@ func buildCommands(factories []Factory, runner executor.Runner) []*cobra.Command
 	out := make([]*cobra.Command, 0, len(factories))
 	for _, factory := range factories {
 		handler := factory()
-		out = append(out, handler.Command(runner))
+		command := handler.Command(runner)
+		out = append(out, command)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].Use < out[j].Use
@@ -98,7 +99,7 @@ func validateSegment(label, value string, minLen, maxLen int) error {
 	if !namePattern.MatchString(value) {
 		return fmt.Errorf("%s %q must be kebab-case (a-z0-9-), starting with a letter", label, value)
 	}
-	if strings.HasPrefix(value, "-") || strings.HasSuffix(value, "-") {
+	if strings.HasSuffix(value, "-") {
 		return fmt.Errorf("%s %q must not start or end with a hyphen", label, value)
 	}
 	return nil

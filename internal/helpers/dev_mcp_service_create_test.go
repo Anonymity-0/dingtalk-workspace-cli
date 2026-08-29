@@ -19,11 +19,11 @@ import (
 	"testing"
 )
 
-// 漏传 --server-name 时顶层动态命令会静默退化为 mcp-<mcpId>（0717 实测），
-// service create 必须给出显式警告，让 Agent 有机会自纠。
-func TestConnectorMCPServiceCreateServerNameWarning(t *testing.T) {
+// 漏传 --server-name 会让服务缺少稳定的语义标识，service create 必须给出
+// 显式警告，让 Agent 有机会自纠。
+func TestDevMCPServiceCreateServerNameWarning(t *testing.T) {
 	baseArgs := []string{
-		"connector", "mcp", "service", "create",
+		"dev", "mcp", "service", "create",
 		"--name", "天气查询",
 		"--description", "Open-Meteo 天气数据查询",
 		"--dry-run",

@@ -15,6 +15,7 @@ package busctl
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,6 +25,13 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/bus"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/process"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/transport"
+)
+
+var (
+	statusReadDir = os.ReadDir
+	statusStat    = os.Stat
+	statusDial    = func(endpoint string) (net.Conn, error) { return transport.Dial(endpoint) }
+	queryStatus   = QueryStatus
 )
 
 // BusEntryState classifies a discovered bus directory's runtime state.
@@ -61,8 +69,8 @@ type BusEntry struct {
 
 // IPCEndpoint returns the IPC endpoint for this entry. Delegates to
 // dwsevent.IPCEndpoint so status/stop dial exactly where consume and the
-// bus daemon bound (including the short-path fallback when WorkDir is too
-// deep for sun_path).
+// bus daemon bound (a private per-user runtime path on Unix and a named pipe
+// on Windows).
 func (e BusEntry) IPCEndpoint() string {
 	hash := e.ClientIDHash
 	if e.IdentityHash != "" {
@@ -136,9 +144,9 @@ func EnumerateBuses(configDir string, editionFilter string) ([]BusEntry, error) 
 // using event.ClientIDHash.
 func FindBusByClientID(configDir, editionName, clientIDHash string) *BusEntry {
 	workDir := filepath.Join(configDir, "events", editionName, string(dwsevent.SourceKindAppStream), clientIDHash)
-	if _, err := os.Stat(workDir); err != nil {
+	if _, err := statusStat(workDir); err != nil {
 		legacy := filepath.Join(configDir, "events", editionName, clientIDHash)
-		if _, legacyErr := os.Stat(legacy); legacyErr != nil {
+		if _, legacyErr := statusStat(legacy); legacyErr != nil {
 			return nil
 		}
 		workDir = legacy
@@ -153,7 +161,7 @@ func FindBusByIdentity(configDir, editionName string, sourceKind dwsevent.Source
 		sourceKind = dwsevent.SourceKindAppStream
 	}
 	workDir := filepath.Join(configDir, "events", editionName, string(sourceKind), identityHash)
-	if _, err := os.Stat(workDir); err != nil {
+	if _, err := statusStat(workDir); err != nil {
 		return nil
 	}
 	e := inspectEntry(workDir, editionName, string(sourceKind), identityHash)
@@ -164,7 +172,7 @@ func FindBusByIdentity(configDir, editionName string, sourceKind dwsevent.Source
 // regular files. Returns the err from ReadDir unchanged (callers handle
 // os.IsNotExist).
 func listSubdirs(path string) ([]string, error) {
-	ents, err := os.ReadDir(path)
+	ents, err := statusReadDir(path)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +246,7 @@ const DefaultStatusRPCTimeout = 2 * time.Second
 // without registering with the Hub — ad-hoc tooling does not count as
 // a consumer in `status.active_consumers`.
 func QueryStatus(endpoint string) (*transport.StatusResp, error) {
-	conn, err := transport.Dial(endpoint)
+	conn, err := statusDial(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("busctl: dial bus for status: %w", err)
 	}
@@ -282,7 +290,7 @@ func QueryEntry(entry BusEntry) EntryStatus {
 	if entry.State != BusStateRunning {
 		return out
 	}
-	live, err := QueryStatus(entry.IPCEndpoint())
+	live, err := queryStatus(entry.IPCEndpoint())
 	if err == nil {
 		out.Live = live
 	}

@@ -26,7 +26,7 @@ const lintTestHTTPInfo = `{"method":"GET","url":"https://example.com","auth":{"t
 
 func lintTestCreateArgs(extra ...string) []string {
 	args := []string{
-		"connector", "mcp", "tool", "create",
+		"dev", "mcp", "tool", "create",
 		"--mcp-id", "10487",
 		"--name", "get_weather",
 		"--http-info", lintTestHTTPInfo,
@@ -35,7 +35,7 @@ func lintTestCreateArgs(extra ...string) []string {
 	return append(args, extra...)
 }
 
-func TestConnectorMCPMappingReferenceLintRejects(t *testing.T) {
+func TestDevMCPMappingReferenceLintRejects(t *testing.T) {
 	cases := []struct {
 		name    string
 		args    []string
@@ -142,7 +142,7 @@ func TestConnectorMCPMappingReferenceLintRejects(t *testing.T) {
 	}
 }
 
-func TestConnectorMCPMappingReferenceLintAccepts(t *testing.T) {
+func TestDevMCPMappingReferenceLintAccepts(t *testing.T) {
 	cases := []struct {
 		name string
 		args []string
@@ -254,7 +254,7 @@ func TestConnectorMCPToolPublishPreflight(t *testing.T) {
 		"success": true,
 	}
 	publishArgs := []string{
-		"connector", "mcp", "tool", "publish",
+		"dev", "mcp", "tool", "publish",
 		"--mcp-id", "10487",
 		"--tool-id", "G-ACT-1",
 		"--yes",

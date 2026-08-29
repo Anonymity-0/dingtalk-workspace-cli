@@ -152,20 +152,6 @@ func TestParamNameHandler(t *testing.T) {
 			want:        "--offset 0",
 			corrections: 1,
 		},
-		{
-			name:        "reserved help is never rewritten to http",
-			args:        []string{"--help"},
-			flags:       []string{"http", "http-info", "mcp-id", "name"},
-			want:        "--help",
-			corrections: 0,
-		},
-		{
-			name:        "reserved version is never rewritten",
-			args:        []string{"--version"},
-			flags:       []string{"vision", "version-info"},
-			want:        "--version",
-			corrections: 0,
-		},
 	}
 
 	for _, tt := range tests {

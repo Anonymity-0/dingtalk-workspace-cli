@@ -9,10 +9,17 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/commentreaction"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +48,7 @@ func docVersionExists(ctx context.Context, nodeID string, version int) (bool, er
 		if cursor != "" {
 			toolArgs["nextCursor"] = cursor
 		}
-		text, err := callMCPToolReturnTextOnServer(ctx, "doc", "list_doc_versions", toolArgs)
+		text, err := callMCPReadToolReturnTextOnServer(ctx, "doc", "list_doc_versions", toolArgs)
 		if err != nil {
 			return false, err
 		}
@@ -217,6 +224,43 @@ func runDocUpload(cmd *cobra.Command, _ []string) error {
 	return callMCPTool("commit_uploaded_file", commitArgs)
 }
 
+// docSpaceUploadCommitText 执行文档空间三步上传（凭证 → PUT → 入库）并
+// 返回 commit 响应原文，供 doc import 的白名单外回退链路组装结构化结果。
+// 与 runDocUpload 的区别：不打印输出、不携带 doc upload 的 --workspace
+// 兼容告警，调用方负责结果投影。
+func docSpaceUploadCommitText(ctx context.Context, filePath, fileName string, fileSize int64, folder, workspace string) (string, error) {
+	step1Args := map[string]any{}
+	if folder != "" {
+		step1Args["folderId"] = folder
+	}
+	if workspace != "" {
+		step1Args["workspaceId"] = workspace
+	}
+	text, err := callMCPToolReturnText(ctx, "get_file_upload_info", step1Args)
+	if err != nil {
+		return "", err
+	}
+	resourceURL, uploadKey, ossHeaders, err := parseUploadInfo(text)
+	if err != nil {
+		return "", err
+	}
+	if err := httpPutFile(ctx, resourceURL, ossHeaders, filePath, fileSize); err != nil {
+		return "", err
+	}
+	commitArgs := map[string]any{
+		"uploadKey": uploadKey,
+		"name":      fileName,
+		"fileSize":  float64(fileSize),
+	}
+	if folder != "" {
+		commitArgs["folderId"] = folder
+	}
+	if workspace != "" {
+		commitArgs["workspaceId"] = workspace
+	}
+	return callMCPToolReturnText(ctx, "commit_uploaded_file", commitArgs)
+}
+
 // parseUploadInfo extracts resourceUrl, uploadKey and headers from the MCP tool response.
 func parseUploadInfo(text string) (resourceURL, uploadKey string, headers map[string]string, err error) {
 	var data map[string]any
@@ -275,14 +319,19 @@ func defaultHTTPPutFile(ctx context.Context, url string, headers map[string]stri
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("OSS upload failed: HTTP %d: %s", resp.StatusCode, string(body))
+		// typed httpStatusError 供上层按 401/403 分支重取凭证
+		return fmt.Errorf("OSS upload failed: %w", &httpStatusError{StatusCode: resp.StatusCode, Body: string(body)})
 	}
 
 	return nil
 }
 
 // httpGetFile downloads file content via HTTP GET. Package-level for test injection.
-var httpGetFile = defaultHTTPGetFile
+var (
+	httpGetFile          = defaultHTTPGetFile
+	docCreateDestination = os.Create
+	docCopyContent       = io.Copy
+)
 
 // SetHTTPGetFile overrides the HTTP GET function (for testing). Pass nil to restore default.
 func SetHTTPGetFile(fn func(ctx context.Context, url string, headers map[string]string, destPath string) error) {
@@ -429,26 +478,28 @@ func defaultHTTPGetFile(ctx context.Context, url string, headers map[string]stri
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+		// typed httpStatusError 供上层按 401/403 分支重取凭证
+		return &httpStatusError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
 
-	outFile, err := os.Create(destPath)
+	outFile, err := docCreateDestination(destPath)
 	if err != nil {
 		return err
 	}
 	defer outFile.Close()
 
-	if _, err := io.Copy(outFile, resp.Body); err != nil {
+	if _, err := docCopyContent(outFile, resp.Body); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// runMediaInsert implements the three-step flow for inserting an attachment into a document:
+// runMediaInsert implements the four-step flow for inserting an attachment into a document:
 //  1. get_doc_attachment_upload_info → obtain uploadUrl + resourceId
 //  2. HTTP PUT file content to OSS
 //  3. insert_document_block with attachment element
+//  4. list_document_blocks → prove the uploaded resource is visible in the document
 func runMediaInsert(cmd *cobra.Command, _ []string) error {
 	nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 	if err != nil {
@@ -485,19 +536,26 @@ func runMediaInsert(cmd *cobra.Command, _ []string) error {
 	fileSize := fileInfo.Size()
 
 	if deps.Caller.DryRun() {
-		deps.Out.PrintKeyValue("操作", "上传附件并插入文档")
-		deps.Out.PrintKeyValue("文档", nodeID)
-		deps.Out.PrintKeyValue("文件", filePath)
-		deps.Out.PrintKeyValue("名称", fileName)
-		deps.Out.PrintKeyValue("类型", mimeType)
-		deps.Out.PrintKeyValue("大小", fmt.Sprintf("%d bytes", fileSize))
-		return nil
+		return deps.Out.PrintJSON(map[string]any{
+			"contractVersion": "doc.operation.v1",
+			"dry_run":         true,
+			"preview_kind":    "plan",
+			"ok":              true,
+			"status":          "success",
+			"complete":        true,
+			"operation":       "doc.media_insert",
+			"data": map[string]any{
+				"executed": false, "nodeId": nodeID, "file": filePath,
+				"fileName": fileName, "mimeType": mimeType, "sizeBytes": fileSize,
+			},
+			"steps": []map[string]any{{"name": "validate_local_file", "status": "success"}},
+		})
 	}
 
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	// Step 1: get upload credentials (uploadUrl + resourceId)
-	deps.Out.PrintInfo(fmt.Sprintf("[1/3] 获取附件上传凭证 (%s, %d bytes)...", fileName, fileSize))
+	deps.Out.PrintInfo(fmt.Sprintf("[1/4] 获取附件上传凭证 (%s, %d bytes)...", fileName, fileSize))
 
 	credText, err := callMCPToolReturnText(ctx, "get_doc_attachment_upload_info", map[string]any{
 		"nodeId":   nodeID,
@@ -515,17 +573,30 @@ func runMediaInsert(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Step 2: HTTP PUT file to OSS
-	deps.Out.PrintInfo("[2/3] 上传文件到 OSS...")
+	deps.Out.PrintInfo("[2/4] 上传文件到 OSS...")
 
 	ossHeaders := map[string]string{
 		"Content-Type": mimeType,
 	}
 	if err := httpPutFile(ctx, uploadURL, ossHeaders, filePath, fileSize); err != nil {
-		return err
+		return apperrors.NewAPI(
+			"附件上传结果未知；尚未确认正文 block 已插入，请先检查文档媒体列表，禁止改用手写 HTTP",
+			apperrors.WithOperation("doc.media_insert"),
+			apperrors.WithReason("doc_media_upload_unknown"),
+			apperrors.WithFailureStage("upload_oss"),
+			apperrors.WithExecutionStarted(true),
+			apperrors.WithRetryable(false),
+			apperrors.WithActions("运行 dws doc +media-list 检查当前文档", "确认没有对应媒体后才重新执行 +media-insert", "不要 curl 上传地址或安装本地依赖"),
+			apperrors.WithDetails(map[string]any{
+				"contractVersion": "doc.operation.v1", "status": "unknown", "nodeId": nodeID,
+				"resourceId": resourceID, "fileName": fileName, "stage": "upload_oss",
+			}),
+			apperrors.WithCause(err),
+		)
 	}
 
 	// Step 3: insert block into document
-	deps.Out.PrintInfo("[3/3] 插入块到文档...")
+	deps.Out.PrintInfo("[3/4] 插入块到文档...")
 
 	const maxInlineImageSize = 20 * 1024 * 1024 // 20MB
 
@@ -577,16 +648,317 @@ func runMediaInsert(cmd *cobra.Command, _ []string) error {
 		insertArgs["referenceBlockId"] = v
 	}
 
-	if err := callMCPTool("insert_document_block", insertArgs); err != nil {
-		return err
+	insertText, err := callMCPToolReturnText(ctx, "insert_document_block", insertArgs)
+	if err != nil {
+		return apperrors.NewAPI(
+			"附件已上传，但正文 block 插入结果未知；请先检查媒体列表，不要重复上传或插入",
+			apperrors.WithOperation("doc.media_insert"),
+			apperrors.WithReason("doc_media_insert_partial"),
+			apperrors.WithFailureStage("insert_block"),
+			apperrors.WithExecutionStarted(true),
+			apperrors.WithRetryable(false),
+			apperrors.WithActions("运行 dws doc +media-list 检查 resourceId/blockId", "不要直接重试 +media-insert，不要使用 resourceUrl 手写请求"),
+			apperrors.WithDetails(map[string]any{
+				"contractVersion": "doc.operation.v1", "status": "partial_success", "nodeId": nodeID,
+				"resourceId": resourceID, "resourceUrl": resourceURL, "fileName": fileName,
+				"steps": []map[string]any{
+					{"name": "resolve_upload", "status": "success"},
+					{"name": "upload_oss", "status": "success"},
+					{"name": "insert_block", "status": "unknown"},
+				},
+			}),
+			apperrors.WithCause(err),
+		)
+	}
+	insertResult := map[string]any{}
+	if strings.TrimSpace(insertText) != "" {
+		if err := json.Unmarshal([]byte(insertText), &insertResult); err != nil {
+			return docMediaInsertVerificationError(nodeID, resourceID, resourceURL, fileName,
+				fmt.Errorf("解析 insert_document_block 响应失败: %w", err))
+		}
+	}
+	insertedBlockID := insertedDocBlockID(insertResult)
+
+	deps.Out.PrintInfo("[4/4] 回读验证媒体块...")
+	verifiedBlockID, verifyErr := verifyInsertedDocMedia(ctx, nodeID, insertedBlockID, resourceID, resourceURL)
+	if verifyErr != nil {
+		return docMediaInsertVerificationError(nodeID, resourceID, resourceURL, fileName, verifyErr)
+	}
+	if insertedBlockID == "" {
+		insertedBlockID = verifiedBlockID
 	}
 
-	if strings.HasPrefix(mimeType, "image/") {
-		deps.Out.PrintInfo(fmt.Sprintf("图片已插入文档: %s (resourceUrl=%s)", fileName, resourceURL))
-	} else {
-		deps.Out.PrintInfo(fmt.Sprintf("附件已插入文档: %s (resourceId=%s)", fileName, resourceID))
+	return deps.Out.PrintJSON(map[string]any{
+		"contractVersion": "doc.operation.v1",
+		"ok":              true,
+		"status":          "success",
+		"complete":        true,
+		"operation":       "doc.media_insert",
+		"data": map[string]any{
+			"nodeId": nodeID, "resourceId": resourceID, "resourceUrl": resourceURL,
+			"blockId": insertedBlockID, "fileName": fileName, "mimeType": mimeType, "sizeBytes": fileSize,
+			"inserted": true, "verified": true,
+		},
+		"steps": []map[string]any{
+			{"name": "resolve_upload", "status": "success"},
+			{"name": "upload_oss", "status": "success"},
+			{"name": "insert_block", "status": "success"},
+			{"name": "verify", "status": "success"},
+		},
+	})
+}
+
+func docMediaInsertVerificationError(nodeID, resourceID, resourceURL, fileName string, cause error) error {
+	return apperrors.NewAPI(
+		"附件已上传且插块请求已执行，但回读未能证明媒体块落库；不要直接重试上传或插入",
+		apperrors.WithOperation("doc.media_insert"),
+		apperrors.WithReason("doc_media_insert_verification_failed"),
+		apperrors.WithFailureStage("verify"),
+		apperrors.WithExecutionStarted(true),
+		apperrors.WithRetryable(false),
+		apperrors.WithActions("运行 dws doc +media-list 检查 resourceId", "确认媒体不存在后再决定是否重新执行"),
+		apperrors.WithDetails(map[string]any{
+			"contractVersion": "doc.operation.v1", "status": "partial_success", "nodeId": nodeID,
+			"resourceId": resourceID, "resourceUrl": resourceURL, "fileName": fileName, "verified": false,
+			"steps": []map[string]any{
+				{"name": "resolve_upload", "status": "success"},
+				{"name": "upload_oss", "status": "success"},
+				{"name": "insert_block", "status": "success"},
+				{"name": "verify", "status": "failed"},
+			},
+		}),
+		apperrors.WithCause(cause),
+	)
+}
+
+var docMediaVerifyWait = waitForDocVerification
+
+func verifyInsertedDocMedia(ctx context.Context, nodeID, blockID, resourceID, resourceURL string) (string, error) {
+	delays := []time.Duration{250 * time.Millisecond, 500 * time.Millisecond, time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second}
+	var lastErr error
+	for attempt := 0; attempt <= len(delays); attempt++ {
+		blocks, err := readAllDocBlocksForVerification(ctx, nodeID)
+		if err != nil {
+			lastErr = err
+		} else {
+			lastErr = nil
+			if found := findVerifiedMediaBlock(blocks, blockID, resourceID, resourceURL); found != "" {
+				return found, nil
+			}
+		}
+		if attempt < len(delays) {
+			if err := docMediaVerifyWait(ctx, delays[attempt]); err != nil {
+				return "", err
+			}
+		}
 	}
-	return nil
+	if lastErr != nil {
+		return "", fmt.Errorf("媒体资源在有界回读窗口内仍无法读取: %w", lastErr)
+	}
+	return "", fmt.Errorf("媒体资源在有界回读窗口内仍不可见")
+}
+
+func waitForDocVerification(ctx context.Context, delay time.Duration) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func readAllDocBlocksForVerification(ctx context.Context, nodeID string) ([]any, error) {
+	const pageSize = 50
+	const maxItems = 5000
+	all := make([]any, 0, pageSize)
+	seenPageIdentities := map[string]bool{}
+	for start := 0; start < maxItems; start += pageSize {
+		text, err := callMCPToolReturnTextOnServer(ctx, "doc", "list_document_blocks", map[string]any{
+			"nodeId": nodeID, "format": "jsonml", "startIndex": start, "endIndex": start + pageSize - 1,
+		})
+		if err != nil {
+			return nil, err
+		}
+		var payload map[string]any
+		if err := json.Unmarshal([]byte(text), &payload); err != nil {
+			return nil, fmt.Errorf("解析 list_document_blocks 回读失败: %w", err)
+		}
+		payload = nestedDocMap(payload)
+		blocks, ok := payload["blocks"].([]any)
+		if !ok {
+			return nil, fmt.Errorf("list_document_blocks 回读缺少 blocks 数组")
+		}
+		pageIdentity := docBlockPageIdentity(blocks)
+		if pageIdentity != "" && seenPageIdentities[pageIdentity] {
+			return nil, fmt.Errorf("list_document_blocks 分页停滞")
+		}
+		if pageIdentity != "" {
+			seenPageIdentities[pageIdentity] = true
+		}
+		all = append(all, blocks...)
+		hasMore, hasMoreKnown := payload["hasMore"].(bool)
+		if hasMoreKnown && !hasMore {
+			return all, nil
+		}
+		if !hasMoreKnown {
+			if total, ok := docNumberAsInt(payload["totalCount"]); ok && len(all) >= total {
+				return all, nil
+			}
+		}
+		if !hasMoreKnown && len(blocks) < pageSize {
+			return all, nil
+		}
+		if len(blocks) == 0 {
+			return nil, fmt.Errorf("list_document_blocks 声明仍有下一页但当前页为空")
+		}
+	}
+	return nil, fmt.Errorf("文档块超过安全回读上限")
+}
+
+func docBlockPageIdentity(blocks []any) string {
+	if len(blocks) == 0 {
+		return ""
+	}
+	ids := make([]string, 0, len(blocks))
+	for _, value := range blocks {
+		id := ""
+		switch block := value.(type) {
+		case map[string]any:
+			id = directDocBlockIdentity(block)
+			if id == "" {
+				if element, ok := block["element"].(map[string]any); ok {
+					id = directDocBlockIdentity(element)
+				}
+			}
+		case []any:
+			if len(block) > 1 {
+				if attributes, ok := block[1].(map[string]any); ok {
+					id = directDocBlockIdentity(attributes)
+				}
+			}
+		}
+		if id == "" {
+			return ""
+		}
+		ids = append(ids, id)
+	}
+	encoded, _ := json.Marshal(ids)
+	return string(encoded)
+}
+
+func directDocBlockIdentity(block map[string]any) string {
+	for _, key := range []string{"blockId", "id", "uuid", "elementId"} {
+		if text, ok := block[key].(string); ok && strings.TrimSpace(text) != "" {
+			return strings.TrimSpace(text)
+		}
+	}
+	return ""
+}
+
+func nestedDocMap(data map[string]any) map[string]any {
+	for _, key := range []string{"result", "data"} {
+		if nested, ok := data[key].(map[string]any); ok {
+			return nestedDocMap(nested)
+		}
+	}
+	return data
+}
+
+func nestedDocString(value any, keys ...string) string {
+	switch typed := value.(type) {
+	case map[string]any:
+		for _, key := range keys {
+			if text, ok := typed[key].(string); ok && strings.TrimSpace(text) != "" {
+				return strings.TrimSpace(text)
+			}
+		}
+		orderedKeys := make([]string, 0, len(typed))
+		for key := range typed {
+			orderedKeys = append(orderedKeys, key)
+		}
+		sort.Strings(orderedKeys)
+		for _, key := range orderedKeys {
+			if text := nestedDocString(typed[key], keys...); text != "" {
+				return text
+			}
+		}
+	case []any:
+		for _, child := range typed {
+			if text := nestedDocString(child, keys...); text != "" {
+				return text
+			}
+		}
+	}
+	return ""
+}
+
+// insertedDocBlockID only accepts explicit block IDs from the insert result or
+// known response wrappers. Arbitrary IDs may belong to the document, operator,
+// or request and must not become a hard constraint for the media readback.
+func insertedDocBlockID(data map[string]any) string {
+	for _, key := range []string{"blockId", "elementId"} {
+		if text, ok := data[key].(string); ok && strings.TrimSpace(text) != "" {
+			return strings.TrimSpace(text)
+		}
+	}
+	for _, wrapper := range []string{"result", "data", "content"} {
+		if inner, ok := data[wrapper].(map[string]any); ok {
+			if text := insertedDocBlockID(inner); text != "" {
+				return text
+			}
+		}
+	}
+	return ""
+}
+
+func findVerifiedMediaBlock(blocks []any, blockID, resourceID, resourceURL string) string {
+	for _, value := range blocks {
+		candidateID := nestedDocString(value, "blockId", "id", "uuid")
+		if candidateID == "" || (blockID != "" && candidateID != blockID) {
+			continue
+		}
+		mediaValue := docMediaReadbackValue(value)
+		if resourceID != "" && nestedDocString(mediaValue, "resourceId") == resourceID {
+			return candidateID
+		}
+		if resourceURL != "" && nestedDocString(mediaValue, "resourceUrl", "src") == resourceURL {
+			return candidateID
+		}
+	}
+	return ""
+}
+
+func docMediaReadbackValue(value any) any {
+	block, ok := value.(map[string]any)
+	if !ok {
+		return value
+	}
+	encoded, ok := block["jsonml"].(string)
+	if !ok || strings.TrimSpace(encoded) == "" {
+		return value
+	}
+	var decoded any
+	if json.Unmarshal([]byte(encoded), &decoded) != nil {
+		return value
+	}
+	return decoded
+}
+
+func docNumberAsInt(value any) (int, bool) {
+	switch typed := value.(type) {
+	case float64:
+		if typed >= 0 && typed == float64(int(typed)) {
+			return int(typed), true
+		}
+	case int:
+		return typed, typed >= 0
+	}
+	return 0, false
 }
 
 // parseAttachmentUploadInfo extracts uploadUrl, resourceId and resourceUrl from the MCP tool response.
@@ -648,7 +1020,7 @@ func inferMimeType(fileName string) string {
 }
 
 // buildBlockElement 从 flags 构建块元素 JSON 对象。
-// 优先级: --element (原始 JSON) > --heading > --text
+// 优先级: --element (原始 JSON) > --heading > --text (旧名) > --content
 func buildBlockElement(cmd *cobra.Command) (any, error) {
 	if raw, _ := cmd.Flags().GetString("element"); raw != "" {
 		var obj any
@@ -667,13 +1039,13 @@ func buildBlockElement(cmd *cobra.Command) (any, error) {
 			"heading":   map[string]any{"text": h, "level": level},
 		}, nil
 	}
-	if t, _ := cmd.Flags().GetString("text"); t != "" {
+	if t := flagOrFallback(cmd, "text", "content"); t != "" {
 		return map[string]any{
 			"blockType": "paragraph",
 			"paragraph": map[string]any{"text": t},
 		}, nil
 	}
-	return nil, fmt.Errorf("block content required: --text / --heading / --element")
+	return nil, fmt.Errorf("block content required: --content / --heading / --element")
 }
 
 // buildNodeTransferRunE creates a RunE handler for copy/move commands.
@@ -701,7 +1073,7 @@ func buildNodeTransferRunE(mcpToolName string) func(cmd *cobra.Command, args []s
 }
 
 func docFolderFlag(cmd *cobra.Command, extraAliases ...string) string {
-	aliases := append([]string{"parent-id", "parent-folder", "parent-folder-id"}, extraAliases...)
+	aliases := append([]string{"parent-id", "parent-folder", "parent-node-id", "parent-folder-id"}, extraAliases...)
 	return flagOrFallback(cmd, "folder", aliases...)
 }
 
@@ -730,9 +1102,6 @@ func previewDocOverwriteDiff(ctx context.Context, cmd *cobra.Command, nodeID, ne
 	}
 	current := extractMarkdownField(text)
 	out := cmd.OutOrStdout()
-	if out == nil {
-		out = os.Stdout
-	}
 	fmt.Fprint(out, renderDocOverwriteDiff(nodeID, current, newMarkdown))
 	return nil
 }
@@ -784,7 +1153,27 @@ func renderDocOverwriteDiff(nodeID, before, after string) string {
 }
 
 func newDocCommand() *cobra.Command {
-	root := &cobra.Command{
+	// Product-level Agent routing Decl (migrated from selection/doc.json
+	// products.doc). Catalog assembly stamps provenance contract_final.
+	contract.RegisterProductDecl(contract.ProductDecl{
+		ID: "doc",
+		HelpReferences: contract.HelpReferences{
+			RelatedSkills: []string{"dingtalk-doc"},
+			Documentation: []contract.HelpDocumentation{
+				contract.SkillDocumentation("钉钉文档深度指南", "dingtalk-doc", "references/doc.md"),
+			},
+		},
+		Selection: contract.ProductSelectionDecl{
+			AgentSummary: "管理钉钉在线文档的正文、块、评论、导入导出、模板与版本",
+			UseWhen: []string{
+				"创建、读取或编辑在线文档内容，或处理文档块、评论、导入导出、模板和版本时",
+			},
+			AvoidWhen: []string{
+				"文件、目录、上传下载及节点权限已迁移到 drive；知识库空间和成员使用 wiki；不要用于搜索开放平台开发文档",
+			},
+		},
+	})
+	root := newGroupCommand(&cobra.Command{
 		Use:   "doc",
 		Short: "钉钉文档管理",
 		Long: `管理钉钉文档：浏览、读写、块级编辑、导出、导入、模板管理。
@@ -795,6 +1184,8 @@ func newDocCommand() *cobra.Command {
   dws doc create                        创建文档
   dws doc update                        更新文档内容
   dws doc block [list|insert|update|delete]  块级编辑
+  dws doc whiteboard insert             插入空白板卡片 (返回 blockId 与白板 partId)
+  dws doc media [upload|download]       文档媒体资源 (上传可复用资源 / 下载附件)
   dws doc comment [list|create|reply|update|delete|create-inline]  文档评论管理
   dws doc export                        导出在线文档 (支持 docx / markdown / pdf，自动完成提交→轮询→下载)
   dws doc export get                    查询导出任务结果 (手动兜底)
@@ -806,7 +1197,8 @@ func newDocCommand() *cobra.Command {
 
 文件管理（搜索/列表/上传/下载/复制/移动/重命名/删除/权限）已迁移到 dws drive。`,
 		RunE: groupRunE,
-	}
+	})
+	installDocDelegationAuth(root)
 
 	searchCmd := &cobra.Command{
 		Use:   "search",
@@ -877,6 +1269,45 @@ func newDocCommand() *cobra.Command {
 			return callMCPTool("search_documents", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(searchCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "search_documents",
+				CanonicalPath:  "doc.search_documents",
+				CLIPath:        "doc search",
+				PrimaryCLIPath: "doc search",
+			},
+			Description: "搜索文档（不传关键词返回最近访问）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "search_documents"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "搜索文档（不传关键词返回最近访问）",
+				UseWhen:      []string{"兼容入口：按关键词搜文档时（已弃用，日常改用 drive search / wiki node search）"},
+				AvoidWhen:    []string{"全局搜文件用 dws drive search；指定知识库内搜用 dws wiki node search"},
+				Examples:     []string{"dws doc search --query \"会议纪要\" --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "created-from", Property: "createdTimeFrom"},
+				{Name: "created-to", Property: "createdTimeTo"},
+				{Name: "creator-uids", Property: "creatorUserIds"},
+				{Name: "cursor", Property: "pageToken"},
+				{Name: "editor-uids", Property: "editorUserIds"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "mentioned-uids", Property: "mentionedUserIds"},
+				{Name: "query", Property: "keyword"},
+				{Name: "visited-from", Property: "visitedTimeFrom"},
+				{Name: "visited-to", Property: "visitedTimeTo"},
+			},
+		},
+	})
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -911,6 +1342,42 @@ func newDocCommand() *cobra.Command {
 			return callMCPTool("list_nodes", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(listCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "list_nodes",
+				CanonicalPath:  "doc.list_nodes",
+				CLIPath:        "doc list",
+				PrimaryCLIPath: "doc list",
+			},
+			Description: "兼容入口：遍历文件夹或知识库的直接子节点；目录浏览能力已迁移到 drive/wiki。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "list_nodes"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：遍历文件夹或知识库的直接子节点；目录浏览能力已迁移到 drive/wiki。",
+				UseWhen:      []string{"兼容入口：遍历文件夹或知识库直接子节点时（已弃用，日常改用 drive list / wiki node list）"},
+				AvoidWhen:    []string{"日常浏览「我的文档」/钉盘用 dws drive list；知识库用 dws wiki node list"},
+				Examples: []string{
+					"dws doc list --format json",
+					"dws doc list --folder <FOLDER_ID> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "pageToken"},
+				{Name: "folder", Property: "folderId"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 
 	infoCmd := &cobra.Command{
 		Use:   "info",
@@ -923,18 +1390,61 @@ func newDocCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return callMCPTool("get_document_info", map[string]any{
-				"nodeId": nodeID,
-			})
+			return callMCPTool("get_document_info", map[string]any{"nodeId": nodeID})
 		},
 	}
+	DeclareLeafMetadata(infoCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "get_document_info",
+				CanonicalPath:  "doc.get_document_info",
+				CLIPath:        "doc info",
+				PrimaryCLIPath: "doc info",
+			},
+			Description: "获取文档元信息（标题/类型/创建者/权限等）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "get_document_info"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取文档元信息（标题/类型/创建者/权限等）",
+				UseWhen: []string{
+					"用户要查看文档/节点元信息（标题、类型、创建者、权限）时",
+					"准备读内容前必须先看 contentType/extension 以路由到 read/sheet/aitable/download 时",
+				},
+				AvoidWhen: []string{
+					"已确认是 adoc 且只要正文改用 dws doc read",
+					"只要目录列表改用 dws drive list / wiki node list",
+					"需要可靠文件大小 fileSize 时改用 dws drive info；文档元信息接口可能不返回大小",
+				},
+				Examples: []string{
+					"dws doc info --node <DOC_ID> --format json",
+					"dws doc info --node \"https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>\" --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 
 	readCmd := &cobra.Command{
 		Use:   "read",
 		Short: "读取文档内容 (Markdown)",
-		Long:  `获取文档内容，以 Markdown 格式返回。支持传入文档 URL 或 ID。`,
+		Long: `获取文档内容，以 Markdown 格式返回。支持传入文档 URL 或 ID。
+
+互联网公开文档（含开启密码保护的）可传入公开链接；设置了访问密码时通过 --password 提供。
+--version 读取指定历史版本内容（版本号从 dws doc version list 获取，0 表示文档初始版本，需要文档编辑权限）；缺省读最新版。`,
 		Example: `  dws doc read --node DOC_ID
-  dws doc read --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>"`,
+  dws doc read --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>"
+  dws doc read --node PUBLIC_URL --password <ACCESS_PASSWORD>
+  dws doc read --node DOC_ID --version 3`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -944,16 +1454,120 @@ func newDocCommand() *cobra.Command {
 				"dws doc read --node DOC_ID --content-format jsonml"); err != nil {
 				return err
 			}
+			password, _ := cmd.Flags().GetString("password")
+			historyVersion := 0
+			historyVersionSet := cmd.Flags().Changed("version")
+			if historyVersionSet {
+				historyVersion, _ = cmd.Flags().GetInt("version")
+				if historyVersion < 0 {
+					return fmt.Errorf("--version 必须为非负整数历史版本号（0 表示初始版本，版本号从 dws doc version list 获取），当前值: %d", historyVersion)
+				}
+			}
 			format, _ := cmd.Flags().GetString("content-format")
+			scope, _ := cmd.Flags().GetString("scope")
+			tags, _ := cmd.Flags().GetString("tags")
+			startBlockID, _ := cmd.Flags().GetString("start-block-id")
+			endBlockID, _ := cmd.Flags().GetString("end-block-id")
+			if scope != "" || tags != "" {
+				if format != "jsonml" {
+					return fmt.Errorf("--scope/--tags requires --content-format jsonml")
+				}
+				if scope == "" {
+					return fmt.Errorf("--tags requires --scope tags")
+				}
+				switch scope {
+				case "outline", "range", "section", "tags":
+				default:
+					return fmt.Errorf("invalid --scope %q: must be one of outline|range|section|tags", scope)
+				}
+				if tags != "" && scope != "tags" {
+					return fmt.Errorf("--tags only works with --scope tags")
+				}
+				if scope == "tags" && tags == "" {
+					return fmt.Errorf("--tags is required when --scope=tags")
+				}
+				if (scope == "range" || scope == "section") && startBlockID == "" {
+					return fmt.Errorf("--start-block-id is required when --scope=%s", scope)
+				}
+				if endBlockID != "" && scope != "range" {
+					return fmt.Errorf("--end-block-id only works with --scope=range")
+				}
+				maxDepth, _ := cmd.Flags().GetInt("max-depth")
+				outputPath, _ := cmd.Flags().GetString("output")
+				return runDocReadScope(
+					nodeID,
+					scope,
+					tags,
+					maxDepth,
+					cmd.Flags().Changed("max-depth"),
+					startBlockID,
+					endBlockID,
+					outputPath,
+					password,
+					historyVersion,
+					historyVersionSet,
+				)
+			}
 			if format == "jsonml" {
 				outputPath, _ := cmd.Flags().GetString("output")
-				return runDocReadJsonML(cmd, nodeID, outputPath)
+				return runDocReadJsonML(nodeID, outputPath, password, historyVersion, historyVersionSet)
 			}
-			return callMCPTool("get_document_content", map[string]any{
-				"nodeId": nodeID,
-			})
+			toolArgs := map[string]any{"nodeId": nodeID}
+			applyDocReadAccessParams(toolArgs, password, historyVersion, historyVersionSet)
+			return callMCPTool("get_document_content", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(readCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "get_document_content",
+				CanonicalPath:  "doc.get_document_content",
+				CLIPath:        "doc read",
+				PrimaryCLIPath: "doc read",
+			},
+			Description: "读取完整文档内容，或按 outline/range/section/tags 获取 JSONML fragment",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "get_document_content"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "读取完整文档内容，或按 outline/range/section/tags 获取 JSONML fragment",
+				UseWhen: []string{
+					"用户要读取钉钉在线文字文档(adoc)正文（Markdown）时",
+					"用户直接粘贴文档 URL 且无其他指令时（默认读内容）",
+					"互联网公开文档（含设置密码保护的公开链接）时配合 --password 提供访问密码",
+					"要读取指定历史版本内容时用 --version（版本号来自 doc version list，0 表示初始版本，需要编辑权限）",
+					"只需标题大纲、指定块区间/单块或特定 JSONML tags 时使用 --content-format jsonml 与 --scope",
+				},
+				AvoidWhen: []string{
+					"非 adoc（表格/多维表/普通文件）不要用本命令；先 doc info 再路由",
+					"要元信息用 doc info；要块结构用 doc block list",
+					"Markdown 为有损投影：保形复制模板请用 doc copy，不要 read→create",
+				},
+				Examples: []string{
+					"dws doc read --node <DOC_ID> --format json",
+					"dws doc read --node <DOC_ID> --content-format jsonml --scope outline --max-depth 3",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
+				{Name: "content-format", Property: "format", Required: boolPtr(false)},
+				{Name: "end-block-id", Required: boolPtr(false)},
+				{Name: "max-depth", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "password", Property: "password", Required: boolPtr(false)},
+				{Name: "scope", Required: boolPtr(false)},
+				{Name: "start-block-id", Required: boolPtr(false), RequiredWhen: "--scope=range or --scope=section"},
+				{Name: "tags", Required: boolPtr(false), RequiredWhen: "--scope=tags"},
+				{Name: "version", Property: "historyVersion", Required: boolPtr(false), InterfaceType: "integer"},
+			},
+		},
+	})
 
 	createCmd := &cobra.Command{
 		Use:   "create",
@@ -1040,6 +1654,48 @@ func newDocCommand() *cobra.Command {
 			return callMCPTool("create_document", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(createCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "create_document",
+				CanonicalPath:  "doc.create_document",
+				CLIPath:        "doc create",
+				PrimaryCLIPath: "doc create",
+			},
+			Description: "创建一篇新的在线文档",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "create_document"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "创建一篇新的在线文档",
+				UseWhen: []string{
+					"用户要新建一篇文字在线文档(adoc)，可空文档或带初始 Markdown 时",
+					"创建到指定文件夹 --folder、知识库根 --workspace，或默认「我的文档」根目录时",
+				},
+				AvoidWhen: []string{
+					"创建表格/脑图/白板/多维表/演示改用 dws wiki node create --type <type>（勿用 doc create）",
+					"在知识库建空节点实体也可用 wiki node create；本命令侧重可写初始内容的 adoc",
+					"导入本地 Word/Markdown 为在线文档改用 dws doc import（若可用）或 upload --convert",
+				},
+				Examples: []string{
+					"dws doc create --name \"项目周报\" --format json",
+					"dws doc create --name \"Q1 总结\" --content \"# Q1 总结\" --folder <FOLDER_ID> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Required: boolPtr(true)},
+				{Name: "folder", Property: "folderId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 
 	updateCmd := &cobra.Command{
 		Use:   "update",
@@ -1132,14 +1788,53 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			if idx, _ := cmd.Flags().GetInt("index"); cmd.Flags().Lookup("index").Changed {
 				toolArgs["index"] = idx
 			}
-			if md != "" {
-				return docWritePipeline(cmd, "update_document", toolArgs, md, "doc update")
-			}
-			return callMCPTool("update_document", toolArgs)
+			return docWritePipeline(cmd, "update_document", toolArgs, md, "doc update")
 		},
 	}
+	DeclareLeafMetadata(updateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "update_document",
+				CanonicalPath:  "doc.update_document",
+				CLIPath:        "doc update",
+				PrimaryCLIPath: "doc update",
+			},
+			Description: "更新文档内容（追加 / 覆盖；覆盖需 --yes）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "update_document"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "更新文档内容（追加 / 覆盖；覆盖需 --yes）",
+				UseWhen: []string{
+					"用户要向已有 adoc 追加内容时用 --mode append（更安全）",
+					"用户明确要求整篇覆盖替换时用 --mode overwrite（破坏性）",
+					"append 且要插到第 N 个 block 前时加 --index N（先 block list）",
+				},
+				AvoidWhen: []string{
+					"目标不是 adoc 或只要改单个块时改用 doc block update",
+					"覆盖模式用户未确认前不要执行；可先 --dry-run 预览",
+					"创建新文档用 doc create，不要用 update 冒充创建",
+				},
+				Examples: []string{
+					"dws doc update --node <DOC_ID> --content \"# 追加内容\" --mode append --format json",
+					"dws doc update --node <DOC_ID> --content-file ./body.md --mode overwrite --dry-run",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
+				{Name: "content-format", Property: "format"},
+			},
+		},
+	})
 
-	fileCmd := &cobra.Command{Use: "file", Short: "文件管理", RunE: groupRunE}
+	fileCmd := newGroupCommand(&cobra.Command{Use: "file", Short: "文件管理", RunE: groupRunE})
 
 	fileCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -1182,8 +1877,42 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			return callMCPTool("create_file", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(fileCreateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "create_file",
+				CanonicalPath:  "doc.create_file",
+				CLIPath:        "doc file create",
+				PrimaryCLIPath: "doc file create",
+			},
+			Description: "创建文件（文档/表格/脑图/白板/多维表/文件夹等）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "create_file"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "创建文件（文档/表格/脑图/白板/多维表/文件夹等）",
+				UseWhen:      []string{"兼容入口：按类型创建文件节点时（已弃用，改用 wiki node create）"},
+				AvoidWhen: []string{
+					"请改用 dws wiki node create --workspace <id> --type <type>",
+					"纯文字带内容创建用 doc create",
+				},
+				Examples: []string{"dws doc file create --name \"项目周报\" --type adoc --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "folderId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 
-	folderCmd := &cobra.Command{Use: "folder", Short: "文件夹管理", RunE: groupRunE}
+	folderCmd := newGroupCommand(&cobra.Command{Use: "folder", Short: "文件夹管理", RunE: groupRunE})
 
 	folderCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -1211,6 +1940,37 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			return callMCPTool("create_folder", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(folderCreateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "create_folder",
+				CanonicalPath:  "doc.create_folder",
+				CLIPath:        "doc folder create",
+				PrimaryCLIPath: "doc folder create",
+			},
+			Description: "创建文件夹",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "create_folder"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "创建文件夹",
+				UseWhen:      []string{"兼容入口：创建文件夹（已弃用）时"},
+				AvoidWhen:    []string{"个人空间/钉盘改用 dws drive mkdir；知识库改用 wiki node create --type folder"},
+				Examples:     []string{"dws doc folder create --name \"项目资料\" --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "folderId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 
 	uploadCmd := &cobra.Command{
 		Use:   "upload",
@@ -1228,6 +1988,40 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
   dws doc upload --file ./data.xlsx --workspace WS_ID --convert`,
 		RunE: runDocUpload,
 	}
+	DeclareLeafMetadata(uploadCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "upload",
+				CanonicalPath:  "doc.upload",
+				CLIPath:        "doc upload",
+				PrimaryCLIPath: "doc upload",
+			},
+			Description: "兼容入口：上传本地文件到钉盘或文档空间；文件上传能力已迁移到 drive。",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：上传本地文件到钉盘或文档空间；文件上传能力已迁移到 drive。",
+				UseWhen:      []string{"把本地文件上传到文档空间/知识库（可 --convert 转在线文档）时"},
+				AvoidWhen: []string{
+					"钉盘/我的文件上传优先 dws drive upload",
+					"插入文档正文附件用 media insert",
+				},
+				Examples: []string{
+					"dws doc upload --file ./report.pdf --format json",
+					"dws doc upload --file ./data.xlsx --workspace <WS_ID> --convert --format json",
+				},
+			},
+		},
+	})
 
 	downloadCmd := &cobra.Command{
 		Use:   "download",
@@ -1237,18 +2031,52 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 流程:
   1. 获取下载 URL 和签名请求头 (download_file)
   2. HTTP GET 下载文件二进制内容到本地`,
-		Example: `  dws doc download --node NODE_ID
+		Example: `  dws doc download --node NODE_ID --output ./download.bin
   dws doc download --node NODE_ID --output ./report.pdf
   dws doc download --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>" --output ~/downloads/`,
 		RunE: runDocDownload,
 	}
+	DeclareLeafMetadata(downloadCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "download_file",
+				CanonicalPath:  "doc.download_file",
+				CLIPath:        "doc download",
+				PrimaryCLIPath: "doc download",
+			},
+			Description: "兼容入口：下载钉盘或文档空间已有文件；文件下载能力已迁移到 drive。",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "download_file"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：下载钉盘或文档空间已有文件；文件下载能力已迁移到 drive。",
+				UseWhen:      []string{"兼容入口：获取文件下载凭证（已迁移场景优先 drive download）时"},
+				AvoidWhen: []string{
+					"常规下载普通文件改用 dws drive download --output ...",
+					"在线文档导出 docx 用 doc export",
+				},
+				Examples: []string{"dws doc download --node <NODE_ID> --output ./report.pdf --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 
-	blockCmd := &cobra.Command{
+	blockCmd := newGroupCommand(&cobra.Command{
 		Use:   "block",
 		Short: "块级编辑",
 		Long:  `对文档进行块级别的精细编辑：查询、插入、更新、删除块元素。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	blockListCmd := &cobra.Command{
 		Use:   "list",
@@ -1287,17 +2115,54 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			return callMCPTool("list_document_blocks", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(blockListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "list_document_blocks",
+				CanonicalPath:  "doc.list_document_blocks",
+				CLIPath:        "doc block list",
+				PrimaryCLIPath: "doc block list",
+			},
+			Description: "查询文档一级块元素列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "list_document_blocks"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询文档一级块元素列表",
+				UseWhen:      []string{"查看文档一级块结构、拿 blockId，供 insert/update/delete 或划词评论定位时"},
+				AvoidWhen: []string{
+					"只要全文 Markdown 用 doc read",
+					"要改内容分别用 block insert/update/delete",
+				},
+				Examples: []string{
+					"dws doc block list --node <DOC_ID> --format json",
+					"dws doc block list --node <DOC_ID> --start-index 0 --end-index 5 --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content-format", Property: "format"},
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 
 	blockInsertCmd := &cobra.Command{
 		Use:   "insert",
 		Short: "插入块元素",
 		Long: `向文档插入块元素。通过 --element 传入 JSON 格式的块元素。
-可用 --text 快速插入段落，--heading + --level 快速插入标题。
+可用 --content 快速插入段落，--heading + --level 快速插入标题。
 
 块类型: paragraph, heading, blockquote, callout, columns,
         orderedList, unorderedList, table, sheet, attachment, slot`,
 		Example: `  # 快捷插入段落
-  dws doc block insert --node DOC_ID --text "这是一段文字"
+  dws doc block insert --node DOC_ID --content "这是一段文字"
 
   # 快捷插入标题
   dws doc block insert --node DOC_ID --heading "二级标题" --level 2
@@ -1320,7 +2185,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
   dws doc block insert --node DOC_ID --element '{"blockType":"unorderedList","unorderedList":{"list":{"listId":"list-2"}},"children":[{"text":"第二项"}]}'
 
   # 在指定位置之前插入
-  dws doc block insert --node DOC_ID --text "插入内容" --ref-block BLOCK_ID --where before`,
+  dws doc block insert --node DOC_ID --content "插入内容" --ref-block BLOCK_ID --where before`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -1385,13 +2250,53 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			return callMCPTool("insert_document_block", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(blockInsertCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "insert_document_block",
+				CanonicalPath:  "doc.insert_document_block",
+				CLIPath:        "doc block insert",
+				PrimaryCLIPath: "doc block insert",
+			},
+			Description: "向文档插入块元素",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "insert_document_block"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "向文档插入块元素",
+				UseWhen:      []string{"在文档中插入新块（段落/标题等）；简单场景用 --content/--heading，复杂块用 --element JSON"},
+				AvoidWhen: []string{
+					"整篇追加 Markdown 优先 doc update --mode append",
+					"插入本地文件附件优先 doc media insert",
+					"删块用 block delete；改已有块用 block update",
+				},
+				Examples: []string{
+					"dws doc block insert --node <DOC_ID> --content \"这是一段文字\" --format json",
+					"dws doc block insert --node <DOC_ID> --heading \"二级标题\" --level 2 --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content-format", Property: "format"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "parent-block", Property: "referenceBlockId"},
+				{Name: "ref-block", Property: "referenceBlockId"},
+			},
+		},
+	})
 
 	blockUpdateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "更新块元素",
 		Long: `更新文档中指定块的内容或样式。需提供 --block-id 和块元素内容。
-可用 --text 快速更新为段落，--heading + --level 快速更新为标题。`,
-		Example: `  dws doc block update --node DOC_ID --block-id BLOCK_ID --text "新内容"    # 查询 nodeId: dws doc search --query "..." 或 dws doc list  # 查询 blockId: dws doc block list --node <nodeId>
+可用 --content 快速更新为段落，--heading + --level 快速更新为标题。`,
+		Example: `  dws doc block update --node DOC_ID --block-id BLOCK_ID --content "新内容"    # 查询 nodeId: dws doc search --query "..." 或 dws doc list  # 查询 blockId: dws doc block list --node <nodeId>
   dws doc block update --node DOC_ID --block-id BLOCK_ID --element '{"blockType":"heading","heading":{"text":"新标题","level":1}}'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "block-id"); err != nil {
@@ -1437,6 +2342,40 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			})
 		},
 	}
+	DeclareLeafMetadata(blockUpdateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "update_document_block",
+				CanonicalPath:  "doc.update_document_block",
+				CLIPath:        "doc block update",
+				PrimaryCLIPath: "doc block update",
+			},
+			Description: "更新文档中的指定块",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "update_document_block"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "更新文档中的指定块",
+				UseWhen:      []string{"修改已有块的文本/标题/样式（已知 blockId）时"},
+				AvoidWhen: []string{
+					"插入新块用 block insert；删除用 block delete",
+					"改文档显示名用 rename；整篇覆盖用 update overwrite",
+				},
+				Examples: []string{"dws doc block update --node <DOC_ID> --block-id <BLOCK_ID> --content \"新内容\" --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content-format", Property: "format"},
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 
 	blockDeleteCmd := &cobra.Command{
 		Use:     "delete",
@@ -1447,9 +2386,6 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 				return err
 			}
 			blockID := mustGetFlag(cmd, "block-id")
-			if !confirmDelete("块元素", blockID) {
-				return nil
-			}
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
 				return err
@@ -1460,6 +2396,39 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			})
 		},
 	}
+	DeclareLeafMetadata(blockDeleteCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "delete_document_block",
+				CanonicalPath:  "doc.delete_document_block",
+				CLIPath:        "doc block delete",
+				PrimaryCLIPath: "doc block delete",
+			},
+			Description: "删除块元素（不可逆）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "delete_document_block"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "删除块元素（不可逆）",
+				UseWhen:      []string{"用户确认后删除文档中指定块元素时"},
+				AvoidWhen: []string{
+					"未确认或 blockId 不明时不要删；先 block list",
+					"删整篇文档用 doc/drive delete",
+				},
+				Examples: []string{"dws doc block delete --node <DOC_ID> --block-id <BLOCK_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 
 	copyCmd := &cobra.Command{
 		Use:   "copy",
@@ -1475,6 +2444,47 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
   dws doc copy --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>" --folder DOC_FOLDER_NODE_ID`,
 		RunE: buildNodeTransferRunE("copy_document"),
 	}
+	DeclareLeafMetadata(copyCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "copy_document",
+				CanonicalPath:  "doc.copy_document",
+				CLIPath:        "doc copy",
+				PrimaryCLIPath: "doc copy",
+			},
+			Description: "兼容入口：复制文档或文件；文件复制能力已迁移到 drive。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "copy_document"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：复制文档或文件；文件复制能力已迁移到 drive。",
+				UseWhen: []string{
+					"用户要复制文档/文件并保留原位置时（尤其保形复制模板：copy + rename + block update）",
+					"目标文件夹 --folder 或知识库根 --workspace；都不传则默认「我的文档」",
+				},
+				AvoidWhen: []string{
+					"要搬走不留副本改用 dws doc move 或 dws drive move",
+					"跨钉盘整理文件优先 dws drive copy",
+				},
+				Examples: []string{
+					"dws doc copy --node <DOC_ID> --folder <TARGET_FOLDER_ID> --format json",
+					"dws doc copy --node <DOC_ID> --workspace <TARGET_WS_ID> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 
 	moveCmd := &cobra.Command{
 		Use:   "move",
@@ -1490,6 +2500,44 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
   dws doc move --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>" --folder DOC_FOLDER_NODE_ID`,
 		RunE: buildNodeTransferRunE("move_document"),
 	}
+	DeclareLeafMetadata(moveCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "move_document",
+				CanonicalPath:  "doc.move_document",
+				CLIPath:        "doc move",
+				PrimaryCLIPath: "doc move",
+			},
+			Description: "兼容入口：移动文档或文件；文件移动能力已迁移到 drive。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "move_document"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：移动文档或文件；文件移动能力已迁移到 drive。",
+				UseWhen:      []string{"用户要移动文档/文件且原位置不再保留时"},
+				AvoidWhen: []string{
+					"要保留副本改用 doc/drive copy",
+					"目标未确认时不要 move",
+				},
+				Examples: []string{
+					"dws doc move --node <DOC_ID> --folder <TARGET_FOLDER_ID> --format json",
+					"dws doc move --node <DOC_ID> --workspace <TARGET_WS_ID> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 
 	renameCmd := &cobra.Command{
 		Use:   "rename",
@@ -1514,6 +2562,44 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			})
 		},
 	}
+	DeclareLeafMetadata(renameCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "rename_document",
+				CanonicalPath:  "doc.rename_document",
+				CLIPath:        "doc rename",
+				PrimaryCLIPath: "doc rename",
+			},
+			Description: "兼容入口：重命名文档或文件；文件重命名能力已迁移到 drive。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "rename_document"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：重命名文档或文件；文件重命名能力已迁移到 drive。",
+				UseWhen:      []string{"用户要改在线文档在列表与链接中展示的名称时"},
+				AvoidWhen: []string{
+					"改正文标题/章节标题改用 doc block update",
+					"不要用 update 或重新 create 来改名",
+					"文件或文件夹重命名优先用 dws drive rename，由该命令读取真实节点类型和当前扩展名",
+				},
+				Examples: []string{"dws doc rename --node <DOC_ID> --name \"新名称\" --format json"},
+			},
+			// No ParamDecl for --name here: the extension-stripping description
+			// belongs to drive rename (shared RPC rename_document). doc rename
+			// keeps the Cobra usage ("原样传给服务端").
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "newName"},
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 
 	deleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -1531,14 +2617,45 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 			if err != nil {
 				return err
 			}
-			if !confirmDelete("文档节点", nodeID) {
-				return nil
-			}
 			return callMCPTool("delete_document", map[string]any{
 				"nodeId": nodeID,
 			})
 		},
 	}
+	DeclareLeafMetadata(deleteCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "delete_document",
+				CanonicalPath:  "doc.delete_document",
+				CLIPath:        "doc delete",
+				PrimaryCLIPath: "doc delete",
+			},
+			Description: "兼容入口：将文档或文件移入回收站；文件删除能力已迁移到 drive。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "delete_document"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：将文档或文件移入回收站；文件删除能力已迁移到 drive。",
+				UseWhen:      []string{"用户明确要求用 doc delete 兼容入口将文档/文件移入回收站，且已确认目标时"},
+				AvoidWhen: []string{
+					"常规文件删除优先 dws drive delete；本入口仅为兼容",
+					"用户未确认或目标不清时不要删",
+					"删块用 doc block delete；删评论用 doc comment delete",
+				},
+				Examples: []string{"dws doc delete --node <DOC_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	// search
 	searchCmd.Flags().String("query", "", "搜索关键词 (不传则返回最近访问)")
@@ -1587,6 +2704,16 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 	readCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
 	readCmd.Flags().String("content-format", "", "输出格式: 默认为 markdown，可选 jsonml")
 	readCmd.Flags().String("output", "", "输出到本地文件路径（仅 --content-format jsonml 时生效）")
+	readCmd.Flags().String("scope", "", "按 scope 筛选节点(需 --content-format jsonml): outline(全部 h1-h6 标题)/range(区间)/section(单块)/tags(配合 --tags 自定义 tag)")
+	readCmd.Flags().String("tags", "", "自定义 JSONML tag 列表(逗号分隔, 如 h1,h2,table); 仅在 --scope tags 时使用且必填")
+	readCmd.Flags().Int("max-depth", 0, "筛选遍历最大深度, 0 表示不限(仅 --scope 时生效)")
+	readCmd.Flags().String("start-block-id", "", "range/section 起始块 ID(节点 uuid); scope=range/section 时必填")
+	readCmd.Flags().String("end-block-id", "", "range 结束块 ID(节点 uuid); \"-1\"或空=到文档末尾(仅 scope=range 生效)")
+	readCmd.Flags().String("password", "", "互联网公开文档开启密码保护时的访问密码；普通文档无需传入")
+	readCmd.Flags().Int("version", 0, "读取指定历史版本内容(版本号从 doc version list 获取, 0 表示初始版本, 需要文档编辑权限)；缺省读最新版")
+	cli.AnnotateRuntimeFlagEnum(readCmd, "scope", "outline", "range", "section", "tags")
+	cli.AnnotateRuntimeFlagRequiredWhen(readCmd, "tags", "--scope=tags")
+	cli.AnnotateRuntimeFlagRequiredWhen(readCmd, "start-block-id", "--scope=range or --scope=section")
 
 	// create
 	createCmd.Flags().String("name", "", "文档名称 (必填)")
@@ -1653,7 +2780,6 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 
 	// block insert
 	blockInsertCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
-	blockInsertCmd.Flags().String("text", "", "快捷: 段落文本内容")
 	blockInsertCmd.Flags().String("heading", "", "快捷: 标题文本")
 	blockInsertCmd.Flags().Int("level", 1, "标题级别 1-6 (配合 --heading)")
 	blockInsertCmd.Flags().String("element", "", "块元素 JSON (高级)")
@@ -1667,7 +2793,6 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 	// block update
 	blockUpdateCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
 	blockUpdateCmd.Flags().String("block-id", "", "目标块 ID (必填)")
-	blockUpdateCmd.Flags().String("text", "", "快捷: 段落文本内容")
 	blockUpdateCmd.Flags().String("heading", "", "快捷: 标题文本")
 	blockUpdateCmd.Flags().Int("level", 1, "标题级别 1-6 (配合 --heading)")
 	blockUpdateCmd.Flags().String("element", "", "块元素 JSON (高级)")
@@ -1692,7 +2817,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 
 	// rename
 	renameCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
-	renameCmd.Flags().String("name", "", "新名称 (必填)")
+	renameCmd.Flags().String("name", "", "新名称 (必填；原样传给服务端，不做扩展名规范化；如需根据节点类型和当前后缀规范化，请使用 drive rename)")
 
 	// delete
 	deleteCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
@@ -1727,12 +2852,12 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 	_ = renameCmd.Flags().MarkHidden("title")
 
 	// ── media (文档媒体/附件) ────────────────────────────────
-	mediaCmd := &cobra.Command{
+	mediaCmd := newGroupCommand(&cobra.Command{
 		Use:   "media",
 		Short: "文档媒体 / 附件管理",
 		Long:  `管理钉钉文档中的媒体资源和附件：上传附件并插入文档、下载文档内的附件等。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	mediaDownloadCmd := &cobra.Command{
 		Use:   "download",
@@ -1740,8 +2865,8 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		Long: `获取钉钉文档中指定附件的 OSS 临时下载链接。
 
 传入 nodeId（文档标识）和 resourceId（附件资源 ID），返回 downloadUrl。
-resourceId 需通过 dws doc block list 获取：查询目标文档的块列表，
-找到 blockType 为 attachment 的元素，取其 resourceId。`,
+resourceId 需通过 dws doc +media-list --node <DOC_ID> 获取（返回的 resourceId 字段）；
+也可用 dws doc block list 查块列表，找 blockType 为 attachment 的元素取其 resourceId。`,
 		Example: `  dws doc media download --node DOC_ID --resource-id RESOURCE_ID
   dws doc media download --node "https://alidocs.dingtalk.com/i/nodes/xxx" --resource-id RESOURCE_ID`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -1752,15 +2877,97 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			if err := validateRequiredFlags(cmd, "resource-id"); err != nil {
 				return err
 			}
+			resourceID := mustGetFlag(cmd, "resource-id")
+			if _, err := uuid.Parse(strings.TrimSpace(resourceID)); err != nil {
+				return fmt.Errorf("--resource-id 应为 UUID 格式（来自 +media-list 返回的 resourceId 字段），不要从 OSS/URL 链接中提取；请先执行 dws doc +media-list --node <DOC_ID> --format json 获取")
+			}
 			return callMCPToolUnescaped("download_doc_attachment", map[string]any{
 				"nodeId":     nodeID,
-				"resourceId": mustGetFlag(cmd, "resource-id"),
+				"resourceId": resourceID,
 			})
 		},
 	}
+	DeclareLeafMetadata(mediaDownloadCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "download_doc_attachment",
+				CanonicalPath:  "doc.download_doc_attachment",
+				CLIPath:        "doc media download",
+				PrimaryCLIPath: "doc media download",
+			},
+			Description: "获取文档附件的临时下载链接",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "download_doc_attachment"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取文档附件的临时下载链接",
+				UseWhen:      []string{"获取文档正文中附件的临时下载 URL（resourceId 来自 block list attachment）时"},
+				AvoidWhen:    []string{"下载钉盘普通文件用 drive download；导出在线文档用 doc export"},
+				Examples:     []string{"dws doc media download --node <DOC_ID> --resource-id <RESOURCE_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 
 	mediaDownloadCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	mediaDownloadCmd.Flags().String("resource-id", "", "附件资源 ID，可通过 dws doc block list 获取 (必填)")
+
+	mediaUploadCmd := &cobra.Command{
+		Use:   "upload",
+		Short: "上传可复用的文档媒体资源",
+		Long: `将本地文件上传为绑定到目标 nodeId 的文档媒体资源，但不插入文档正文。
+
+成功输出稳定的 resourceId 和 resourceUrl，可供同一 nodeId 下的白板 Vector/SVG
+等后续写入使用；临时 uploadUrl 不会输出。`,
+		Example: `  dws doc media upload --node DOC_ID --file ./icon.svg --mime-type image/svg+xml --format json`,
+		RunE:    runDocMediaUpload,
+	}
+	DeclareLeafMetadata(mediaUploadCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "media_upload",
+				CanonicalPath:  "doc.media_upload",
+				CLIPath:        "doc media upload",
+				PrimaryCLIPath: "doc media upload",
+			},
+			Description: "上传可复用的文档媒体资源",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令先获取临时文档上传凭证，再在本地执行 OSS PUT，并仅暴露稳定的 node 绑定资源契约，不能绑定为单一 interface_ref",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "经用户确认后上传绑定到文档 nodeId 的可复用媒体资源而不插入正文",
+				UseWhen:      []string{"为同一文档内白板的 Vector/SVG 写入准备 resourceId 和 resourceUrl 时"},
+				AvoidWhen:    []string{"需要把附件直接插入文档正文时用 doc media insert；不要跨 nodeId 复用资源"},
+				Examples:     []string{"dws doc media upload --node <DOC_ID> --file ./icon.svg --mime-type image/svg+xml --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
+				{Name: "file", Required: boolPtr(true)},
+			},
+		},
+	})
+	mediaUploadCmd.Flags().String("node", "", "绑定媒体资源的文档标识，支持传入 URL 或 ID (必填)")
+	mediaUploadCmd.Flags().String("file", "", "本地文件路径 (必填)")
+	mediaUploadCmd.Flags().String("name", "", "资源文件名 (默认使用本地文件名)")
+	mediaUploadCmd.Flags().String("mime-type", "", "文件 MIME 类型 (默认根据扩展名推断)")
+	mediaUploadCmd.Flags().Bool("yes", false, "确认上传可复用文档媒体资源")
 
 	mediaInsertCmd := &cobra.Command{
 		Use:   "insert",
@@ -1783,6 +2990,37 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
   dws doc media insert --node DOC_ID --file ./image.png --ref-block BLOCK_ID --where before`,
 		RunE: runMediaInsert,
 	}
+	DeclareLeafMetadata(mediaInsertCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "media_insert",
+				CanonicalPath:  "doc.media_insert",
+				CLIPath:        "doc media insert",
+				PrimaryCLIPath: "doc media insert",
+			},
+			Description: "上传本地文件并作为附件插入文档",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "上传本地文件并作为附件插入文档",
+				UseWhen:      []string{"把本地文件/图片作为附件块插入文档正文（自动 prepare+PUT+insert）时"},
+				AvoidWhen: []string{
+					"上传为独立文件用 drive/doc upload，不要与正文附件混淆",
+					"下载正文附件用 media download",
+				},
+				Examples: []string{"dws doc media insert --node <DOC_ID> --file ./report.pdf --format json"},
+			},
+		},
+	})
 
 	mediaInsertCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	mediaInsertCmd.Flags().String("file", "", "本地文件路径 (必填)")
@@ -1793,7 +3031,7 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 	mediaInsertCmd.Flags().String("ref-block", "", "参考块 ID (配合 --where)")
 
 	// media 子命令的 --node 隐藏别名
-	mediaNodeAliasCmds := []*cobra.Command{mediaDownloadCmd, mediaInsertCmd}
+	mediaNodeAliasCmds := []*cobra.Command{mediaDownloadCmd, mediaUploadCmd, mediaInsertCmd}
 	for _, c := range mediaNodeAliasCmds {
 		c.Flags().String("url", "", "--node 的别名")
 		c.Flags().String("id", "", "--node 的别名")
@@ -1807,15 +3045,15 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 		_ = c.Flags().MarkHidden("file-id")
 	}
 
-	mediaCmd.AddCommand(mediaDownloadCmd, mediaInsertCmd)
+	mediaCmd.AddCommand(mediaDownloadCmd, mediaUploadCmd, mediaInsertCmd)
 
 	// ── comment (文档评论) ──────────────────────────────────
-	commentCmd := &cobra.Command{
+	commentCmd := newGroupCommand(&cobra.Command{
 		Use:   "comment",
 		Short: "文档评论 / 评论管理",
 		Long:  `管理钉钉文档的评论：查询评论列表、创建评论、回复评论。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	commentListCmd := &cobra.Command{
 		Use:   "list",
@@ -1860,6 +3098,42 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			return callMCPToolOnServer("doc-comment", "list_comments", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(commentListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "list_comments",
+				CanonicalPath:  "doc.list_comments",
+				CLIPath:        "doc comment list",
+				PrimaryCLIPath: "doc comment list",
+			},
+			Description: "查询文档评论列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc-comment", RPCName: "list_comments"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询文档评论列表",
+				UseWhen:      []string{"查看文档评论列表，可按全文/划词、已解决/未解决过滤时"},
+				AvoidWhen:    []string{"创建全文评论用 comment create；划词用 create-inline；回复用 reply；删除用 delete"},
+				Examples: []string{
+					"dws doc comment list --node <DOC_ID> --format json",
+					"dws doc comment list --node <DOC_ID> --type inline --resolve-status unresolved --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "type", Property: "commentType"},
+			},
+		},
+	})
 
 	commentListCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentListCmd.Flags().Int("limit", 50, "每页返回的评论数量，默认 50，最大 50")
@@ -1876,12 +3150,14 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 		Short: "创建文档评论",
 		Long: `在指定文档上创建一条评论。
 
-可通过 --mention 指定被 @ 的用户 uid 列表（逗号分隔），
+可通过 --mention 指定被 @ 的用户 uid 列表（逗号分隔），通过
+--mentioned-open-conversation-id 指定被 @ 的群 openConversationId（可重复或逗号分隔）。
 评论内容中会插入 @mention 节点并发送通知。
 用户 uid 可通过「钉钉通讯录」相关命令检索，如:
   dws contact user search --keyword "姓名"`,
 		Example: `  dws doc comment create --node DOC_ID --content "这里需要修改"
-  dws doc comment create --node DOC_ID --content "请review" --mention uid1,uid2`,
+  dws doc comment create --node DOC_ID --content "请review" --mention uid1,uid2
+  dws doc comment create --node DOC_ID --content "请群内同学关注" --mentioned-open-conversation-id openCid1 --mentioned-open-conversation-id openCid2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -1897,13 +3173,55 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			if v, _ := cmd.Flags().GetString("mention"); v != "" {
 				toolArgs["mentionedUserIds"] = parseCommentMentionIds(v)
 			}
+			if err := appendCommentGroupMentions(cmd, toolArgs); err != nil {
+				return err
+			}
 			return callMCPToolOnServer("doc-comment", "create_comment", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(commentCreateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "create_comment",
+				CanonicalPath:  "doc.create_comment",
+				CLIPath:        "doc comment create",
+				PrimaryCLIPath: "doc comment create",
+			},
+			Description: "创建文档评论",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc-comment", RPCName: "create_comment"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "创建文档评论",
+				UseWhen:      []string{"在文档上创建不绑定具体划词位置的全文评论，可 @用户或通过 --mentioned-open-conversation-id @群"},
+				AvoidWhen: []string{
+					"针对某段选中文本的划词评论改用 create-inline（需 blockId+start/end）",
+					"回复已有评论用 reply；删评论用 delete",
+				},
+				Examples: []string{
+					"dws doc comment create --node <DOC_ID> --content \"这里需要修改\" --format json",
+					"dws doc comment create --node <DOC_ID> --content \"请review\" --mention uid1,uid2 --mentioned-open-conversation-id <openConversationId> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "mentioned-open-conversation-id", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "mention", Property: "mentionedUserIds"},
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 
 	commentCreateCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentCreateCmd.Flags().String("content", "", "评论的文字内容，纯文本 (必填)")
 	commentCreateCmd.Flags().String("mention", "", "被 @ 的用户 uid 列表，逗号分隔")
+	addCommentGroupMentionFlag(commentCreateCmd)
 
 	commentReplyCmd := &cobra.Command{
 		Use:   "reply",
@@ -1913,7 +3231,8 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 --comment-key 为被回复评论的唯一标识（即 list 返回的 commentKey），格式：{13位毫秒时间戳}{32位UUID}，共45位。
 commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中获取。
 
-可通过 --mention 指定被 @ 的用户 uid 列表（逗号分隔），
+可通过 --mention 指定被 @ 的用户 uid 列表（逗号分隔），通过
+--mentioned-open-conversation-id 指定被 @ 的群 openConversationId（可重复或逗号分隔）。
 评论内容中会插入 @mention 节点并发送通知。
 用户 uid 可通过「钉钉通讯录」相关命令检索，如:
   dws contact user search --keyword "姓名"
@@ -1921,7 +3240,8 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 设置 --emoji 时，本次回复将作为表情贴图回复，--content 填写表情名称。`,
 		Example: `  dws doc comment reply --node DOC_ID --comment-key COMMENT_KEY --content "同意"
   dws doc comment reply --node DOC_ID --comment-key COMMENT_KEY --content "比心" --emoji
-  dws doc comment reply --node DOC_ID --comment-key COMMENT_KEY --content "请确认" --mention uid1,uid2`,
+  dws doc comment reply --node DOC_ID --comment-key COMMENT_KEY --content "请确认" --mention uid1,uid2
+  dws doc comment reply --node DOC_ID --comment-key COMMENT_KEY --content "请群内确认" --mentioned-open-conversation-id openCid1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -1936,20 +3256,70 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				"replyCommentKey": mustGetFlag(cmd, "comment-key"),
 			}
 			if v, _ := cmd.Flags().GetBool("emoji"); v {
+				if err := commentreaction.Validate(mustGetFlag(cmd, "content")); err != nil {
+					return err
+				}
+				groupMentions, err := commentGroupMentionIDs(cmd)
+				if err != nil {
+					return err
+				}
+				if len(groupMentions) > 0 {
+					return fmt.Errorf("--emoji cannot be used with --mentioned-open-conversation-id: emoji replies do not support group mentions")
+				}
 				toolArgs["emoji"] = true
 			}
 			if v, _ := cmd.Flags().GetString("mention"); v != "" {
 				toolArgs["mentionedUserIds"] = parseCommentMentionIds(v)
 			}
+			if err := appendCommentGroupMentions(cmd, toolArgs); err != nil {
+				return err
+			}
 			return callMCPToolOnServer("doc-comment", "reply_comment", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(commentReplyCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "reply_comment",
+				CanonicalPath:  "doc.reply_comment",
+				CLIPath:        "doc comment reply",
+				PrimaryCLIPath: "doc comment reply",
+			},
+			Description: "回复文档评论",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc-comment", RPCName: "reply_comment"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "回复文档评论",
+				UseWhen:      []string{"回复已有评论（文字、可 @用户/@群，或 --emoji 表情）；commentKey 来自 list/create"},
+				AvoidWhen:    []string{"新建评论用 create/create-inline；删评论用 delete"},
+				Examples: []string{
+					"dws doc comment reply --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"同意\" --mentioned-open-conversation-id <openConversationId> --format json",
+					"dws doc comment reply --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"比心\" --emoji --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "mentioned-open-conversation-id", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "comment-key", Property: "replyCommentKey"},
+				{Name: "mention", Property: "mentionedUserIds"},
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 
 	commentReplyCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentReplyCmd.Flags().String("content", "", "回复的文字内容，表情回复时填写表情名称 (必填)")
 	commentReplyCmd.Flags().String("comment-key", "", "被回复评论的 commentKey，格式: {13位毫秒时间戳}{32位UUID}，可从 list/create 结果获取 (必填)")
 	commentReplyCmd.Flags().Bool("emoji", false, "设为 true 时作为表情贴图回复 (默认 false)")
 	commentReplyCmd.Flags().String("mention", "", "被 @ 的用户 uid 列表，逗号分隔")
+	addCommentGroupMentionFlag(commentReplyCmd)
 
 	commentUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -1957,9 +3327,11 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		Long: `更新指定文档中的一条评论。
 
 --comment-key 为待更新评论的唯一标识，可从 comment list、create 或 create-inline 的返回结果中获取。
-可通过 --mention 指定更新后评论中被 @ 的用户 uid 列表。`,
+可通过 --mention 指定更新后评论中被 @ 的用户 uid 列表，通过
+--mentioned-open-conversation-id 指定被 @ 的群 openConversationId（可重复或逗号分隔）。`,
 		Example: `  dws doc comment update --node DOC_ID --comment-key COMMENT_KEY --content "已按最新数据修正"
-  dws doc comment update --node DOC_ID --comment-key COMMENT_KEY --content "请确认" --mention uid1,uid2`,
+  dws doc comment update --node DOC_ID --comment-key COMMENT_KEY --content "请确认" --mention uid1,uid2
+  dws doc comment update --node DOC_ID --comment-key COMMENT_KEY --content "请群内同学关注" --mentioned-open-conversation-id openCid1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -1976,13 +3348,52 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			if v, _ := cmd.Flags().GetString("mention"); v != "" {
 				toolArgs["mentionedUserIds"] = parseCommentMentionIds(v)
 			}
+			if err := appendCommentGroupMentions(cmd, toolArgs); err != nil {
+				return err
+			}
 			return callMCPToolOnServer("doc-comment", "update_comment", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(commentUpdateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "update_comment",
+				CanonicalPath:  "doc.update_comment",
+				CLIPath:        "doc comment update",
+				PrimaryCLIPath: "doc comment update",
+			},
+			Description: "更新指定文档评论的文字内容和可选 @用户/@群。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "更新指定文档评论的文字内容和可选 @用户/@群。",
+				UseWhen:      []string{"修改已有评论正文；可选更新 --mention 或 --mentioned-open-conversation-id"},
+				AvoidWhen:    []string{"删除评论用 delete；回复用 reply"},
+				Examples: []string{
+					"dws doc comment update --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"已按最新数据修正\" --format json",
+					"dws doc comment update --node <DOC_ID> --comment-key <COMMENT_KEY> --content \"请群内确认\" --mentioned-open-conversation-id <openConversationId>",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "mention", Property: "mentionedUserIds", InterfaceType: "array"},
+				{Name: "mentioned-open-conversation-id", Property: "mentionedOpenConversationIds", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 	commentUpdateCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentUpdateCmd.Flags().String("comment-key", "", "待更新评论的 commentKey，可从 list/create/create-inline 结果获取 (必填)")
 	commentUpdateCmd.Flags().String("content", "", "更新后的评论文字内容，纯文本 (必填)")
 	commentUpdateCmd.Flags().String("mention", "", "被 @ 的用户 uid 列表，逗号分隔")
+	addCommentGroupMentionFlag(commentUpdateCmd)
 
 	commentDeleteCmd := &cobra.Command{
 		Use:   "delete",
@@ -2000,15 +3411,42 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				return err
 			}
 			commentKey := mustGetFlag(cmd, "comment-key")
-			if !confirmDelete("文档评论", commentKey) {
-				return nil
-			}
 			return callMCPToolOnServer("doc-comment", "delete_comment", map[string]any{
 				"nodeId":     nodeID,
 				"commentKey": commentKey,
 			})
 		},
 	}
+	DeclareLeafMetadata(commentDeleteCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "delete_comment",
+				CanonicalPath:  "doc.delete_comment",
+				CLIPath:        "doc comment delete",
+				PrimaryCLIPath: "doc comment delete",
+			},
+			Description: "永久删除指定文档中的一条评论",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "永久删除指定文档中的一条评论",
+				UseWhen:      []string{"用户明确要求永久删除指定文档中的某条评论（已有 commentKey）时"},
+				AvoidWhen:    []string{"只需改文案用 update；回复用 reply；目标评论不明或未确认时不要删"},
+				Examples:     []string{"dws doc comment delete --node <DOC_ID> --comment-key <COMMENT_KEY> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 	commentDeleteCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentDeleteCmd.Flags().String("comment-key", "", "待删除评论的 commentKey，可从 list/create/create-inline 结果获取 (必填)")
 
@@ -2057,6 +3495,40 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPToolOnServer("doc-comment", "create_inline_comment", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(commentCreateInlineCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "create_inline_comment",
+				CanonicalPath:  "doc.create_inline_comment",
+				CLIPath:        "doc comment create-inline",
+				PrimaryCLIPath: "doc comment create-inline",
+			},
+			Description: "在文档选中文本范围创建划词评论",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc-comment", RPCName: "create_inline_comment"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "在文档选中文本范围创建划词评论",
+				UseWhen:      []string{"针对块内某段文本创建划词评论（必填 blockId、start、end）时"},
+				AvoidWhen: []string{
+					"不绑定位置的全文评论用 create",
+					"先 block list 取 blockId 与纯文本偏移再调用",
+				},
+				Examples: []string{"dws doc comment create-inline --node <DOC_ID> --block-id <BLOCK_ID> --start 0 --end 10 --content \"这里需要修改\" --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "mention", Property: "mentionedUserIds"},
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 
 	commentCreateInlineCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	commentCreateInlineCmd.Flags().String("content", "", "评论的文字内容，纯文本 (必填)")
@@ -2082,24 +3554,34 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 	}
 
 	commentCmd.AddCommand(commentListCmd, commentCreateCmd, commentReplyCmd, commentUpdateCmd, commentDeleteCmd, commentCreateInlineCmd)
+	commentCmd.AddCommand(newCommentBaseCommands("doc")...)
 
 	// ── permission (文档协作权限) ────────────────────────────
-	permissionCmd := &cobra.Command{
+	permissionCmd := newGroupCommand(&cobra.Command{
 		Use:     "permission",
 		Aliases: []string{"perm"},
 		Short:   "文档协作权限管理",
 		Long:    `管理钉钉文档的协作者权限：添加协作者、更新协作者权限、查询协作者列表。`,
 		RunE:    groupRunE,
-	}
+	})
 
 	permissionAddCmd := &cobra.Command{
 		Use:   "add",
 		Short: "添加文档协作者",
+		Args:  cobra.NoArgs,
 		Long: `为指定文档（或文件夹/文件）添加一个或多个协作成员，并授予指定角色。
 
-通过 --user 传入逗号分隔的 userId 列表，多个用户将被授予同一角色。
+两种传参方式（互斥）：
+  旧格式：--users 传入逗号分隔的 userId 列表 + --role 指定统一角色（仅 USER 类型）
+  新格式：--members 传入 JSON 数组，支持四种成员类型，每个 member 携带独立 roleId
 
-支持的角色 (--role)（必须大写）：
+成员类型说明：
+  USER          用户，id 为用户 userId，需携带 corpId（标识用户所属组织）
+  DEPT          部门，id 为部门 ID，需携带 corpId（标识部门所属组织）
+  CONVERSATION  群聊，id 为群聊 conversationId（cid 开头），无需 corpId
+  TAG           角色标签（也称角色组），id 为角色标签 ID，需携带 corpId。当用户要求"添加角色组"或"添加角色标签"时使用此类型
+
+支持的角色（大小写不敏感）：
   MANAGER     管理员，可读写、管理成员
   EDITOR      编辑者，可查看、编辑、上传内容
   DOWNLOADER  查看下载者，可查看并下载内容
@@ -2107,29 +3589,46 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 
 注意：
 - OWNER 角色不可通过此接口添加。
+- 操作者须满足该节点配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 forbidden.accessDenied。
 - 单次请求最多 30 个成员，超出请分批调用。
+- --notify 仅在 --members 新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知（DEPT 和 TAG 不通知），默认 false；省略时 CLI 不向服务端发送该字段，服务端按不通知处理，需要通知请显式传 --notify。
 
 用户 uid 可通过「钉钉通讯录」相关命令检索，如:
   dws contact user search --keyword "姓名"`,
 		Example: `  dws doc permission add --node DOC_ID --users uid1 --role READER
   dws doc permission add --node DOC_ID --users uid1,uid2,uid3 --role EDITOR
-  dws doc permission add --node "https://alidocs.dingtalk.com/i/nodes/xxx" --users uid1 --role MANAGER --workspace WS_ID`,
+  dws doc permission add --node "https://alidocs.dingtalk.com/i/nodes/xxx" --users uid1 --role MANAGER --workspace WS_ID
+  dws doc permission add --node DOC_ID --members '[{"type":"USER","id":"uid1","roleId":"READER","corpId":"xxx"},{"type":"DEPT","id":"deptId1","roleId":"EDITOR","corpId":"xxx"}]' --notify
+  dws doc permission add --node DOC_ID --members '[{"type":"CONVERSATION","id":"cidXXX","roleId":"READER"},{"type":"TAG","id":"tagId1","roleId":"EDITOR","corpId":"xxx"}]'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
 				return err
 			}
-			if err := validateRequiredFlags(cmd, "role"); err != nil {
+			if err := validateMembersExclusivity(cmd); err != nil {
 				return err
 			}
-			userIds, err := collectUserIDs(cmd)
-			if err != nil {
-				return err
+			toolArgs := map[string]any{"nodeId": nodeID}
+			members, mErr := collectMembers(cmd, false)
+			if mErr != nil {
+				return mErr
 			}
-			toolArgs := map[string]any{
-				"nodeId":  nodeID,
-				"roleId":  normalizePermissionRole(mustGetFlag(cmd, "role")),
-				"userIds": userIds,
+			if len(members) > 0 {
+				toolArgs["members"] = members
+				if cmd.Flags().Changed("notify") {
+					notify, _ := cmd.Flags().GetBool("notify")
+					toolArgs["notify"] = notify
+				}
+			} else {
+				if err := validateRequiredFlags(cmd, "role"); err != nil {
+					return err
+				}
+				userIds, err := collectUserIDs(cmd)
+				if err != nil {
+					return err
+				}
+				toolArgs["roleId"] = normalizePermissionRole(mustGetFlag(cmd, "role"))
+				toolArgs["userIds"] = userIds
 			}
 			if v := flagOrFallback(cmd, "workspace", "workspace-id"); v != "" {
 				toolArgs["workspaceId"] = v
@@ -2137,20 +3636,71 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPTool("add_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(permissionAddCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "add_permission",
+				CanonicalPath:  "doc.add_permission",
+				CLIPath:        "doc permission add",
+				PrimaryCLIPath: "doc permission add",
+			},
+			Description: "兼容入口：为文档空间节点添加协作成员权限；文件管理权限命令已迁移到 drive。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "add_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：为文档空间节点添加协作成员权限；文件管理权限命令已迁移到 drive。",
+				UseWhen:      []string{"给单篇文档做节点级授权（与 drive permission add 同能力的 doc 入口）时"},
+				AvoidWhen: []string{
+					"知识库容器授权用 wiki member add",
+					"查/改/移除用 permission list/update/remove",
+				},
+				Examples: []string{"dws doc permission add --node <DOC_ID> --users uid1 --role READER --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "members", Property: "members"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "notify", Property: "notify"},
+				{Name: "role", Property: "roleId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 
 	permissionAddCmd.Flags().String("node", "", "目标节点的标识（文档/文件夹/文件），支持传入 URL 或 ID (必填)")
-	permissionAddCmd.Flags().String("users", "", "被授权的用户 userId 列表，逗号分隔 (必填，单次最多 30 个)")
+	permissionAddCmd.Flags().String("users", "", "被授权的用户 userId 列表，逗号分隔 (旧格式，单次最多 30 个)")
 	permissionAddCmd.Flags().String("user", "", "")
 	_ = permissionAddCmd.Flags().MarkHidden("user")
-	permissionAddCmd.Flags().String("role", "", "权限角色: MANAGER / EDITOR / DOWNLOADER / READER (必填，大小写不敏感)")
+	permissionAddCmd.Flags().String("role", "", "权限角色: MANAGER / EDITOR / DOWNLOADER / READER (旧格式必填，大小写不敏感)")
 	permissionAddCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL（选填，仅用于辅助构造返回的 docUrl）")
+	permissionAddCmd.Flags().String("members", "", "成员列表 JSON 数组（新格式），支持 USER/DEPT/CONVERSATION/TAG 类型（TAG=角色组），与 --users 互斥")
+	permissionAddCmd.Flags().Bool("notify", false, "是否通知被添加的成员（仅 --members 新格式时生效，需显式传入才通知）")
 
 	permissionUpdateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "更新文档协作者权限",
-		Long: `更新指定节点已有协作者的权限角色（仅支持 USER 类型成员）。
+		Args:  cobra.NoArgs,
+		Long: `更新指定节点已有协作者的权限角色。
 
-支持的角色 (--role)（必须大写）：
+两种传参方式（互斥）：
+  旧格式：--users 传入逗号分隔的 userId 列表 + --role 指定统一角色（仅 USER 类型）
+  新格式：--members 传入 JSON 数组，支持四种成员类型，每个 member 携带独立 roleId
+
+成员类型说明：
+  USER          用户，id 为用户 userId，需携带 corpId
+  DEPT          部门，id 为部门 ID，需携带 corpId
+  CONVERSATION  群聊，id 为群聊 conversationId（cid 开头），无需 corpId
+  TAG           角色标签（也称角色组），id 为角色标签 ID，需携带 corpId
+
+支持的角色 (--role)（大小写不敏感）：
   MANAGER     管理员
   EDITOR      编辑者
   DOWNLOADER  查看下载者
@@ -2160,26 +3710,43 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 - OWNER 角色不可通过此接口变更。
 - 同一成员在同一节点只能拥有一个角色，变更后旧角色自动替换。
 - 若成员的角色来自父节点的权限继承（PASS_ON），且继承角色高于目标角色，接口会拒绝操作。
+- 操作者须满足该节点配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 forbidden.accessDenied。
+- --notify 仅在 --members 新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知，默认 false。
 
 仅可更新已存在协作关系的用户，新增协作者请使用 dws doc permission add。`,
 		Example: `  dws doc permission update --node DOC_ID --users uid1 --role EDITOR
-  dws doc permission update --node DOC_ID --users uid1,uid2 --role READER`,
+  dws doc permission update --node DOC_ID --users uid1,uid2 --role READER
+  dws doc permission update --node DOC_ID --members '[{"type":"USER","id":"uid1","roleId":"EDITOR","corpId":"xxx"}]' --notify=false
+  dws doc permission update --node DOC_ID --members '[{"type":"TAG","id":"tagId1","roleId":"READER","corpId":"xxx"}]'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
 				return err
 			}
-			if err := validateRequiredFlags(cmd, "role"); err != nil {
+			if err := validateMembersExclusivity(cmd); err != nil {
 				return err
 			}
-			userIds, err := collectUserIDs(cmd)
-			if err != nil {
-				return err
+			toolArgs := map[string]any{"nodeId": nodeID}
+			members, mErr := collectMembers(cmd, false)
+			if mErr != nil {
+				return mErr
 			}
-			toolArgs := map[string]any{
-				"nodeId":  nodeID,
-				"roleId":  normalizePermissionRole(mustGetFlag(cmd, "role")),
-				"userIds": userIds,
+			if len(members) > 0 {
+				toolArgs["members"] = members
+				if cmd.Flags().Changed("notify") {
+					notify, _ := cmd.Flags().GetBool("notify")
+					toolArgs["notify"] = notify
+				}
+			} else {
+				if err := validateRequiredFlags(cmd, "role"); err != nil {
+					return err
+				}
+				userIds, err := collectUserIDs(cmd)
+				if err != nil {
+					return err
+				}
+				toolArgs["roleId"] = normalizePermissionRole(mustGetFlag(cmd, "role"))
+				toolArgs["userIds"] = userIds
 			}
 			if v := flagOrFallback(cmd, "workspace", "workspace-id"); v != "" {
 				toolArgs["workspaceId"] = v
@@ -2187,13 +3754,50 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPTool("update_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(permissionUpdateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "update_permission",
+				CanonicalPath:  "doc.update_permission",
+				CLIPath:        "doc permission update",
+				PrimaryCLIPath: "doc permission update",
+			},
+			Description: "兼容入口：更新文档空间节点的协作成员角色；文件权限命令已迁移到 drive。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "update_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：更新文档空间节点的协作成员角色；文件权限命令已迁移到 drive。",
+				UseWhen:      []string{"变更文档节点上已有用户角色时"},
+				AvoidWhen:    []string{"新授权用 add；移除用 remove"},
+				Examples:     []string{"dws doc permission update --node <DOC_ID> --users uid1 --role EDITOR --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "members", Property: "members"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "notify", Property: "notify"},
+				{Name: "role", Property: "roleId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 
 	permissionUpdateCmd.Flags().String("node", "", "目标节点的标识（文档/文件夹/文件），支持传入 URL 或 ID (必填)")
-	permissionUpdateCmd.Flags().String("users", "", "被更新的用户 userId 列表，逗号分隔 (必填，单次最多 30 个)")
+	permissionUpdateCmd.Flags().String("users", "", "被更新的用户 userId 列表，逗号分隔 (旧格式，单次最多 30 个)")
 	permissionUpdateCmd.Flags().String("user", "", "")
 	_ = permissionUpdateCmd.Flags().MarkHidden("user")
-	permissionUpdateCmd.Flags().String("role", "", "新权限角色: MANAGER / EDITOR / DOWNLOADER / READER (必填，大小写不敏感)")
+	permissionUpdateCmd.Flags().String("role", "", "新权限角色: MANAGER / EDITOR / DOWNLOADER / READER (旧格式必填，大小写不敏感)")
 	permissionUpdateCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL（选填，仅用于辅助构造返回的 docUrl）")
+	permissionUpdateCmd.Flags().String("members", "", "成员列表 JSON 数组（新格式），支持 USER/DEPT/CONVERSATION/TAG 类型（TAG=角色组），与 --users 互斥")
+	permissionUpdateCmd.Flags().Bool("notify", false, "是否通知被变更的成员（仅 --members 新格式时生效）")
 
 	permissionListCmd := &cobra.Command{
 		Use:     "list",
@@ -2201,11 +3805,14 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 		Short:   "查询文档协作者列表",
 		Long: `查询指定节点的协作者列表，返回每位成员的 userId、姓名、角色等信息。
 
-注意：底层不支持游标分页，--limit 仅控制单次返回的最大条数（最大 200）。
-若结果被截断（出参 truncated=true），可通过 --filter-role 收窄查询范围。`,
+底层一次性返回全量成员后在内存中按 pageSize 分页，支持通过 nextToken 翻页。
+出参包含 totalCount（全量成员总数）、hasMore（是否还有下一页）和 nextToken（下一页游标）。
+当 hasMore 为 true 时，传入下一次请求的 --next-token 即可获取下一页。
+操作者需满足该节点配置的权限管理最低角色要求，权限不足返回 forbidden.accessDenied。`,
 		Example: `  dws doc permission list --node DOC_ID
-  dws doc permission list --node DOC_ID --limit 100
-  dws doc permission list --node DOC_ID --filter-role MANAGER,EDITOR`,
+  dws doc permission list --node DOC_ID --limit 50
+  dws doc permission list --node DOC_ID --filter-role MANAGER,EDITOR
+  dws doc permission list --node DOC_ID --next-token <上次返回的 nextToken>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -2214,14 +3821,13 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			toolArgs := map[string]any{
 				"nodeId": nodeID,
 			}
-			limit := 0
-			if cmd.Flags().Changed("limit") {
-				limit, _ = cmd.Flags().GetInt("limit")
-			} else if cmd.Flags().Changed("max-results") {
-				limit, _ = cmd.Flags().GetInt("max-results")
+			if size, ok, err := permissionPageSizeFromFlags(cmd); err != nil {
+				return err
+			} else if ok {
+				toolArgs["pageSize"] = size
 			}
-			if limit > 0 {
-				toolArgs["maxResults"] = limit
+			if v := flagOrFallback(cmd, "next-token", "cursor", "page-token"); v != "" {
+				toolArgs["nextToken"] = v
 			}
 			if v := mustGetFlag(cmd, "filter-role"); v != "" {
 				toolArgs["filterRoleIds"] = parseRoleList(v)
@@ -2232,44 +3838,102 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPTool("list_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(permissionListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "list_permission",
+				CanonicalPath:  "doc.list_permission",
+				CLIPath:        "doc permission list",
+				PrimaryCLIPath: "doc permission list",
+			},
+			Description: "兼容入口：查询文档空间节点的协作者权限；文件权限命令已迁移到 drive。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "list_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：查询文档空间节点的协作者权限；文件权限命令已迁移到 drive。",
+				UseWhen:      []string{"列出文档节点成员权限时"},
+				AvoidWhen:    []string{"增删改权限用 add/update/remove；知识库成员用 wiki member list"},
+				Examples:     []string{"dws doc permission list --node <DOC_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "filter-role", Property: "filterRoleIds"},
+				// limit 不声明 Property：运行时经 cap 校验（1-50）转换为 pageSize，
+				// 属 CLI 分页输入而非 1:1 RPC property（reviewed mapping exclusion）。
+				{Name: "limit"},
+				{Name: "next-token", Property: "nextToken"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+			Pagination: &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "next-token"},
+		},
+	})
 
 	permissionListCmd.Flags().String("node", "", "目标节点的标识（文档/文件夹/文件），支持传入 URL 或 ID (必填)")
-	permissionListCmd.Flags().Int("limit", 30, "返回成员数上限，默认 30，最大 200")
+	permissionListCmd.Flags().Int("limit", 30, "返回成员数上限，默认 30，最大 50")
 	permissionListCmd.Flags().Int("max-results", 0, "")
 	_ = permissionListCmd.Flags().MarkHidden("max-results")
 	permissionListCmd.Flags().String("filter-role", "", "按角色过滤（逗号分隔）：OWNER / MANAGER / EDITOR / DOWNLOADER / READER")
+	permissionListCmd.Flags().String("next-token", "", "分页游标，首次不传，后续传入上一次返回的 nextToken")
 	permissionListCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL（选填，仅用于辅助构造返回的 docUrl）")
 
 	permissionRemoveCmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm"},
 		Short:   "移除文档协作者权限",
-		Long: `从指定节点移除一个或多个协作成员的权限（仅支持 USER 类型）。
+		Long: `从指定节点移除一个或多个协作成员的权限。
+
+两种传参方式（互斥）：
+  旧格式：--users 传入逗号分隔的 userId 列表（仅 USER 类型）
+  新格式：--members 传入 JSON 数组，支持四种成员类型，只需 type 和 id（USER/DEPT/TAG 还需 corpId）
+
+成员类型说明：
+  USER          用户，id 为用户 userId，需携带 corpId
+  DEPT          部门，id 为部门 ID，需携带 corpId
+  CONVERSATION  群聊，id 为群聊 conversationId（cid 开头），无需 corpId
+  TAG           角色标签（也称角色组），id 为角色标签 ID，需携带 corpId
 
 移除后相关用户将无法通过该节点的直接授权访问内容（若有父节点继承权限则仍可通过继承权限访问）。
 
 注意：
 - OWNER 角色不可通过此接口移除。
-- 操作者需在该节点具备 EDITOR 及以上角色（OWNER / MANAGER / EDITOR）。
+- 操作者须满足该节点配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 forbidden.accessDenied。
 - 单次请求最多 30 个成员，超出请分批调用。
 
 用户 uid 可通过「钉钉通讯录」相关命令检索，如:
   dws contact user search --keyword "姓名"`,
 		Example: `  dws doc permission remove --node DOC_ID --users uid1
   dws doc permission remove --node DOC_ID --users uid1,uid2,uid3
-  dws doc permission remove --node "https://alidocs.dingtalk.com/i/nodes/xxx" --users uid1`,
+  dws doc permission remove --node "https://alidocs.dingtalk.com/i/nodes/xxx" --users uid1
+  dws doc permission remove --node DOC_ID --members '[{"type":"USER","id":"uid1","corpId":"xxx"},{"type":"DEPT","id":"deptId1","corpId":"xxx"}]'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
 				return err
 			}
-			userIds, err := collectUserIDs(cmd)
-			if err != nil {
+			if err := validateMembersExclusivity(cmd); err != nil {
 				return err
 			}
-			toolArgs := map[string]any{
-				"nodeId":  nodeID,
-				"userIds": userIds,
+			toolArgs := map[string]any{"nodeId": nodeID}
+			members, mErr := collectMembers(cmd, true)
+			if mErr != nil {
+				return mErr
+			}
+			if len(members) > 0 {
+				toolArgs["members"] = members
+			} else {
+				userIds, err := collectUserIDs(cmd)
+				if err != nil {
+					return err
+				}
+				toolArgs["userIds"] = userIds
 			}
 			if v := flagOrFallback(cmd, "workspace", "workspace-id"); v != "" {
 				toolArgs["workspaceId"] = v
@@ -2277,10 +3941,47 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			return callMCPTool("remove_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(permissionRemoveCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			// 批量移除（最多 30 个 USER/DEPT/CONVERSATION/TAG）会一次性撤销多个
+			// 成员的访问，部门/群聊/角色组还可能间接影响大量用户，与删除同级的
+			// destructive 入口，必须经过用户确认（--yes 或交互 yes）。
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "remove_permission",
+				CanonicalPath:  "doc.remove_permission",
+				CLIPath:        "doc permission remove",
+				PrimaryCLIPath: "doc permission remove",
+			},
+			Description: "兼容入口：移除文档空间节点的协作成员权限；文件权限命令已迁移到 drive。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "remove_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容入口：移除文档空间节点的协作成员权限；文件权限命令已迁移到 drive。",
+				UseWhen:      []string{"移除文档节点上指定用户权限时"},
+				AvoidWhen:    []string{"改角色用 update；知识库撤成员用 wiki member remove"},
+				Examples:     []string{"dws doc permission remove --node <DOC_ID> --users uid1 --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "members", Property: "members"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 	permissionRemoveCmd.Flags().String("node", "", "目标节点的标识（文档/文件夹/文件），支持传入 URL 或 ID (必填)")
-	permissionRemoveCmd.Flags().String("users", "", "被移除权限的用户 userId 列表，逗号分隔 (必填，单次最多 30 个)")
+	permissionRemoveCmd.Flags().String("users", "", "被移除权限的用户 userId 列表，逗号分隔 (旧格式，单次最多 30 个)")
 	permissionRemoveCmd.Flags().String("user", "", "")
 	_ = permissionRemoveCmd.Flags().MarkHidden("user")
+	permissionRemoveCmd.Flags().String("members", "", "成员列表 JSON 数组（新格式），只需 type 和 id（USER/DEPT/TAG 还需 corpId），与 --users 互斥")
 	permissionRemoveCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL（选填，仅用于辅助构造返回的 docUrl）")
 
 	// permission 子命令的 --node 隐藏别名
@@ -2374,6 +4075,17 @@ CLI 内部自动完成全部流程：
 			}
 
 			if deps.Caller.DryRun() {
+				if strings.EqualFold(strings.TrimSpace(deps.Caller.Format()), "json") {
+					return deps.Out.PrintJSON(map[string]any{
+						"dry_run":      true,
+						"executed":     false,
+						"preview_kind": "plan",
+						"operation":    "doc_export",
+						"nodeId":       node,
+						"exportFormat": format,
+						"savedPath":    outputPath,
+					})
+				}
 				deps.Out.PrintKeyValue("操作", "导出文档（提交+轮询+下载）")
 				deps.Out.PrintKeyValue("文档", node)
 				deps.Out.PrintKeyValue("输出", outputPath)
@@ -2384,7 +4096,7 @@ CLI 内部自动完成全部流程：
 			ctx := context.Background()
 
 			// ── Step 1: 提交导出任务 ──
-			deps.Out.PrintInfo("[1/3] 提交导出任务...")
+			printJSONSafeInfo("[1/3] 提交导出任务...")
 			submitText, err := callMCPToolReturnText(ctx, "submit_export_job", submitArgs)
 			if err != nil {
 				return fmt.Errorf("提交导出任务失败: %w", err)
@@ -2399,10 +4111,10 @@ CLI 内部自动完成全部流程：
 				deps.Out.PrintRaw(submitText)
 				return fmt.Errorf("提交导出任务成功但未返回 jobId")
 			}
-			deps.Out.PrintInfo(fmt.Sprintf("    任务已提交，jobId: %s", jobID))
+			printJSONSafeInfo(fmt.Sprintf("    任务已提交，jobId: %s", jobID))
 
 			// ── Step 2: 渐进式退避轮询 ──
-			deps.Out.PrintInfo("[2/3] 等待导出完成...")
+			printJSONSafeInfo("[2/3] 等待导出完成...")
 			downloadURL, err := pollDocExportJob(ctx, jobID)
 			if err != nil {
 				return err
@@ -2421,9 +4133,26 @@ CLI 内部自动完成全部流程：
 				outputPath = filepath.Join(outputPath, filename)
 			}
 
-			deps.Out.PrintInfo(fmt.Sprintf("[3/3] 下载文件到 %s ...", outputPath))
+			printJSONSafeInfo(fmt.Sprintf("[3/3] 下载文件到 %s ...", outputPath))
 			if err := httpGetFile(ctx, downloadURL, nil, outputPath); err != nil {
 				return fmt.Errorf("文件下载失败 (jobId=%s): %w", jobID, err)
+			}
+
+			if strings.EqualFold(strings.TrimSpace(deps.Caller.Format()), "json") {
+				info, err := os.Stat(outputPath)
+				if err != nil {
+					return fmt.Errorf("读取导出产物信息失败 (jobId=%s): %w", jobID, err)
+				}
+				return deps.Out.PrintJSON(map[string]any{
+					"success":      true,
+					"nodeId":       node,
+					"exportFormat": format,
+					"jobId":        jobID,
+					"taskId":       jobID,
+					"status":       "SUCCESS",
+					"savedPath":    outputPath,
+					"sizeBytes":    info.Size(),
+				})
 			}
 
 			deps.Out.PrintInfo(fmt.Sprintf("导出完成: %s", outputPath))
@@ -2448,11 +4177,13 @@ CLI 内部自动完成全部流程：
   PROCESSING  处理中
   SUCCESS     导出成功，返回 downloadUrl
   FAILED      导出失败`,
-		Example: `  dws doc export get --job-id <JOB_ID>`,
+		Example: `  dws doc export get --job-id <JOB_ID>
+  dws doc export get --task-id <TASK_ID>`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			jobID := mustGetFlag(cmd, "job-id")
-			if jobID == "" {
-				return fmt.Errorf("flag --job-id is required")
+			// Keep --job-id as the visible primary; --task-id is an add-only synonym.
+			jobID, err := mustFlagOrFallback(cmd, "job-id", "task-id")
+			if err != nil {
+				return err
 			}
 
 			if deps.Caller.DryRun() {
@@ -2493,7 +4224,40 @@ CLI 内部自动完成全部流程：
 			}
 		},
 	}
+	DeclareLeafMetadata(exportGetCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "query_export_job",
+				CanonicalPath:  "doc.query_export_job",
+				CLIPath:        "doc export get",
+				PrimaryCLIPath: "doc export get",
+			},
+			Description: "查询文档导出任务结果",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "query_export_job"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询文档导出任务结果",
+				UseWhen:      []string{"doc export 超时/中断后，用 jobId 查询导出任务状态与下载链接时"},
+				AvoidWhen:    []string{"常规导出请直接 dws doc export（一体化提交+轮询+下载），不要先查 job"},
+				Examples:     []string{"dws doc export get --job-id <JOB_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "job-id", Property: "jobId"},
+			},
+		},
+	})
 	exportGetCmd.Flags().String("job-id", "", "导出任务 ID (必填)")
+	exportGetCmd.Flags().String("task-id", "", "--job-id 的别名")
+	_ = exportGetCmd.Flags().MarkHidden("task-id")
 
 	// --node 的隐藏别名（与 doc 下其他命令保持一致）
 	exportCmd.Flags().String("url", "", "--node 的别名")
@@ -2508,6 +4272,7 @@ CLI 内部自动完成全部流程：
 	_ = exportCmd.Flags().MarkHidden("file-id")
 
 	exportCmd.AddCommand(exportGetCmd)
+	newHybridGroupCommand(exportCmd)
 
 	// ── import: 文件导入为在线文档（一体化：上传→转换→轮询）──────────────
 	importCmd := &cobra.Command{
@@ -2520,6 +4285,9 @@ CLI 内部自动完成全部流程：
   xlsx, xls   → 电子表格
   md, txt     → 文字文档
   xmind, mark → 脑图
+  其他格式（html/pdf/zip 等）→ 不做在线文档转换，自动改走文件上传链路，
+  以原文件形式存入 --folder/--workspace 指定位置；如需在线文档请先转换
+  为 md；上传到钉盘请用 dws drive upload
 
 文件大小限制: 20MB
 
@@ -2529,8 +4297,8 @@ CLI 内部自动完成全部流程:
   3. 确认导入（触发格式转换）
   4. 渐进式退避轮询等待完成（最多约 5 分钟）
 
-如果轮询超时仍未完成，会输出 taskId 供后续手动查询:
-  dws doc import get --task-id <taskId>`,
+如果轮询超时或中断，会输出包含原目标的完整命令供后续手动查询，例如:
+  dws doc import get --task-id <taskId> --workspace <原目标WORKSPACE_ID>`,
 		Example: `  # 导入 Word 文档
   dws doc import --file ./report.docx
 
@@ -2543,206 +4311,79 @@ CLI 内部自动完成全部流程:
   # 自定义导入后的文档名称
   dws doc import --file ./draft.md --name "项目周报"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			filePath := mustGetFlag(cmd, "file")
-			if filePath == "" && len(args) > 0 {
-				filePath = args[0]
-			}
-			if filePath == "" {
-				return fmt.Errorf("flag --file is required (or pass file path as argument)")
-			}
-
-			fi, err := os.Stat(filePath)
-			if err != nil {
-				return fmt.Errorf("cannot read file %s: %w", filePath, err)
-			}
-			if fi.IsDir() {
-				return fmt.Errorf("%s is a directory, not a file", filePath)
-			}
-
-			const maxFileSize = 20 * 1024 * 1024
-			fileSize := fi.Size()
-			if fileSize > maxFileSize {
-				return fmt.Errorf("file size %d bytes exceeds 20MB limit", fileSize)
-			}
-			if fileSize == 0 {
-				return fmt.Errorf("file is empty: %s", filePath)
-			}
-
-			ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(filePath)), ".")
-			supportedFormats := map[string]bool{
-				"docx": true, "doc": true, "xlsx": true, "xls": true,
-				"md": true, "txt": true, "xmind": true, "mark": true,
-			}
-			if !supportedFormats[ext] {
-				return fmt.Errorf("unsupported file format %q, supported: docx, doc, xlsx, xls, md, txt, xmind, mark", ext)
-			}
-
-			fileName := filepath.Base(filePath)
-			name, _ := cmd.Flags().GetString("name")
-			if name == "" {
-				name = strings.TrimSuffix(fileName, filepath.Ext(fileName))
-			}
-			folder := flagOrFallback(cmd, "folder", "folder-id")
-			workspace := flagOrFallback(cmd, "workspace", "workspace-id")
-
-			if deps.Caller.DryRun() {
-				deps.Out.PrintKeyValue("操作", "导入本地文件为在线文档")
-				deps.Out.PrintKeyValue("文件", filePath)
-				deps.Out.PrintKeyValue("名称", name)
-				deps.Out.PrintKeyValue("格式", ext)
-				deps.Out.PrintKeyValue("大小", fmt.Sprintf("%d bytes", fileSize))
-				return nil
-			}
-
-			ctx := context.Background()
-
-			deps.Out.PrintInfo("[1/4] 创建导入会话...")
-			sessionArgs := map[string]any{
-				"fileName": name,
-				"suffix":   ext,
-				"fileSize": fileSize,
-			}
-			if folder != "" {
-				sessionArgs["targetFolderId"] = folder
-			}
-			if workspace != "" {
-				sessionArgs["workspaceId"] = workspace
-			}
-
-			sessionText, err := callMCPToolReturnText(ctx, "create_import_session", sessionArgs)
-			if err != nil {
-				return fmt.Errorf("创建导入会话失败: %w", err)
-			}
-
-			var sessionResult map[string]any
-			if err := json.Unmarshal([]byte(sessionText), &sessionResult); err != nil {
-				return fmt.Errorf("解析导入会话响应失败: %w", err)
-			}
-			sessionID, _ := sessionResult["sessionId"].(string)
-			uploadURL, _ := sessionResult["uploadUrl"].(string)
-			if sessionID == "" || uploadURL == "" {
-				deps.Out.PrintRaw(sessionText)
-				return fmt.Errorf("创建导入会话成功但缺少 sessionId 或 uploadUrl")
-			}
-			deps.Out.PrintInfo(fmt.Sprintf("    会话已创建，sessionId: %s", sessionID))
-
-			deps.Out.PrintInfo("[2/4] 上传文件...")
-			if err := httpPutFile(ctx, uploadURL, nil, filePath, fileSize); err != nil {
-				return fmt.Errorf("文件上传失败 (sessionId=%s): %w", sessionID, err)
-			}
-			deps.Out.PrintInfo("    文件上传完成")
-
-			deps.Out.PrintInfo("[3/4] 确认导入，启动格式转换...")
-			confirmText, err := callMCPToolReturnText(ctx, "confirm_import", map[string]any{
-				"sessionId": sessionID,
-			})
-			if err != nil {
-				return fmt.Errorf("确认导入失败 (sessionId=%s): %w", sessionID, err)
-			}
-
-			var confirmResult map[string]any
-			if err := json.Unmarshal([]byte(confirmText), &confirmResult); err != nil {
-				return fmt.Errorf("解析确认导入响应失败: %w", err)
-			}
-			taskID, _ := confirmResult["taskId"].(string)
-			if taskID == "" {
-				deps.Out.PrintRaw(confirmText)
-				return fmt.Errorf("确认导入成功但未返回 taskId")
-			}
-			deps.Out.PrintInfo(fmt.Sprintf("    转换任务已提交，taskId: %s", taskID))
-
-			deps.Out.PrintInfo("[4/4] 等待格式转换完成...")
-			importResult, err := pollDocImportTask(ctx, taskID)
-			if err != nil {
-				return err
-			}
-
-			documentURL, _ := importResult["documentUrl"].(string)
-			documentName, _ := importResult["documentName"].(string)
-			documentType, _ := importResult["documentType"].(string)
-
-			deps.Out.PrintInfo(fmt.Sprintf("导入完成: %s", documentURL))
-			deps.Out.PrintJSON(map[string]any{
-				"success":      true,
-				"taskId":       taskID,
-				"documentUrl":  documentURL,
-				"documentName": documentName,
-				"documentType": documentType,
-			})
-			return nil
+			return runImportCommand(cmd, args, docImportFlowConfig())
 		},
 	}
 	importCmd.Flags().String("file", "", "本地文件路径 (必填)")
-	importCmd.Flags().String("folder", "", "目标文件夹 ID 或 URL (可选，与 --workspace 至少传一个)")
-	importCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL (可选，与 --folder 至少传一个)")
+	importCmd.Flags().String("folder", "", "目标文件夹 ID 或 URL (可选；与 workspace 互斥；在线转换格式都不传时解析当前组织唯一 orgSpace 根目录)")
+	importCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL (可选；与 folder 互斥；在线转换格式都不传时解析当前组织唯一 orgSpace 根目录)")
 	importCmd.Flags().StringP("name", "n", "", "导入后文档名称 (可选，默认取文件名)")
 	importCmd.Flags().String("folder-id", "", "")
 	_ = importCmd.Flags().MarkHidden("folder-id")
 	importCmd.Flags().String("workspace-id", "", "")
 	_ = importCmd.Flags().MarkHidden("workspace-id")
+	importCmd.MarkFlagsMutuallyExclusive("folder", "workspace")
 
 	importGetCmd := &cobra.Command{
 		Use:   "get",
 		Short: "查询导入任务结果（手动兜底）",
 		Long: `根据 taskId 查询文档导入任务的执行结果。
 通常不需要手动调用，dws doc import 会自动完成轮询。
-仅在导入命令超时或中断后，用于手动查询任务状态。
+仅在导入命令超时或中断后，用于手动查询任务状态。建议直接复制导入结果
+中的完整 next_command；其中携带的原目标（--folder 或 --workspace）用于在
+completed 后回读验证真实落点。只传 taskId 也可查询全部状态；completed 时
+保留服务端成功终态和 nodeId，但返回 verified=false，表示未验证真实落点。
 
 任务状态:
   processing  转换中
   completed   导入成功，返回 documentUrl
   failed      导入失败`,
-		Example: `  dws doc import get --task-id <TASK_ID>`,
+		Example: `  dws doc import get --task-id <TASK_ID> --workspace <WORKSPACE_ID>`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			taskID := mustGetFlag(cmd, "task-id")
-			if taskID == "" {
-				return fmt.Errorf("flag --task-id is required")
-			}
-
-			if deps.Caller.DryRun() {
-				deps.Out.PrintKeyValue("操作", "查询导入任务结果")
-				deps.Out.PrintKeyValue("任务ID", taskID)
-				return nil
-			}
-
-			ctx := context.Background()
-			text, err := callMCPToolReturnText(ctx, "query_import_task", map[string]any{"taskId": taskID})
-			if err != nil {
-				return err
-			}
-
-			var result map[string]any
-			if err := json.Unmarshal([]byte(text), &result); err != nil {
-				deps.Out.PrintRaw(text)
-				return nil
-			}
-
-			status, _ := result["status"].(string)
-			message, _ := result["message"].(string)
-
-			switch strings.ToLower(status) {
-			case "completed", "processing":
-				deps.Out.PrintJSON(result)
-				return nil
-			default:
-				deps.Out.PrintJSON(result)
-				if message != "" {
-					return fmt.Errorf("导入任务失败 (status=%s): %s", status, message)
-				}
-				return fmt.Errorf("导入任务失败 (status=%s)", status)
-			}
+			return runImportGetCommand(cmd, docImportFlowConfig())
 		},
 	}
+	DeclareLeafMetadata(importGetCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "import_get",
+				CanonicalPath:  "doc.import_get",
+				CLIPath:        "doc import get",
+				PrimaryCLIPath: "doc import get",
+			},
+			Description: "根据 taskId 查询文档导入任务的执行结果",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "根据 taskId 查询文档导入任务的执行结果",
+				UseWhen:      []string{"已有 doc import 超时或中断结果及其完整 next_command，需要续查同一 taskId 并验证原 folder/workspace 落点时"},
+				AvoidWhen:    []string{"发起导入用 doc import（若入口可用）；不要用本命令代替导入"},
+				Examples:     []string{"dws doc import get --task-id <TASK_ID> --workspace <WORKSPACE_ID> --format json"},
+			},
+		},
+	})
 	importGetCmd.Flags().String("task-id", "", "导入任务 ID (必填)")
+	importGetCmd.Flags().String("folder", "", "原导入目标文件夹 ID 或 URL（completed 后落点验证需要）")
+	importGetCmd.Flags().String("workspace", "", "原导入目标知识库 ID 或 URL（completed 后落点验证需要）")
 	importCmd.AddCommand(importGetCmd)
+	newHybridGroupCommand(importCmd)
 
 	// ── doc version 子命令组 ──
-	versionCmd := &cobra.Command{
+	versionCmd := newGroupCommand(&cobra.Command{
 		Use:   "version",
 		Short: "文档历史版本管理",
 		Long:  `管理钉钉在线文档（adoc）的历史版本：手动保存、查看版本列表、回滚到指定版本。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	versionSaveCmd := &cobra.Command{
 		Use:     "save",
@@ -2758,6 +4399,33 @@ CLI 内部自动完成全部流程:
 			})
 		},
 	}
+	DeclareLeafMetadata(versionSaveCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "version_save",
+				CanonicalPath:  "doc.version_save",
+				CLIPath:        "doc version save",
+				PrimaryCLIPath: "doc version save",
+			},
+			Description: "手动保存文档版本快照",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "手动保存文档版本快照",
+				UseWhen:      []string{"手动保存当前文档版本快照时"},
+				AvoidWhen:    []string{"回滚用 revert；只看历史用 list"},
+				Examples:     []string{"dws doc version save --node <DOC_ID> --format json"},
+			},
+		},
+	})
 	versionSaveCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
 
 	versionListCmd := &cobra.Command{
@@ -2781,10 +4449,43 @@ CLI 内部自动完成全部流程:
 			return callMCPToolOnServer("doc", "list_doc_versions", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(versionListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "version_list",
+				CanonicalPath:  "doc.version_list",
+				CLIPath:        "doc version list",
+				PrimaryCLIPath: "doc version list",
+			},
+			Description: "查看文档历史版本列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查看文档历史版本列表",
+				UseWhen:      []string{"查看文档历史版本列表以确认版本号时"},
+				AvoidWhen:    []string{"回滚用 version revert（需确认）；保存快照用 version save"},
+				Examples:     []string{"dws doc version list --node <DOC_ID> --format json"},
+			},
+		},
+	})
 	versionListCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
 	versionListCmd.Flags().Int("limit", 0, "返回版本数量上限")
 	versionListCmd.Flags().String("cursor", "", "分页游标")
 
+	versionRevertSafety := contract.SafetySpec{
+		Effect:       "write",
+		Risk:         "medium",
+		Confirmation: "user_required",
+		Idempotency:  "unknown",
+	}
 	versionRevertCmd := &cobra.Command{
 		Use:     "revert",
 		Short:   "回滚文档到指定版本",
@@ -2798,15 +4499,22 @@ CLI 内部自动完成全部流程:
 				return fmt.Errorf("flag --version is required")
 			}
 			version, _ := cmd.Flags().GetInt("version")
-			exists, err := docVersionExists(cmd.Context(), nodeID, version)
-			if err != nil {
-				return err
-			}
-			if !exists {
-				return fmt.Errorf("文档版本 %d 不存在，已停止回滚；请先执行 dws doc version list --node %s --format json 获取可回滚版本", version, nodeID)
-			}
-			if !confirmDelete("文档版本回滚", nodeID) {
-				return nil
+			if !commandDryRun(cmd) {
+				exists, err := docVersionExists(cmd.Context(), nodeID, version)
+				if err != nil {
+					return err
+				}
+				if !exists {
+					return apperrors.NewValidation(
+						fmt.Sprintf("文档版本 %d 不存在，已停止回滚", version),
+						apperrors.WithReason("version_not_found"),
+						apperrors.WithHint(fmt.Sprintf(
+							"请先执行 dws doc version list --node %s --format json 获取可回滚版本",
+							nodeID,
+						)),
+						apperrors.WithActions("查询可用文档版本", "选择存在的版本号后重新预览"),
+					)
+				}
 			}
 			return callMCPToolOnServer("doc", "revert_doc_version", map[string]any{
 				"nodeId":  nodeID,
@@ -2814,6 +4522,33 @@ CLI 内部自动完成全部流程:
 			})
 		},
 	}
+	DeclareLeafMetadata(versionRevertCmd, LeafSpec{
+		Safety: versionRevertSafety,
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "version_revert",
+				CanonicalPath:  "doc.version_revert",
+				CLIPath:        "doc version revert",
+				PrimaryCLIPath: "doc version revert",
+			},
+			Description: "将文档回滚到指定历史版本",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将文档回滚到指定历史版本",
+				UseWhen:      []string{"用户明确要求将 adoc 回滚到指定历史版本（已从 version list 确认版本号）时"},
+				AvoidWhen: []string{
+					"只看版本列表用 version list；保存快照用 save",
+					"版本号未确认或用户未同意回滚时不要执行",
+				},
+				Examples: []string{"dws doc version revert --node <DOC_ID> --version 3 --format json"},
+			},
+		},
+	})
 	versionRevertCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
 	versionRevertCmd.Flags().Int("version", 0, "目标版本号 (必填，从 list 获取)")
 
@@ -2834,7 +4569,7 @@ CLI 内部自动完成全部流程:
 	versionCmd.AddCommand(versionSaveCmd, versionListCmd, versionRevertCmd)
 
 	// ── template 子命令组 ──────────────────────────────────────────────────────
-	templateCmd := &cobra.Command{Use: "template", Short: "文档模板管理", RunE: groupRunE}
+	templateCmd := newGroupCommand(&cobra.Command{Use: "template", Short: "文档模板管理", RunE: groupRunE})
 
 	templateListCmd := &cobra.Command{
 		Use:   "list",
@@ -2858,6 +4593,36 @@ CLI 内部自动完成全部流程:
 			return callMCPToolOnServer("doc", "list_doc_templates", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(templateListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "template_list",
+				CanonicalPath:  "doc.template_list",
+				CLIPath:        "doc template list",
+				PrimaryCLIPath: "doc template list",
+			},
+			Description: "获取当前用户可用的文档模板列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取当前用户可用的文档模板列表",
+				UseWhen:      []string{"列出当前用户可用的文档模板时"},
+				AvoidWhen:    []string{"按关键词搜模板用 template search；套用模板用 template apply"},
+				Examples: []string{
+					"dws doc template list --format json",
+					"dws doc template list --source MY --format json",
+				},
+			},
+		},
+	})
 	templateListCmd.Flags().String("source", "", "模板来源: MY(我的模版)/PUBLIC(公开模版)，不传默认 MY")
 	templateListCmd.Flags().Int("limit", 0, "返回数量上限")
 	templateListCmd.Flags().String("cursor", "", "分页游标")
@@ -2892,6 +4657,36 @@ CLI 内部自动完成全部流程:
 			return callMCPToolOnServer("doc", "search_doc_templates", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(templateSearchCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "template_search",
+				CanonicalPath:  "doc.template_search",
+				CLIPath:        "doc template search",
+				PrimaryCLIPath: "doc template search",
+			},
+			Description: "根据关键词搜索文档模板",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "根据关键词搜索文档模板",
+				UseWhen:      []string{"按关键词搜索文档模板时"},
+				AvoidWhen:    []string{"浏览全部模板用 template list；创建文档用 template apply"},
+				Examples: []string{
+					"dws doc template search --query \"周报\" --format json",
+					"dws doc template search --query \"会议纪要\" --source PUBLIC --format json",
+				},
+			},
+		},
+	})
 	templateSearchCmd.Flags().String("query", "", "搜索关键词 (必填)")
 	templateSearchCmd.Flags().String("keyword", "", "--query 的别名")
 	_ = templateSearchCmd.Flags().MarkHidden("keyword")
@@ -2927,6 +4722,36 @@ CLI 内部自动完成全部流程:
 			return callMCPToolOnServer("doc", "apply_doc_template", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(templateApplyCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "template_apply",
+				CanonicalPath:  "doc.template_apply",
+				CLIPath:        "doc template apply",
+				PrimaryCLIPath: "doc template apply",
+			},
+			Description: "使用指定模板创建新文档",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "使用指定模板创建新文档",
+				UseWhen:      []string{"使用指定模板创建新文档时"},
+				AvoidWhen:    []string{"先 list/search 拿到模板再 apply；普通空文档用 doc create"},
+				Examples: []string{
+					"dws doc template apply --template-id <TPL_ID> --name \"我的周报\" --format json",
+					"dws doc template apply --template-id <TPL_ID> --name \"项目方案\" --folder <FOLDER_ID> --format json",
+				},
+			},
+		},
+	})
 	templateApplyCmd.Flags().String("template-id", "", "模板 ID (必填)")
 	templateApplyCmd.Flags().String("template", "", "--template-id 的别名")
 	_ = templateApplyCmd.Flags().MarkHidden("template")
@@ -2957,6 +4782,16 @@ CLI 内部自动完成全部流程:
 		for _, child := range parent.Commands() {
 			RegisterCrossProductAliases(child)
 		}
+	}
+	// Register the block content Primary after the cross-product pass. Registering
+	// --content earlier would make the global content/markdown group expand a new
+	// --markdown alias onto these commands, which is outside this migration.
+	for _, cmd := range []*cobra.Command{blockInsertCmd, blockUpdateCmd} {
+		corecmd.RegisterFlags(cmd, []corecmd.FlagSpec{{
+			Name:    "content",
+			Usage:   "快捷: 段落文本内容",
+			Aliases: []string{"text"},
+		}})
 	}
 
 	// ── deprecated 标记：文件管理命令已迁移到 drive ──
@@ -2990,9 +4825,19 @@ CLI 内部自动完成全部流程:
 	folderCmd.Hidden = true
 	permissionCmd.Hidden = true
 
-	root.AddCommand(searchCmd, listCmd, infoCmd, readCmd, createCmd, updateCmd, uploadCmd, downloadCmd, copyCmd, moveCmd, renameCmd, deleteCmd, fileCmd, folderCmd, blockCmd, commentCmd, mediaCmd, permissionCmd, exportCmd, importCmd, versionCmd, templateCmd)
+	root.AddCommand(searchCmd, listCmd, infoCmd, readCmd, createCmd, updateCmd, uploadCmd, downloadCmd, copyCmd, moveCmd, renameCmd, deleteCmd, fileCmd, folderCmd, blockCmd, commentCmd, mediaCmd, permissionCmd, exportCmd, importCmd, versionCmd, templateCmd, newDocStyleCommand(), newDocWhiteboardCommand())
 
 	return root
+}
+
+// printDocDeprecationWarning emits a deprecation warning when shared deps are
+// initialized. Schema declaration-only roots skip InitDeps; homology and other
+// Execute probes must remain nil-safe on that path.
+func printDocDeprecationWarning(msg string) {
+	if deps == nil || deps.Out == nil {
+		return
+	}
+	deps.Out.PrintWarning(msg)
 }
 
 // wrapDocDeprecated wraps a doc command's RunE to print a deprecation warning
@@ -3002,7 +4847,7 @@ func wrapDocDeprecated(cmd *cobra.Command, driveSubCmd string) {
 	originalRunE := cmd.RunE
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		if strings.HasPrefix(c.CommandPath(), "dws doc ") {
-			deps.Out.PrintWarning(fmt.Sprintf(
+			printDocDeprecationWarning(fmt.Sprintf(
 				"⚠️  'dws doc %s' is deprecated, use 'dws drive %s' instead.",
 				c.CommandPath()[8:], // strip "dws doc " prefix
 				driveSubCmd,
@@ -3018,7 +4863,7 @@ func wrapDocDeprecatedToWiki(cmd *cobra.Command, wikiSubCmd string) {
 	originalRunE := cmd.RunE
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		if strings.HasPrefix(c.CommandPath(), "dws doc ") {
-			deps.Out.PrintWarning(fmt.Sprintf(
+			printDocDeprecationWarning(fmt.Sprintf(
 				"⚠️  'dws doc %s' is deprecated, use 'dws %s' instead.",
 				c.CommandPath()[8:],
 				wikiSubCmd,
@@ -3034,7 +4879,7 @@ func wrapDocDeprecatedToTarget(cmd *cobra.Command, targetCmd string) {
 	originalRunE := cmd.RunE
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		if strings.HasPrefix(c.CommandPath(), "dws doc ") {
-			deps.Out.PrintWarning(fmt.Sprintf(
+			printDocDeprecationWarning(fmt.Sprintf(
 				"⚠️  'dws doc %s' is deprecated, use 'dws %s' instead.",
 				c.CommandPath()[8:],
 				targetCmd,
@@ -3044,16 +4889,30 @@ func wrapDocDeprecatedToTarget(cmd *cobra.Command, targetCmd string) {
 	}
 }
 
+// applyDocReadAccessParams 把 doc read 的访问参数（互联网公开文档密码、历史版本号）
+// 附加到 get_document_content 请求上；空密码或未显式设置版本时不发送对应字段，
+// 显式 --version 0 表示读取文档初始版本。
+func applyDocReadAccessParams(args map[string]any, password string, historyVersion int, historyVersionSet bool) {
+	if password != "" {
+		args["password"] = password
+	}
+	if historyVersionSet && historyVersion >= 0 {
+		args["historyVersion"] = historyVersion
+	}
+}
+
 // resolveContentFromFlags 从 --content-file / --content-path / --content / --markdown 获取文档内容。
 // 优先级：--content-file/--content-path > --content > --markdown（已弃用别名，向后兼容）。
-func runDocReadJsonML(_ *cobra.Command, nodeID string, outputPath string) error {
+func runDocReadJsonML(nodeID, outputPath, password string, historyVersion int, historyVersionSet bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	resultText, err := callMCPToolReturnText(ctx, "get_document_content", map[string]any{
+	toolArgs := map[string]any{
 		"nodeId": nodeID,
 		"format": "jsonml",
-	})
+	}
+	applyDocReadAccessParams(toolArgs, password, historyVersion, historyVersionSet)
+	resultText, err := callMCPToolReturnText(ctx, "get_document_content", toolArgs)
 	if err != nil {
 		return err
 	}
@@ -3096,6 +4955,77 @@ func runDocReadJsonML(_ *cobra.Command, nodeID string, outputPath string) error 
 			return fmt.Errorf("failed to write output file %s: %w", outputPath, err)
 		}
 		deps.Out.PrintInfo(fmt.Sprintf("[INFO] JSONML 已写入 %s", outputPath))
+		return nil
+	}
+
+	deps.Out.PrintRaw(output)
+	return nil
+}
+
+// runDocReadScope calls get_document_content with JSONML filtering parameters
+// and preserves the returned read-only fragment container.
+func runDocReadScope(nodeID, scope, tags string, maxDepth int, maxDepthSet bool, startBlockID, endBlockID, outputPath, password string, historyVersion int, historyVersionSet bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	args := map[string]any{"nodeId": nodeID, "format": "jsonml"}
+	if scope != "" {
+		args["scope"] = scope
+	}
+	if tags != "" {
+		args["tags"] = tags
+	}
+	if maxDepthSet {
+		args["maxDepth"] = maxDepth
+	}
+	if startBlockID != "" {
+		args["startBlockId"] = startBlockID
+	}
+	if endBlockID != "" && scope == "range" {
+		args["endBlockId"] = endBlockID
+	}
+	applyDocReadAccessParams(args, password, historyVersion, historyVersionSet)
+
+	resultText, err := callMCPToolReturnTextOnServer(ctx, "doc", "get_document_content", args)
+	if err != nil {
+		return err
+	}
+
+	var mcpResp map[string]any
+	if err := json.Unmarshal([]byte(resultText), &mcpResp); err != nil {
+		return fmt.Errorf("failed to parse MCP response: %w", err)
+	}
+	fragmentJSON, _ := mcpResp["jsonml"].(string)
+	if fragmentJSON == "" {
+		if deps.Caller.Format() == "json" {
+			return deps.Out.PrintJSON(map[string]any{
+				"matched": false,
+				"jsonml":  nil,
+			})
+		}
+		deps.Out.PrintInfo("[INFO] 未匹配到节点")
+		return nil
+	}
+	if !json.Valid([]byte(fragmentJSON)) {
+		return fmt.Errorf("MCP response contained invalid JSONML fragment")
+	}
+
+	output := fragmentJSON
+	if pretty, prettyErr := json.MarshalIndent(json.RawMessage(fragmentJSON), "", "  "); prettyErr == nil {
+		output = string(pretty)
+	}
+
+	if outputPath != "" {
+		if err := os.WriteFile(outputPath, []byte(output), 0o644); err != nil {
+			return fmt.Errorf("failed to write output file %s: %w", outputPath, err)
+		}
+		if deps.Caller.Format() == "json" {
+			return deps.Out.PrintJSON(map[string]any{
+				"success": true,
+				"output":  outputPath,
+			})
+		}
+		deps.Out.PrintInfo(fmt.Sprintf("[INFO] JSONML fragment 已写入 %s", outputPath))
 		return nil
 	}
 
@@ -3195,12 +5125,12 @@ func pollDocExportJob(ctx context.Context, jobID string) (downloadURL string, er
 
 	for attempt := 1; attempt <= maxPolls; attempt++ {
 		interval := pollInterval(attempt)
-		deps.Out.PrintInfo(fmt.Sprintf("    第 %d/%d 次查询，等待 %v ...", attempt, maxPolls, interval))
+		printJSONSafeInfo(fmt.Sprintf("    第 %d/%d 次查询，等待 %v ...", attempt, maxPolls, interval))
 
 		select {
 		case <-ctx.Done():
 			return "", fmt.Errorf("导出轮询被取消 (jobId=%s): %w", jobID, ctx.Err())
-		case <-time.After(interval):
+		case <-helperAfter(interval):
 		}
 
 		text, queryErr := callMCPToolReturnText(ctx, "query_export_job", map[string]any{"jobId": jobID})
@@ -3235,63 +5165,6 @@ func pollDocExportJob(ctx context.Context, jobID string) (downloadURL string, er
 	}
 
 	return "", fmt.Errorf("导出任务超时：已轮询 %d 次仍在处理中 (jobId=%s)，请稍后使用 dws doc export get --job-id %s 手动查询", maxPolls, jobID, jobID)
-}
-
-// pollDocImportTask polls the import task status with progressive backoff.
-func pollDocImportTask(ctx context.Context, taskID string) (map[string]any, error) {
-	const maxPolls = 30
-
-	pollInterval := func(attempt int) time.Duration {
-		switch {
-		case attempt <= 5:
-			return 2 * time.Second
-		case attempt <= 10:
-			return 5 * time.Second
-		case attempt <= 20:
-			return 10 * time.Second
-		default:
-			return 15 * time.Second
-		}
-	}
-
-	for attempt := 1; attempt <= maxPolls; attempt++ {
-		interval := pollInterval(attempt)
-		deps.Out.PrintInfo(fmt.Sprintf("    第 %d/%d 次查询，等待 %v ...", attempt, maxPolls, interval))
-
-		select {
-		case <-ctx.Done():
-			return nil, fmt.Errorf("导入轮询被取消 (taskId=%s): %w", taskID, ctx.Err())
-		case <-time.After(interval):
-		}
-
-		text, queryErr := callMCPToolReturnText(ctx, "query_import_task", map[string]any{"taskId": taskID})
-		if queryErr != nil {
-			return nil, fmt.Errorf("查询导入任务失败 (taskId=%s): %w", taskID, queryErr)
-		}
-
-		var result map[string]any
-		if parseErr := json.Unmarshal([]byte(text), &result); parseErr != nil {
-			return nil, fmt.Errorf("解析查询结果失败 (taskId=%s): %w", taskID, parseErr)
-		}
-
-		status, _ := result["status"].(string)
-		switch strings.ToLower(status) {
-		case "completed":
-			return result, nil
-		case "processing":
-			continue
-		case "failed":
-			message, _ := result["message"].(string)
-			if message != "" {
-				return nil, fmt.Errorf("导入任务失败 (taskId=%s): %s", taskID, message)
-			}
-			return nil, fmt.Errorf("导入任务失败 (taskId=%s)", taskID)
-		default:
-			continue
-		}
-	}
-
-	return nil, fmt.Errorf("导入任务超时：已轮询 %d 次仍在处理中 (taskId=%s)，请稍后使用 dws doc import get --task-id %s 手动查询", maxPolls, taskID, taskID)
 }
 
 // stripDuplicateTitle removes the leading H1 heading from markdown content
@@ -3354,6 +5227,56 @@ func parseCommentMentionIds(raw string) []string {
 	return userIds
 }
 
+func addCommentGroupMentionFlag(cmd *cobra.Command) {
+	cmd.Flags().StringSlice(
+		"mentioned-open-conversation-id",
+		nil,
+		"被 @ 的群 openConversationId，可重复指定或逗号分隔",
+	)
+}
+
+// commentGroupMentionIDs validates, trims and stably de-duplicates group IDs.
+// An explicitly supplied blank value is rejected so a requested mention is
+// never silently downgraded to plain comment text.
+func commentGroupMentionIDs(cmd *cobra.Command) ([]string, error) {
+	raw, err := cmd.Flags().GetStringSlice("mentioned-open-conversation-id")
+	if err != nil {
+		return nil, err
+	}
+	if !cmd.Flags().Changed("mentioned-open-conversation-id") {
+		return nil, nil
+	}
+
+	seen := make(map[string]struct{}, len(raw))
+	ids := make([]string, 0, len(raw))
+	for _, value := range raw {
+		id := strings.TrimSpace(value)
+		if id == "" {
+			return nil, fmt.Errorf("--mentioned-open-conversation-id must not be empty or whitespace")
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("--mentioned-open-conversation-id must include at least one non-empty openConversationId")
+	}
+	return ids, nil
+}
+
+func appendCommentGroupMentions(cmd *cobra.Command, args map[string]any) error {
+	ids, err := commentGroupMentionIDs(cmd)
+	if err != nil {
+		return err
+	}
+	if len(ids) > 0 {
+		args["mentionedOpenConversationIds"] = ids
+	}
+	return nil
+}
+
 // normalizePermissionRole canonicalises the --role flag to UPPERCASE so users
 // can pass either "reader" or "READER". Trims whitespace as well.
 // Empty input returns "" so the caller can validate as needed.
@@ -3389,4 +5312,86 @@ func collectUserIDs(cmd *cobra.Command) ([]string, error) {
 		return nil, fmt.Errorf("--users is required (at least one userId)")
 	}
 	return userIds, nil
+}
+
+// collectMembers parses the --members JSON array flag (new format), returning
+// a members list ready to embed in MCP tool args. Supports USER/DEPT/CONVERSATION/TAG
+// member types, each carrying an independent roleId.
+//
+// When onlyTypeID is true (remove operations), roleId is not required —
+// only type and id are needed.
+func collectMembers(cmd *cobra.Command, onlyTypeID bool) ([]map[string]any, error) {
+	raw := mustGetFlag(cmd, "members")
+	if raw == "" {
+		return nil, nil
+	}
+	var members []map[string]any
+	if err := json.Unmarshal([]byte(raw), &members); err != nil {
+		return nil, fmt.Errorf("--members JSON 解析失败: %w", err)
+	}
+	if len(members) == 0 {
+		return nil, fmt.Errorf("--members 不能为空数组")
+	}
+	if len(members) > 30 {
+		return nil, fmt.Errorf("--members 单次最多 30 个成员，超出请分批调用")
+	}
+	for i, m := range members {
+		mt, ok := m["type"].(string)
+		if !ok {
+			return nil, fmt.Errorf("--members[%d] 缺少必填字段 type", i)
+		}
+		if _, ok := m["id"].(string); !ok {
+			return nil, fmt.Errorf("--members[%d] 缺少必填字段 id", i)
+		}
+		// USER/DEPT/TAG 类型需携带 corpId 用于确定成员所属组织，CONVERSATION 类型选填
+		if (mt == "USER" || mt == "DEPT" || mt == "TAG") && m["corpId"] == nil {
+			return nil, fmt.Errorf("--members[%d] 类型 %s 需携带 corpId 以确定所属组织", i, mt)
+		}
+		if !onlyTypeID {
+			if _, ok := m["roleId"].(string); !ok {
+				return nil, fmt.Errorf("--members[%d] 缺少必填字段 roleId", i)
+			}
+			if r, ok := m["roleId"].(string); ok {
+				m["roleId"] = normalizePermissionRole(r)
+			}
+		}
+	}
+	return members, nil
+}
+
+// validateMembersExclusivity ensures --members (new format) and --users (legacy
+// format) are not used simultaneously. Exactly one must be provided.
+func validateMembersExclusivity(cmd *cobra.Command) error {
+	hasMembers := mustGetFlag(cmd, "members") != ""
+	hasUsers := flagOrFallback(cmd, "users", "user") != ""
+	if hasMembers && hasUsers {
+		return fmt.Errorf("--members 与 --users 互斥，不可同时传递")
+	}
+	if !hasMembers && !hasUsers {
+		return fmt.Errorf("必须指定 --members（新格式）或 --users（旧格式）之一")
+	}
+	if hasMembers && mustGetFlag(cmd, "role") != "" {
+		return fmt.Errorf("--members 新格式下不需要 --role，每个 member 携带独立 roleId")
+	}
+	return nil
+}
+
+// permissionPageSizeFromFlags resolves and validates the page size for the
+// permission / member list commands. Both --limit and the hidden
+// --max-results alias map to the server pageSize, whose accepted range is
+// 1..50 (the backend rejects pageSize > 50 with
+// invalidRequest.inputArgs.invalid, and non-positive values are invalid).
+// It returns (size, true, nil) when a page size was explicitly provided.
+func permissionPageSizeFromFlags(cmd *cobra.Command) (int, bool, error) {
+	for _, name := range []string{"limit", "max-results"} {
+		if !cmd.Flags().Changed(name) {
+			continue
+		}
+		size, _ := cmd.Flags().GetInt(name)
+		if size < 1 || size > 50 {
+			return 0, false, fmt.Errorf("--%s 取值范围为 1..50（服务端 pageSize 上限 50），当前值 %d", name, size)
+		}
+		return size, true, nil
+	}
+	return 0, false, nil
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cobracmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -66,12 +67,9 @@ const (
 	devMCPMemberRemoveTool = "mcp_member_remove"
 )
 
-// newDevMCPCommand builds the `mcp` subtree under `dws connector`.
-//
-// The command tree is intentionally helper-only, mirroring dev app: Cobra owns
-// the ergonomic CLI paths and safety guards, while `dws schema connector.mcp...`
-// resolves parameter descriptions from the published MCP's live tools/list via
-// each leaf's mcp-tool annotation.
+// newDevMCPCommand builds the reviewed static `mcp` authoring subtree under
+// `dws dev`. Cobra owns the ergonomic CLI paths while ContractFinal metadata
+// owns identity, safety, and interface disposition.
 func newDevMCPCommand(runner executor.Runner) *cobra.Command {
 	root := &cobra.Command{
 		Use:               "mcp",
@@ -80,10 +78,8 @@ func newDevMCPCommand(runner executor.Runner) *cobra.Command {
 		Args:              cobra.NoArgs,
 		TraverseChildren:  true,
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
 	}
+	newGroupCommand(root)
 
 	service := &cobra.Command{
 		Use:               "service",
@@ -91,10 +87,8 @@ func newDevMCPCommand(runner executor.Runner) *cobra.Command {
 		Args:              cobra.NoArgs,
 		TraverseChildren:  true,
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
 	}
+	newGroupCommand(service)
 	service.AddCommand(
 		newDevMCPServiceListCommand(runner),
 		newDevMCPServiceGetCommand(runner),
@@ -109,10 +103,8 @@ func newDevMCPCommand(runner executor.Runner) *cobra.Command {
 		Args:              cobra.NoArgs,
 		TraverseChildren:  true,
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
 	}
+	newGroupCommand(tool)
 	tool.AddCommand(
 		newDevMCPToolListCommand(runner),
 		newDevMCPToolGetCommand(runner),
@@ -132,10 +124,8 @@ func newDevMCPCommand(runner executor.Runner) *cobra.Command {
 		Args:              cobra.NoArgs,
 		TraverseChildren:  true,
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
 	}
+	newGroupCommand(url)
 	url.AddCommand(newDevMCPURLGetCommand(runner))
 
 	auth := newDevMCPCommandGroup("auth", "MCP 下游鉴权配置")
@@ -170,23 +160,22 @@ func newDevMCPCommand(runner executor.Runner) *cobra.Command {
 }
 
 func newDevMCPCommandGroup(name, short string) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               name,
 		Short:             short,
 		Args:              cobra.NoArgs,
 		TraverseChildren:  true,
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
 	}
+	newGroupCommand(cmd)
+	return cmd
 }
 
 func newDevMCPURLGetCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "get",
 		Short:             "获取 MCP 实例接入地址（按调用者个人身份生成，含个人 key 勿外发）",
-		Example:           "  dws connector mcp url get --mcp-id 10487 --source MARKET --format json",
+		Example:           "  dws dev mcp url get --mcp-id 10487 --source MARKET --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -213,6 +202,11 @@ func newDevMCPURLGetCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("source", "MARKET", "服务来源：MARKET 或 PUBLISHED")
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPServerURLGetTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPServerURLGetTool, "dev mcp url get", "获取当前身份可用的 MCP 实例接入地址", false),
+	})
 	return cmd
 }
 
@@ -220,7 +214,7 @@ func newDevMCPServiceListCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "查询有开发权限的 MCP 服务列表（含 serverName）",
-		Example:           "  dws connector mcp service list --keyword 客户 --page-size 20 --format json",
+		Example:           "  dws dev mcp service list --keyword 客户 --page-size 20 --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -237,6 +231,11 @@ func newDevMCPServiceListCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("creator-user-id", "", "按创建人 staffId 过滤")
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPServiceListTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPServiceListTool, "dev mcp service list", "查询当前用户有开发权限的 MCP 服务", false),
+	})
 	return cmd
 }
 
@@ -244,7 +243,7 @@ func newDevMCPServiceGetCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "get",
 		Short:             "查询 MCP 服务详情",
-		Example:           "  dws connector mcp service get --mcp-id 10487 --format json",
+		Example:           "  dws dev mcp service get --mcp-id 10487 --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -260,6 +259,11 @@ func newDevMCPServiceGetCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPMCPIDFlag(cmd)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPServiceGetTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPServiceGetTool, "dev mcp service get", "查询指定 MCP 服务的开发配置", false),
+	})
 	return cmd
 }
 
@@ -267,13 +271,10 @@ func newDevMCPServiceCreateCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "create",
 		Short:             "新建 MCP 服务",
-		Example:           "  dws connector mcp service create --name 客户信息查询 --server-name customer-info --description \"查询客户基础资料\" --dry-run --format json",
+		Example:           "  dws dev mcp service create --name 客户信息查询 --server-name customer-info --description \"查询客户基础资料\" --dry-run --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp service create"); err != nil {
-				return err
-			}
 			name, err := devMCPRequiredString(cmd, "name")
 			if err != nil {
 				return err
@@ -297,7 +298,7 @@ func newDevMCPServiceCreateCommand(runner executor.Runner) *cobra.Command {
 				return err
 			}
 			if serverName == "" {
-				fmt.Fprintln(cmd.ErrOrStderr(), "警告：未设置 --server-name，发布后顶层动态命令将退化为 mcp-<mcpId>（而非语义化服务名）。建议创建时就传 --server-name <kebab-case>；或事后 dws connector mcp service update --mcp-id <mcpId> --server-name <kebab-case>，再执行 dws connector mcp refresh。")
+				fmt.Fprintln(cmd.ErrOrStderr(), "警告：未设置 --server-name，服务将缺少稳定的语义化标识。建议创建时传 --server-name <kebab-case>；或事后执行 dws dev mcp service update --mcp-id <mcpId> --server-name <kebab-case>。")
 			}
 			return nil
 		},
@@ -306,9 +307,15 @@ func newDevMCPServiceCreateCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("description", "", "服务用途描述")
 	cmd.Flags().String("icon-url", "", "服务图标 URL")
 	cmd.Flags().String("introduction", "", "服务详情介绍，支持 markdown")
-	cmd.Flags().String("server-name", "", "服务英文标识，kebab-case，作为 DWS 一级命令名。强烈建议提供——不传则动态命令路径退化为 mcp-<数字 mcpId>（丢掉可读的一级命令名）")
+	cmd.Flags().String("server-name", "", "服务英文标识，kebab-case，用于稳定识别已发布 MCP 服务")
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPServiceCreateTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPServiceCreate,
+		Contract:      devMCPContract(cmd, devMCPServiceCreateTool, "dev mcp service create", "创建 MCP 服务开发配置", true),
+	})
 	return cmd
 }
 
@@ -316,13 +323,10 @@ func newDevMCPServiceUpdateCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "update",
 		Short:             "修改 MCP 服务信息",
-		Example:           "  dws connector mcp service update --mcp-id 10487 --description \"新描述\" --dry-run --format json",
+		Example:           "  dws dev mcp service update --mcp-id 10487 --description \"新描述\" --dry-run --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp service update"); err != nil {
-				return err
-			}
 			mcpID, err := devMCPRequiredInt(cmd, "mcp-id")
 			if err != nil {
 				return err
@@ -352,6 +356,12 @@ func newDevMCPServiceUpdateCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("server-name", "", "新服务英文标识，kebab-case")
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPServiceUpdateTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPServiceUpdate,
+		Contract:      devMCPContract(cmd, devMCPServiceUpdateTool, "dev mcp service update", "更新 MCP 服务开发配置", true),
+	})
 	return cmd
 }
 
@@ -359,13 +369,10 @@ func newDevMCPServiceDeleteCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "delete",
 		Short:             "删除 MCP 服务（不可恢复）",
-		Example:           "  dws connector mcp service delete --mcp-id 10487 --dry-run --format json",
+		Example:           "  dws dev mcp service delete --mcp-id 10487 --dry-run --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp service delete"); err != nil {
-				return err
-			}
 			mcpID, err := devMCPRequiredInt(cmd, "mcp-id")
 			if err != nil {
 				return err
@@ -378,6 +385,12 @@ func newDevMCPServiceDeleteCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPMCPIDFlag(cmd)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPServiceDeleteTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPDestructiveSafety(),
+		Validate:      validateDevMCPRequiredIntFlag("mcp-id"),
+		Contract:      devMCPContract(cmd, devMCPServiceDeleteTool, "dev mcp service delete", "永久删除 MCP 服务开发配置", true),
+	})
 	return cmd
 }
 
@@ -385,7 +398,7 @@ func newDevMCPToolListCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "查询 MCP 服务下的工具列表",
-		Example:           "  dws connector mcp tool list --mcp-id 10487 --page-size 100 --format json",
+		Example:           "  dws dev mcp tool list --mcp-id 10487 --page-size 100 --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -405,6 +418,11 @@ func newDevMCPToolListCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("keyword", "", "按工具 name 关键词过滤")
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPToolListTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPToolListTool, "dev mcp tool list", "查询 MCP 服务下的工具定义列表", false),
+	})
 	return cmd
 }
 
@@ -412,7 +430,7 @@ func newDevMCPToolGetCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "get",
 		Short:             "读取 MCP 工具定义",
-		Example:           "  dws connector mcp tool get --mcp-id 10487 --tool-id G-ACT-xxx --format json",
+		Example:           "  dws dev mcp tool get --mcp-id 10487 --tool-id G-ACT-xxx --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -428,6 +446,11 @@ func newDevMCPToolGetCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("version-id", "", "指定读取的历史版本 ID")
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPToolGetTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPToolGetTool, "dev mcp tool get", "读取指定 MCP 工具定义", false),
+	})
 	return cmd
 }
 
@@ -435,13 +458,10 @@ func newDevMCPToolCreateCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "create",
 		Short:             "新建 MCP 工具草稿",
-		Example:           "  dws connector mcp tool create --mcp-id 10487 --name get_weather --title 查询天气 --description 按经纬度查询实时天气 --http-info '{\"method\":\"GET\",\"url\":\"https://example.com\",\"auth\":{\"type\":\"NO_AUTH\"}}' --api-inputs '{\"query\":[{\"key\":\"lat\",\"type\":\"number\",\"description\":\"纬度\"}]}' --tool-inputs '[{\"key\":\"lat\",\"type\":\"number\",\"required\":true,\"description\":\"纬度，示例：39.9\"}]' --input-mappings '[{\"target\":\"$.Query.lat\",\"type\":\"reference\",\"source\":\"$.node_start.lat\"}]' --api-outputs '{\"body\":[{\"key\":\"temperature\",\"type\":\"number\",\"description\":\"温度\"}]}' --tool-outputs '[]' --output-mappings '[{\"target\":\"$\",\"type\":\"reference\",\"source\":\"$.node_service_activator.Body\"}]' --dry-run --format json",
+		Example:           "  dws dev mcp tool create --mcp-id 10487 --name get_weather --title 查询天气 --description 按经纬度查询实时天气 --http-info '{\"method\":\"GET\",\"url\":\"https://example.com\",\"auth\":{\"type\":\"NO_AUTH\"}}' --api-inputs '{\"query\":[{\"key\":\"lat\",\"type\":\"number\",\"description\":\"纬度\"}]}' --tool-inputs '[{\"key\":\"lat\",\"type\":\"number\",\"required\":true,\"description\":\"纬度，示例：39.9\"}]' --input-mappings '[{\"target\":\"$.Query.lat\",\"type\":\"reference\",\"source\":\"$.node_start.lat\"}]' --api-outputs '{\"body\":[{\"key\":\"temperature\",\"type\":\"number\",\"description\":\"温度\"}]}' --tool-outputs '[]' --output-mappings '[{\"target\":\"$\",\"type\":\"reference\",\"source\":\"$.node_service_activator.Body\"}]' --dry-run --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp tool create"); err != nil {
-				return err
-			}
 			params, err := devMCPToolUpsertParams(cmd, false)
 			if err != nil {
 				return err
@@ -452,6 +472,12 @@ func newDevMCPToolCreateCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPToolUpsertFlags(cmd, false)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPToolCreateHTTPTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPToolCreate,
+		Contract:      devMCPContract(cmd, devMCPToolCreateHTTPTool, "dev mcp tool create", "创建 HTTP 类型的 MCP 工具草稿", true),
+	})
 	return cmd
 }
 
@@ -459,13 +485,10 @@ func newDevMCPToolUpdateCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "update",
 		Short:             "编辑 MCP 工具并保存为草稿",
-		Example:           "  dws connector mcp tool update --mcp-id 10487 --tool-id G-ACT-xxx --name get_weather --title 查询天气 --description 按经纬度查询实时天气 --http-info '{...}' --api-inputs '{...}' --tool-inputs '[...]' --input-mappings '[...]' --api-outputs '{...}' --tool-outputs '[]' --output-mappings '[...]' --dry-run --format json（全量提交：先 tool get 读回，各段在现状基础上改）",
+		Example:           `  dws dev mcp tool update --mcp-id 10487 --tool-id G-ACT-example --name get_weather --title 查询天气 --description 按城市查询天气 --http-info '{"method":"GET","url":"https://example.com/weather","auth":{"type":"NO_AUTH"}}' --api-inputs '{"query":[{"key":"city","type":"string","description":"城市名"}]}' --tool-inputs '[{"key":"city","type":"string","required":true,"description":"城市名，例如杭州"}]' --input-mappings '[{"target":"$.Query.city","type":"reference","source":"$.node_start.city"}]' --api-outputs '{"body":[{"key":"temperature","type":"number","description":"温度"}]}' --tool-outputs '[]' --output-mappings '[{"target":"$","type":"reference","source":"$.node_service_activator.Body"}]' --dry-run --format json`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp tool update"); err != nil {
-				return err
-			}
 			params, err := devMCPToolUpsertParams(cmd, true)
 			if err != nil {
 				return err
@@ -476,6 +499,12 @@ func newDevMCPToolUpdateCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPToolUpsertFlags(cmd, true)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPToolUpdateHTTPTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPToolUpdate,
+		Contract:      devMCPContract(cmd, devMCPToolUpdateHTTPTool, "dev mcp tool update", "更新 HTTP 类型的 MCP 工具草稿", true),
+	})
 	return cmd
 }
 
@@ -483,13 +512,10 @@ func newDevMCPToolDebugCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "debug",
 		Short:             "调试 MCP 工具",
-		Example:           "  dws connector mcp tool debug --mcp-id 10487 --tool-id G-ACT-xxx --value '{\"city\":\"杭州\"}' --credential-id 10518 --dry-run --format json",
+		Example:           "  dws dev mcp tool debug --mcp-id 10487 --tool-id G-ACT-xxx --value '{\"city\":\"杭州\"}' --credential-id 10518 --dry-run --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp tool debug"); err != nil {
-				return err
-			}
 			params, err := devMCPToolLocatorParams(cmd)
 			if err != nil {
 				return err
@@ -515,6 +541,12 @@ func newDevMCPToolDebugCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().Bool("no-credential", false, "无鉴权工具的正常走法——声明本次调试不使用凭证（与 --credential-id 二选一必填其一）")
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPToolDebugTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPToolDebug,
+		Contract:      devMCPContract(cmd, devMCPToolDebugTool, "dev mcp tool debug", "使用指定输入和凭证调试 MCP 工具", true),
+	})
 	return cmd
 }
 
@@ -522,13 +554,10 @@ func newDevMCPToolPublishCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "publish",
 		Short:             "发布 MCP 工具草稿",
-		Example:           "  dws connector mcp tool publish --mcp-id 10487 --tool-id G-ACT-xxx --dry-run --format json",
+		Example:           "  dws dev mcp tool publish --mcp-id 10487 --tool-id G-ACT-xxx --dry-run --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp tool publish"); err != nil {
-				return err
-			}
 			params, err := devMCPToolLocatorParams(cmd)
 			if err != nil {
 				return err
@@ -542,7 +571,7 @@ func newDevMCPToolPublishCommand(runner executor.Runner) *cobra.Command {
 				return err
 			}
 			if !commandDryRun(cmd) {
-				fmt.Fprintln(cmd.ErrOrStderr(), "提示：发布后本服务暴露为顶层命令 dws <serverName> <工具名>（等价 dws connector mcp published <serverName> <工具名>；serverName 用 service get 查）。动态命令按发布组织隔离，跨组织调用需 --profile；命令缓存最迟 10 分钟自动生效，立即可用请执行 dws connector mcp refresh。")
+				fmt.Fprintln(cmd.ErrOrStderr(), "提示：发布后可通过 dws mcp published tools/invoke 按 mcpId 使用；serverName 可用 service get 查询。发布实例按组织与当前登录身份隔离，跨组织调用需切换 --profile。")
 			}
 			return nil
 		},
@@ -550,6 +579,12 @@ func newDevMCPToolPublishCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPToolLocatorFlags(cmd)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPToolPublishTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPToolLocator,
+		Contract:      devMCPContract(cmd, devMCPToolPublishTool, "dev mcp tool publish", "发布 MCP 工具草稿", true),
+	})
 	return cmd
 }
 
@@ -557,13 +592,10 @@ func newDevMCPToolDeleteCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "delete",
 		Short:             "删除 MCP 工具（不可恢复）",
-		Example:           "  dws connector mcp tool delete --mcp-id 10487 --tool-id G-ACT-xxx --dry-run --format json",
+		Example:           "  dws dev mcp tool delete --mcp-id 10487 --tool-id G-ACT-xxx --dry-run --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp tool delete"); err != nil {
-				return err
-			}
 			params, err := devMCPToolLocatorParams(cmd)
 			if err != nil {
 				return err
@@ -574,6 +606,12 @@ func newDevMCPToolDeleteCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPToolLocatorFlags(cmd)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPToolDeleteTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPDestructiveSafety(),
+		Validate:      validateDevMCPToolLocator,
+		Contract:      devMCPContract(cmd, devMCPToolDeleteTool, "dev mcp tool delete", "永久删除 MCP 工具", true),
+	})
 	return cmd
 }
 
@@ -581,7 +619,7 @@ func newDevMCPToolVersionsCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "versions",
 		Short:             "查询 MCP 工具版本历史",
-		Example:           "  dws connector mcp tool versions --mcp-id 10487 --tool-id G-ACT-xxx --format json",
+		Example:           "  dws dev mcp tool versions --mcp-id 10487 --tool-id G-ACT-xxx --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -598,6 +636,11 @@ func newDevMCPToolVersionsCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPPagingFlags(cmd)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPToolVersionsTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPToolVersionsTool, "dev mcp tool versions", "查询 MCP 工具版本历史", false),
+	})
 	return cmd
 }
 
@@ -605,7 +648,7 @@ func newDevMCPAuthConfigGetCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "get",
 		Short:             "查询 MCP 下游鉴权配置",
-		Example:           "  dws connector mcp auth get --mcp-id 10520 --format json",
+		Example:           "  dws dev mcp auth get --mcp-id 10520 --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -619,6 +662,11 @@ func newDevMCPAuthConfigGetCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPMCPIDFlag(cmd)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPAuthConfigGetTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPAuthConfigGetTool, "dev mcp auth get", "查询 MCP 服务的下游鉴权配置", false),
+	})
 	return cmd
 }
 
@@ -626,15 +674,12 @@ func newDevMCPAuthConfigSaveCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "save",
 		Short: "保存 MCP 下游鉴权配置",
-		Example: `  dws connector mcp auth save --mcp-id 10520 --auth-type NO_AUTH --dry-run --format json
+		Example: `  dws dev mcp auth save --mcp-id 10520 --auth-type NO_AUTH --dry-run --format json
   # 静态 API key（SIGNATURE 直引）：authQuery/authHeaders 的 value 用 #("<authFields 的 dataId>")，key 放 header 则把 authQuery 换成 authHeaders
-  dws connector mcp auth save --mcp-id 10520 --auth-type SIGNATURE --signature-auth-config '{"authFields":[{"dataId":"apiKey","type":"password","required":true}],"authQuery":[{"key":"api_key","type":"authField","value":"#(\"apiKey\")"}]}' --yes --format json`,
+  dws dev mcp auth save --mcp-id 10520 --auth-type SIGNATURE --signature-auth-config '{"authFields":[{"dataId":"apiKey","type":"password","required":true}],"authQuery":[{"key":"api_key","type":"authField","value":"#(\"apiKey\")"}]}' --yes --format json`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp auth save"); err != nil {
-				return err
-			}
 			mcpID, err := devMCPRequiredInt(cmd, "mcp-id")
 			if err != nil {
 				return err
@@ -670,6 +715,12 @@ func newDevMCPAuthConfigSaveCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("signature-auth-config", "", "SIGNATURE 自定义鉴权配置 JSON 对象（静态 API key 直引 / 自定义签名表达式两类场景）。直引写法见上方 Examples 与 skill mcp.md：value 用 #(\"<authFields 的 dataId>\") 函数语法")
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPAuthConfigSaveTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPAuthSave,
+		Contract:      devMCPContract(cmd, devMCPAuthConfigSaveTool, "dev mcp auth save", "保存 MCP 服务的下游鉴权配置", true),
+	})
 	return cmd
 }
 
@@ -677,7 +728,7 @@ func newDevMCPCredentialListCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "查询 MCP 凭证账号列表",
-		Example:           "  dws connector mcp credential list --mcp-id 10520 --page-size 20 --format json",
+		Example:           "  dws dev mcp credential list --mcp-id 10520 --page-size 20 --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -695,37 +746,68 @@ func newDevMCPCredentialListCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPPagingFlags(cmd)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPCredentialListTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPCredentialListTool, "dev mcp credential list", "查询 MCP 凭证账号列表", false),
+	})
 	return cmd
 }
 
 func newDevMCPCredentialGetCommand(runner executor.Runner) *cobra.Command {
-	return newDevMCPCredentialLocatorCommand(runner, "get", "查询 MCP 凭证账号详情", devMCPCredentialGetTool, false)
+	cmd := newDevMCPCredentialLocatorCommand(runner, "get", "查询 MCP 凭证账号详情", devMCPCredentialGetTool)
+	cmd.Example = "  dws dev mcp credential get --mcp-id 10520 --credential-id 10001 --format json"
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPCredentialGetTool, "dev mcp credential get", "查询 MCP 凭证账号详情", false),
+	})
+	return cmd
 }
 
 func newDevMCPCredentialDebugCommand(runner executor.Runner) *cobra.Command {
-	return newDevMCPCredentialLocatorCommand(runner, "debug", "调试 MCP 凭证账号（会真实调用下游接口，TOKEN 型含现场换 token）", devMCPCredentialDebugTool, true)
+	cmd := newDevMCPCredentialLocatorCommand(runner, "debug", "调试 MCP 凭证账号（会真实调用下游接口，TOKEN 型含现场换 token）", devMCPCredentialDebugTool)
+	cmd.Example = "  dws dev mcp credential debug --mcp-id 10520 --credential-id 10001 --dry-run --format json"
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPCredentialLocator,
+		Contract:      devMCPContract(cmd, devMCPCredentialDebugTool, "dev mcp credential debug", "调试 MCP 凭证账号并验证下游鉴权", true),
+	})
+	return cmd
 }
 
 func newDevMCPCredentialBindCommand(runner executor.Runner) *cobra.Command {
-	return newDevMCPCredentialLocatorCommand(runner, "bind", "绑定 MCP 凭证账号", devMCPCredentialBindTool, true)
+	cmd := newDevMCPCredentialLocatorCommand(runner, "bind", "绑定 MCP 凭证账号", devMCPCredentialBindTool)
+	cmd.Example = "  dws dev mcp credential bind --mcp-id 10520 --credential-id 10001 --dry-run --format json"
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPCredentialLocator,
+		Contract:      devMCPContract(cmd, devMCPCredentialBindTool, "dev mcp credential bind", "绑定 MCP 发布实例使用的凭证账号", true),
+	})
+	return cmd
 }
 
 func newDevMCPCredentialDeleteCommand(runner executor.Runner) *cobra.Command {
-	return newDevMCPCredentialLocatorCommand(runner, "delete", "删除 MCP 凭证账号（不可恢复）", devMCPCredentialDeleteTool, true)
+	cmd := newDevMCPCredentialLocatorCommand(runner, "delete", "删除 MCP 凭证账号（不可恢复）", devMCPCredentialDeleteTool)
+	cmd.Example = "  dws dev mcp credential delete --mcp-id 10520 --credential-id 10001 --dry-run --format json"
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPDestructiveSafety(),
+		Validate:      validateDevMCPCredentialLocator,
+		Contract:      devMCPContract(cmd, devMCPCredentialDeleteTool, "dev mcp credential delete", "永久删除 MCP 凭证账号", true),
+	})
+	return cmd
 }
 
-func newDevMCPCredentialLocatorCommand(runner executor.Runner, use, short, tool string, write bool) *cobra.Command {
+func newDevMCPCredentialLocatorCommand(runner executor.Runner, use, short, tool string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               use,
 		Short:             short,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if write {
-				if err := devAppRequireWriteGuard(cmd, "mcp credential "+use); err != nil {
-					return err
-				}
-			}
 			params, err := devMCPCredentialLocatorParams(cmd)
 			if err != nil {
 				return err
@@ -743,13 +825,10 @@ func newDevMCPCredentialSaveCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "save",
 		Short:             "新增或修改 MCP 凭证账号（TOKEN 型会现场调换 token 接口验密钥，密钥无效则保存失败）",
-		Example:           "  dws connector mcp credential save --mcp-id 10520 --name 生产账号 --content-file credentials.json --dry-run --format json",
+		Example:           `  dws dev mcp credential save --mcp-id 10520 --name 示例账号 --content '{"apiKey":"example"}' --dry-run --format json`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp credential save"); err != nil {
-				return err
-			}
 			mcpID, err := devMCPRequiredInt(cmd, "mcp-id")
 			if err != nil {
 				return err
@@ -777,6 +856,12 @@ func newDevMCPCredentialSaveCommand(runner executor.Runner) *cobra.Command {
 	cmd.Flags().String("content-file", "", "密钥键值 JSON 文件路径，传 - 从 stdin 读取")
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPCredentialSaveTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPCredentialSave,
+		Contract:      devMCPContract(cmd, devMCPCredentialSaveTool, "dev mcp credential save", "新增或更新 MCP 凭证账号", true),
+	})
 	return cmd
 }
 
@@ -784,7 +869,7 @@ func newDevMCPMemberListCommand(runner executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "查询 MCP 开发协作者列表",
-		Example:           "  dws connector mcp member list --mcp-id 10520 --format json",
+		Example:           "  dws dev mcp member list --mcp-id 10520 --format json",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -798,15 +883,36 @@ func newDevMCPMemberListCommand(runner executor.Runner) *cobra.Command {
 	addDevMCPMCPIDFlag(cmd)
 	preferLegacyLeaf(cmd)
 	annotateDevMCPTool(cmd, devMCPMemberListTool)
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPReadSafety(),
+		Contract:      devMCPContract(cmd, devMCPMemberListTool, "dev mcp member list", "查询 MCP 服务开发协作者", false),
+	})
 	return cmd
 }
 
 func newDevMCPMemberAddCommand(runner executor.Runner) *cobra.Command {
-	return newDevMCPMemberMutationCommand(runner, "add", "新增 MCP 开发协作者", devMCPMemberAddTool)
+	cmd := newDevMCPMemberMutationCommand(runner, "add", "新增 MCP 开发协作者", devMCPMemberAddTool)
+	cmd.Example = "  dws dev mcp member add --mcp-id 10520 --user-ids staff001,staff002 --dry-run --format json"
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPWriteSafety(),
+		Validate:      validateDevMCPMemberMutation,
+		Contract:      devMCPContract(cmd, devMCPMemberAddTool, "dev mcp member add", "新增 MCP 服务开发协作者", true),
+	})
+	return cmd
 }
 
 func newDevMCPMemberRemoveCommand(runner executor.Runner) *cobra.Command {
-	return newDevMCPMemberMutationCommand(runner, "remove", "移除 MCP 开发协作者", devMCPMemberRemoveTool)
+	cmd := newDevMCPMemberMutationCommand(runner, "remove", "移除 MCP 开发协作者", devMCPMemberRemoveTool)
+	cmd.Example = "  dws dev mcp member remove --mcp-id 10520 --user-ids staff001 --dry-run --format json"
+	DeclareLeafMetadata(cmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
+		Safety:        devMCPDestructiveSafety(),
+		Validate:      validateDevMCPMemberMutation,
+		Contract:      devMCPContract(cmd, devMCPMemberRemoveTool, "dev mcp member remove", "移除 MCP 服务开发协作者", true),
+	})
+	return cmd
 }
 
 func newDevMCPMemberMutationCommand(runner executor.Runner, use, short, tool string) *cobra.Command {
@@ -816,9 +922,6 @@ func newDevMCPMemberMutationCommand(runner executor.Runner, use, short, tool str
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := devAppRequireWriteGuard(cmd, "mcp member "+use); err != nil {
-				return err
-			}
 			mcpID, err := devMCPRequiredInt(cmd, "mcp-id")
 			if err != nil {
 				return err

@@ -15,6 +15,7 @@ package pipeline
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -27,6 +28,20 @@ type stubHandler struct {
 	fn      func(*Context) error
 	called  bool
 	callSeq *[]string
+}
+
+type stubProtectionResolver struct {
+	*stubHandler
+	command    string
+	flag       string
+	protection FlagProtection
+}
+
+func (h *stubProtectionResolver) ResolveFlagProtection(command, flag string) (FlagProtection, bool) {
+	if command == h.command && flag == h.flag {
+		return h.protection, true
+	}
+	return "", false
 }
 
 func (h *stubHandler) Name() string { return h.name }
@@ -59,6 +74,57 @@ func TestNewEngine(t *testing.T) {
 	}
 	if got := e.HandlerCount(); got != 0 {
 		t.Errorf("HandlerCount = %d, want 0", got)
+	}
+}
+
+func TestCrossPlatformCoverageCommandPathFallbackLookupHandlesNilEngine(t *testing.T) {
+	var engine *Engine
+	engine.SetCommandPathFallbackLookup(func(string) (CommandPathFallback, bool) {
+		t.Fatal("nil engine installed or called fallback lookup")
+		return CommandPathFallback{}, false
+	})
+	if entry, ok := engine.lookupCommandPathFallback("chat +bad"); ok || !reflect.DeepEqual(entry, CommandPathFallback{}) {
+		t.Fatalf("nil engine lookup = %#v, %v", entry, ok)
+	}
+
+	engine = NewEngine()
+	if entry, ok := engine.lookupCommandPathFallback("chat +bad"); ok || !reflect.DeepEqual(entry, CommandPathFallback{}) {
+		t.Fatalf("unset engine lookup = %#v, %v", entry, ok)
+	}
+}
+
+func TestCrossPlatformCoverageEngineResolvesReviewedFlagProtection(t *testing.T) {
+	var nilEngine *Engine
+	if protection, ok := nilEngine.resolveFlagProtection("dws demo", "types"); ok || protection != "" {
+		t.Fatalf("nil engine protection = %q, %t", protection, ok)
+	}
+
+	engine := NewEngine()
+	engine.Register(newStub("ordinary", PreParse, nil))
+	engine.Register(&stubProtectionResolver{
+		stubHandler: newStub("protection", PreParse, nil),
+		command:     "dws demo",
+		flag:        "types",
+		protection:  FlagProtectionBlocked,
+	})
+	for _, test := range []struct {
+		name      string
+		command   string
+		flag      string
+		want      FlagProtection
+		protected bool
+	}{
+		{name: "empty command", flag: "types"},
+		{name: "empty flag", command: "dws demo"},
+		{name: "unreviewed", command: "dws demo", flag: "other"},
+		{name: "protected", command: "dws demo", flag: "types", want: FlagProtectionBlocked, protected: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, ok := engine.resolveFlagProtection(test.command, test.flag)
+			if got != test.want || ok != test.protected {
+				t.Fatalf("resolveFlagProtection(%q, %q) = %q, %t; want %q, %t", test.command, test.flag, got, ok, test.want, test.protected)
+			}
+		})
 	}
 }
 
@@ -168,6 +234,10 @@ func TestRunPhaseErrorAbortsChain(t *testing.T) {
 	if !strings.Contains(err.Error(), "fail") {
 		t.Errorf("error should contain handler name, got %q", err.Error())
 	}
+	var handlerErr *HandlerError
+	if !errors.As(err, &handlerErr) || handlerErr.Phase != PreParse || handlerErr.Handler != "fail" || handlerErr.Unwrap() != boom {
+		t.Fatalf("handler error = %#v, want pre-parse/fail wrapping boom", handlerErr)
+	}
 	if !h1.called {
 		t.Error("h1 should have been called")
 	}
@@ -237,6 +307,42 @@ func TestContextAddCorrection(t *testing.T) {
 	c := ctx.Corrections[0]
 	if c.Handler != "alias" || c.Original != "--userId" || c.Corrected != "--user-id" {
 		t.Errorf("first correction = %+v", c)
+	}
+}
+
+func TestContextFlagProtectionAndConflictError(t *testing.T) {
+	var nilContext *Context
+	nilContext.ProtectFlag("uid", FlagProtectionBlocked)
+	if nilContext.IsFlagProtected("uid") {
+		t.Fatal("nil context reported a protected flag")
+	}
+
+	ctx := &Context{}
+	ctx.ProtectFlag("", FlagProtectionBlocked)
+	if ctx.ProtectedFlags != nil {
+		t.Fatalf("empty flag initialized protection map: %#v", ctx.ProtectedFlags)
+	}
+	ctx.ProtectFlag("uid", FlagProtectionAmbiguous)
+	if !ctx.IsFlagProtected("uid") || ctx.IsFlagProtected("missing") {
+		t.Fatalf("protection lookup mismatch: %#v", ctx.ProtectedFlags)
+	}
+
+	err := (&FlagConflictError{
+		Command:   "dws demo run",
+		Canonical: "user",
+		Spellings: []string{"--user-id", "uid"},
+	}).Error()
+	if !strings.Contains(err, `for --user on "dws demo run": --user-id, --uid`) {
+		t.Fatalf("FlagConflictError.Error() = %q", err)
+	}
+
+	boolErr := (&BoolValueConflictError{
+		Command: "dws demo run",
+		Flag:    "--yes",
+		Values:  []string{"true", "false"},
+	}).Error()
+	if !strings.Contains(boolErr, `for --yes on "dws demo run": false, true`) {
+		t.Fatalf("BoolValueConflictError.Error() = %q", boolErr)
 	}
 }
 

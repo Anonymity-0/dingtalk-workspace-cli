@@ -8,8 +8,6 @@ import (
 )
 
 func TestRootHelpHidesRecoveredModules(t *testing.T) {
-	t.Parallel()
-
 	cmd := app.NewRootCommand()
 	var out strings.Builder
 	cmd.SetOut(&out)
@@ -24,12 +22,15 @@ func TestRootHelpHidesRecoveredModules(t *testing.T) {
 	// All of these commands should be hidden because they are not in
 	// the dynamic server discovery product list.
 	for _, module := range []string{
-		"aisearch", "contract", "recruit",
+		"aisearch", "contract",
 		"chat", "drive", "minutes", "mail", "credit",
 		"credit-risk", "finance", "message", "notify", "doc",
 	} {
 		if strings.Contains(got, "  "+module+" ") {
 			t.Fatalf("root help should not show hidden module %q:\n%s", module, got)
 		}
+	}
+	if !strings.Contains(got, "● recruit ") {
+		t.Fatalf("root help should show explicitly registered recruit module:\n%s", got)
 	}
 }

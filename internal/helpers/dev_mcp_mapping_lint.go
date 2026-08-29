@@ -364,7 +364,7 @@ func devMCPPublishPreflight(runner executor.Runner, cmd *cobra.Command, locator 
 		return nil
 	}
 	return apperrors.NewValidation(fmt.Sprintf(
-		"发布被拦截：以下出参映射 source 在已声明的 API 出参 schema 中不可解析，发布后管理台 UI 将标「变量已失效」、工具出参 schema 为空/失真（红线#13）：\n  - %s\n修复：dws connector mcp tool update 按 tool debug 真实响应把 --api-outputs 声明到被映射的最深层级（整体透传也必须声明），与 --output-mappings 同批提交，再重新 publish。",
+		"发布被拦截：以下出参映射 source 在已声明的 API 出参 schema 中不可解析，发布后管理台 UI 将标「变量已失效」、工具出参 schema 为空/失真（红线#13）：\n  - %s\n修复：dws dev mcp tool update 按 tool debug 真实响应把 --api-outputs 声明到被映射的最深层级（整体透传也必须声明），与 --output-mappings 同批提交，再重新 publish。",
 		strings.Join(broken, "\n  - ")))
 }
 

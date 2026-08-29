@@ -22,12 +22,15 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	dwsevent "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/dedup"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/runtimecred"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/transport"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/config"
 )
@@ -76,6 +79,11 @@ type Config struct {
 	// Source is the cloud adapter. Required.
 	Source SourceAdapter
 
+	// CredentialBroker enables additive runtime-token handoff over the
+	// owner-only local IPC transport. Nil preserves the original protocol and
+	// does not advertise runtime-token support.
+	CredentialBroker *runtimecred.Broker
+
 	// IdleTimeout: bus self-exits after this long with zero consumers.
 	// Zero disables (bus runs until SIGTERM).
 	IdleTimeout time.Duration
@@ -103,6 +111,16 @@ type Config struct {
 	Logger *slog.Logger
 }
 
+var (
+	daemonMkdirAll                   = os.MkdirAll
+	daemonAcquire                    = Acquire
+	daemonWriteMeta                  = WriteMeta
+	daemonListen                     = transport.Listen
+	daemonShutdownTimeout            = 2 * time.Second
+	daemonByeDrainTimeout            = 100 * time.Millisecond
+	daemonCredentialHandshakeTimeout = 10 * time.Second
+)
+
 // Run starts the bus daemon. Lifecycle (plan §4 invariant #6):
 //  1. Acquire bus.lock (single-instance enforcement)
 //  2. Write bus.meta
@@ -124,11 +142,11 @@ func Run(ctx context.Context, cfg Config) error {
 	log := cfg.Logger.With("component", "bus", "client_id", cfg.ClientID, "edition", cfg.Edition)
 
 	// 1. Acquire bus.lock
-	if err := os.MkdirAll(cfg.WorkDir, config.DirPerm); err != nil {
+	if err := daemonMkdirAll(cfg.WorkDir, config.DirPerm); err != nil {
 		return failReady(cfg.ReadyPipe, fmt.Errorf("bus: mkdir workdir: %w", err))
 	}
 	lockPath := filepath.Join(cfg.WorkDir, LockFileName)
-	lock, err := Acquire(lockPath)
+	lock, err := daemonAcquire(lockPath)
 	if err != nil {
 		return failReady(cfg.ReadyPipe, fmt.Errorf("bus: acquire lock: %w", err))
 	}
@@ -145,12 +163,12 @@ func Run(ctx context.Context, cfg Config) error {
 		SDKVersion:   cfg.SDKVersion,
 		BusPID:       os.Getpid(),
 	}
-	if err := WriteMeta(cfg.WorkDir, meta); err != nil {
+	if err := daemonWriteMeta(cfg.WorkDir, meta); err != nil {
 		return failReady(cfg.ReadyPipe, fmt.Errorf("bus: write meta: %w", err))
 	}
 
 	// 3. IPC listen
-	listener, err := transport.Listen(cfg.IPCEndpoint)
+	listener, err := daemonListen(cfg.IPCEndpoint)
 	if err != nil {
 		return failReady(cfg.ReadyPipe, fmt.Errorf("bus: ipc listen: %w", err))
 	}
@@ -168,6 +186,7 @@ func Run(ctx context.Context, cfg Config) error {
 		dedup:    dd,
 		started:  time.Now().UTC(),
 		idleStop: make(chan struct{}),
+		stopReq:  make(chan string, 1),
 	}
 
 	// 4. Signal ready BEFORE accepting consumers (avoids a slow-fork
@@ -227,21 +246,35 @@ func Run(ctx context.Context, cfg Config) error {
 
 	// 6. Wait for shutdown trigger.
 	var exitErr error
+	shutdownReason := "shutdown"
 	select {
 	case <-ctx.Done():
 		log.Info("bus: shutdown requested by ctx", "reason", ctx.Err())
 	case err := <-srcErr:
 		log.Error("bus: source exited", "err", err)
 		exitErr = err
+		shutdownReason = sourceShutdownReason(err)
+		if shutdownReason == transport.ByeReasonRuntimeTokenRejected {
+			// A runtime token can fail immediately after Broker.Update. Serialize
+			// terminal publication with that handshake so the initiating consumer
+			// is registered (or receives a terminal HelloAck) before shutdown.
+			d.credentialHandoffMu.Lock()
+			d.setTerminalReason(shutdownReason)
+			d.credentialHandoffMu.Unlock()
+		}
 	case <-d.idleStop:
 		log.Info("bus: idle timeout reached, shutting down")
+	case reason := <-d.stopReq:
+		shutdownReason = reason
+		log.Info("bus: shutdown requested via IPC", "reason", reason)
 	}
 
 	// 7. Graceful shutdown — cancel runCtx first so all background
-	// goroutines wake up, then close listener / drain consumers.
+	// goroutines wake up, then stop accepting connections before draining
+	// consumers. The accept-loop barrier is required before WaitGroup.Wait:
+	// sync.WaitGroup forbids a positive Add racing with Wait.
 	cancelRun()
-	d.shutdown()
-	<-acceptDone
+	d.shutdown(acceptDone, shutdownReason)
 	<-idleDone
 	<-dropWarnDone
 
@@ -263,6 +296,33 @@ type daemon struct {
 	shutdownMu   sync.Mutex
 	shuttingDown atomic.Bool
 	idleStop     chan struct{}
+	stopReq      chan string
+
+	credentialHandoffMu sync.Mutex
+	terminalMu          sync.RWMutex
+	terminalReason      string
+}
+
+// closeOnceConn makes every connection close path idempotent. A live consumer
+// can be closed by its writer, the connection handler, or daemon shutdown.
+type closeOnceConn struct {
+	net.Conn
+	once sync.Once
+	err  error
+}
+
+func (c *closeOnceConn) Close() error {
+	c.once.Do(func() {
+		c.err = c.Conn.Close()
+	})
+	return c.err
+}
+
+func ensureCloseOnce(conn net.Conn) net.Conn {
+	if _, ok := conn.(*closeOnceConn); ok {
+		return conn
+	}
+	return &closeOnceConn{Conn: conn}
 }
 
 // acceptLoop drives the IPC accept goroutine. Each accepted connection is
@@ -283,6 +343,11 @@ func (d *daemon) acceptLoop(ctx context.Context) {
 			d.log.Warn("bus: accept error", "err", err)
 			continue
 		}
+		conn = ensureCloseOnce(conn)
+		// Track the connection before publishing the handler goroutine. Once
+		// acceptLoop returns, shutdown can therefore close every accepted
+		// connection before waiting for handlers to drain.
+		d.conns.Store(conn, struct{}{})
 		d.consumerWG.Add(1)
 		go func() {
 			defer d.consumerWG.Done()
@@ -292,13 +357,14 @@ func (d *daemon) acceptLoop(ctx context.Context) {
 }
 
 // handleConnection processes one IPC connection's full lifecycle: read
-// Hello → register with Hub → spawn writer goroutine → read until EOF/Bye.
+// Hello → optional runtime credential negotiation → register with Hub → spawn
+// writer goroutine → read until EOF/Bye.
 // Always Unregisters and Closes on exit (plan invariant #5).
 func (d *daemon) handleConnection(ctx context.Context, conn net.Conn) {
-	d.conns.Store(conn, struct{}{})
+	conn = ensureCloseOnce(conn)
 	defer func() {
 		d.conns.Delete(conn)
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	r := transport.NewReader(conn)
@@ -329,12 +395,8 @@ func (d *daemon) handleConnection(ctx context.Context, conn net.Conn) {
 		go d.triggerShutdown("stop_request")
 		return
 	}
-
-	// Regular consumer registration
-	c, err := d.hub.Register(hello)
-	if err != nil {
-		d.log.Warn("bus: register failed", "err", err, "pid", hello.ConsumerPID)
-		_ = w.WriteJSON(transport.Bye{Type: transport.FrameTypeBye, Reason: "register_failed: " + err.Error()})
+	if hello.Role == transport.HelloRoleConsumerStop {
+		d.handleConsumerStopRPC(w, r)
 		return
 	}
 
@@ -342,26 +404,174 @@ func (d *daemon) handleConnection(ctx context.Context, conn net.Conn) {
 	// runner (which knows from the strict resolver) and exposed via the
 	// adapter for forward-compat. v1 leaves them empty here; daemon.Run
 	// passes them through future config if the caller wishes.
-	idleSecs := int(d.cfg.IdleTimeout / time.Second)
-	if err := w.WriteJSON(transport.HelloAck{
-		Type:            transport.FrameTypeHelloAck,
-		BusPID:          os.Getpid(),
-		SourceState:     "connected", // best-effort; full state machine pushed via SourceState frames
-		StateSource:     "inferred",
-		IdleTimeoutSecs: idleSecs,
-	}); err != nil {
-		d.log.Warn("bus: helloack write failed", "err", err)
+	ack := d.helloAck()
+	handoffLocked := false
+	runtimeGeneration := uint64(0)
+	defer func() {
+		if handoffLocked {
+			d.credentialHandoffMu.Unlock()
+		}
+	}()
+
+	// Runtime credentials use a two-phase additive handshake. The first ack
+	// proves capability before the client sends any secret. Only a successful
+	// CAS and credential ack permit Hub registration.
+	if hello.CredentialMode != "" {
+		if hello.CredentialMode != transport.CredentialModeRuntimeToken || d.cfg.CredentialBroker == nil {
+			ack.Capabilities = nil
+			ack.CredentialGeneration = 0
+			if err := w.WriteJSON(ack); err != nil {
+				d.log.Warn("bus: incompatible helloack write failed", "err", err)
+			}
+			return
+		}
+		d.credentialHandoffMu.Lock()
+		handoffLocked = true
+		// Terminal state may have been published while this Hello waited for a
+		// concurrent credential handoff. Rebuild the ack while holding the gate.
+		ack = d.helloAck()
+		if err := w.WriteJSON(ack); err != nil {
+			d.log.Warn("bus: runtime helloack write failed", "err", err)
+			return
+		}
+		if ack.TerminalReason == transport.ByeReasonRuntimeTokenRejected {
+			return
+		}
+
+		var update transport.CredentialUpdate
+		_ = conn.SetReadDeadline(time.Now().Add(daemonCredentialHandshakeTimeout))
+		if err := r.ReadJSON(&update); err != nil {
+			// Do not include the decoder error: malformed JSON may contain
+			// fragments of the credential.
+			d.log.Warn("bus: malformed runtime credential update")
+			return
+		}
+		_ = conn.SetReadDeadline(time.Time{})
+		if update.Type != transport.FrameTypeCredentialUpdate {
+			_ = w.WriteJSON(transport.CredentialUpdateAck{
+				Type:                 transport.FrameTypeCredentialUpdateAck,
+				Accepted:             false,
+				CredentialGeneration: d.cfg.CredentialBroker.Generation(),
+				ErrorCode:            transport.CredentialErrorInvalid,
+				Error:                "unexpected credential update frame",
+			})
+			return
+		}
+		// Validate registration before applying the credential or sending an
+		// accepted ack. Hub.Register performs the same deterministic compile
+		// before mutating the Hub; this preflight keeps invalid filters from
+		// producing a ready marker after credential negotiation.
+		if _, err := compileMatcher(hello.EventTypes, hello.Filter, hello.SubscribeID); err != nil {
+			update.Token = ""
+			_ = w.WriteJSON(transport.CredentialUpdateAck{
+				Type:                 transport.FrameTypeCredentialUpdateAck,
+				Accepted:             false,
+				CredentialGeneration: d.cfg.CredentialBroker.Generation(),
+				ErrorCode:            transport.CredentialErrorRegistration,
+				Error:                "consumer registration validation failed",
+			})
+			d.log.Warn("bus: runtime consumer registration validation failed")
+			return
+		}
+
+		generation, updateErr := d.cfg.CredentialBroker.Update(update.ExpectedGeneration, update.Token)
+		runtimeGeneration = generation
+		update.Token = ""
+		credentialAck := transport.CredentialUpdateAck{
+			Type:                 transport.FrameTypeCredentialUpdateAck,
+			Accepted:             updateErr == nil,
+			CredentialGeneration: generation,
+		}
+		if updateErr != nil {
+			credentialAck.ErrorCode, credentialAck.Error = classifyCredentialUpdateError(updateErr)
+		}
+		if err := w.WriteJSON(credentialAck); err != nil {
+			d.log.Warn("bus: credential update ack write failed", "err", err)
+			return
+		}
+		if updateErr != nil {
+			d.log.Warn("bus: runtime credential update rejected", "error_code", credentialAck.ErrorCode)
+			return
+		}
+	}
+
+	// Regular consumer registration. Local clients retain the original
+	// register-before-HelloAck ordering; runtime clients were already acked by
+	// the additive handshake above.
+	c, err := d.hub.Register(hello)
+	if err != nil {
+		d.log.Warn("bus: register failed", "err", err, "pid", hello.ConsumerPID)
+		_ = w.WriteJSON(transport.Bye{Type: transport.FrameTypeBye, Reason: "register_failed: " + err.Error()})
 		return
+	}
+	if handoffLocked {
+		// The runtime broker deliberately keeps the seed pending until the
+		// initiating consumer is registered. This prevents ticket acquisition
+		// (and an immediate 401) from racing ahead of the only connection that
+		// can observe the typed terminal reason.
+		if _, activateErr := d.cfg.CredentialBroker.Activate(runtimeGeneration); activateErr != nil {
+			d.log.Error("bus: runtime credential activation failed")
+			_ = w.WriteJSON(transport.Bye{Type: transport.FrameTypeBye, Reason: "runtime_credential_activation_failed"})
+			d.hub.Unregister(c.ID)
+			return
+		}
+	}
+	// A local/legacy consumer can arrive after terminal publication but after
+	// StopAll took its snapshot. Refuse it synchronously so it cannot observe a
+	// clean EOF for a runtime-token rejection.
+	if terminalReason := d.getTerminalReason(); terminalReason != "" {
+		_ = w.WriteJSON(transport.Bye{Type: transport.FrameTypeBye, Reason: terminalReason})
+		d.hub.Unregister(c.ID)
+		return
+	}
+	if handoffLocked {
+		d.credentialHandoffMu.Unlock()
+		handoffLocked = false
+	}
+	if hello.CredentialMode == "" {
+		if err := w.WriteJSON(ack); err != nil {
+			d.log.Warn("bus: helloack write failed", "err", err)
+			d.hub.Unregister(c.ID)
+			return
+		}
 	}
 
 	// Writer goroutine pulls from SendCh and writes to the wire.
 	writerDone := make(chan struct{})
 	go func() {
 		defer close(writerDone)
-		for frame := range c.SendCh {
-			if err := w.WriteJSON(frame); err != nil {
-				// Wire error: peer dead. Returning here will let the
-				// reader goroutine notice EOF and Unregister.
+		for {
+			// Give an already-queued targeted stop priority over buffered
+			// events. The second select still handles a stop that arrives
+			// between this check and the blocking wait.
+			select {
+			case reason := <-c.StopCh:
+				_ = w.WriteJSON(transport.Bye{Type: transport.FrameTypeBye, Reason: reason})
+				_ = conn.Close()
+				return
+			default:
+			}
+			select {
+			case frame, ok := <-c.SendCh:
+				if !ok {
+					return
+				}
+				// A stop may have arrived while both channels were ready and the
+				// scheduler selected the buffered event. Re-check before starting a
+				// potentially blocking event write so terminal reasons stay prompt.
+				select {
+				case reason := <-c.StopCh:
+					_ = w.WriteJSON(transport.Bye{Type: transport.FrameTypeBye, Reason: reason})
+					_ = conn.Close()
+					return
+				default:
+				}
+				if err := w.WriteJSON(frame); err != nil {
+					return
+				}
+			case reason := <-c.StopCh:
+				_ = w.WriteJSON(transport.Bye{Type: transport.FrameTypeBye, Reason: reason})
+				_ = conn.Close()
 				return
 			}
 		}
@@ -392,6 +602,95 @@ func (d *daemon) handleConnection(ctx context.Context, conn net.Conn) {
 	d.hub.Unregister(c.ID)
 	<-writerDone
 	_ = ctx // for future use (writer ctx-cancel propagation)
+}
+
+func (d *daemon) helloAck() transport.HelloAck {
+	ack := transport.HelloAck{
+		Type:            transport.FrameTypeHelloAck,
+		BusPID:          os.Getpid(),
+		SourceState:     "connected", // best-effort; full state machine pushed via SourceState frames
+		StateSource:     "inferred",
+		IdleTimeoutSecs: int(d.cfg.IdleTimeout / time.Second),
+	}
+	if d.cfg.CredentialBroker != nil {
+		ack.Capabilities = []string{transport.CapabilityRuntimeTokenV1}
+		ack.CredentialGeneration = d.cfg.CredentialBroker.Generation()
+	}
+	ack.TerminalReason = d.getTerminalReason()
+	return ack
+}
+
+func (d *daemon) setTerminalReason(reason string) {
+	if d == nil || reason != transport.ByeReasonRuntimeTokenRejected {
+		return
+	}
+	d.terminalMu.Lock()
+	d.terminalReason = reason
+	d.terminalMu.Unlock()
+}
+
+func (d *daemon) getTerminalReason() string {
+	if d == nil {
+		return ""
+	}
+	d.terminalMu.RLock()
+	defer d.terminalMu.RUnlock()
+	return d.terminalReason
+}
+
+func classifyCredentialUpdateError(err error) (string, string) {
+	var conflict *runtimecred.GenerationConflictError
+	if errors.As(err, &conflict) {
+		return transport.CredentialErrorGenerationConflict, conflict.Error()
+	}
+	if errors.Is(err, runtimecred.ErrEmptyToken) || errors.Is(err, runtimecred.ErrTokenTooLarge) {
+		return transport.CredentialErrorInvalid, err.Error()
+	}
+	return transport.CredentialErrorInternal, "runtime credential update failed"
+}
+
+func (d *daemon) handleConsumerStopRPC(w *transport.Writer, r *transport.Reader) {
+	var req transport.ConsumerStopReq
+	if err := r.ReadJSON(&req); err != nil {
+		d.log.Debug("bus: malformed consumer stop request", "err", err)
+		_ = w.WriteJSON(transport.ConsumerStopResp{
+			Type:  transport.FrameTypeConsumerStopResp,
+			Error: "malformed consumer stop request",
+		})
+		return
+	}
+	if req.Type != transport.FrameTypeConsumerStopReq {
+		_ = w.WriteJSON(transport.ConsumerStopResp{
+			Type:  transport.FrameTypeConsumerStopResp,
+			Error: fmt.Sprintf("unexpected consumer stop request type %q", req.Type),
+		})
+		return
+	}
+	stopped := d.hub.StopConsumers(req.SubscribeIDs, transport.ByeReasonSubscriptionStopped)
+	stoppedSet := make(map[string]struct{}, len(stopped))
+	for _, id := range stopped {
+		stoppedSet[id] = struct{}{}
+	}
+	notFoundSet := make(map[string]struct{})
+	for _, id := range req.SubscribeIDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := stoppedSet[id]; !ok {
+			notFoundSet[id] = struct{}{}
+		}
+	}
+	notFound := make([]string, 0, len(notFoundSet))
+	for id := range notFoundSet {
+		notFound = append(notFound, id)
+	}
+	sort.Strings(notFound)
+	_ = w.WriteJSON(transport.ConsumerStopResp{
+		Type:     transport.FrameTypeConsumerStopResp,
+		Stopped:  stopped,
+		NotFound: notFound,
+	})
 }
 
 // handleStatusRPC services a single status_req and returns. The connection
@@ -455,42 +754,44 @@ func (d *daemon) idleWatch(ctx context.Context) {
 	}
 }
 
-// triggerShutdown is called from RPC handlers that want to end the bus.
-// It works by closing the listener (which unblocks Run's select via the
-// source error path, indirectly). For v1 a full ctx-cancellation hook is
-// out of scope; busctl/stop also sends SIGTERM which is the authoritative
-// shutdown path.
+// triggerShutdown is called from RPC handlers that want to end the bus. The
+// buffered request wakes Run's lifecycle select, which then cancels the cloud
+// source and performs the same graceful shutdown used for signals and idle
+// expiry. It is intentionally non-blocking so repeated stop requests cannot
+// strand connection handlers.
 func (d *daemon) triggerShutdown(reason string) {
 	d.log.Info("bus: shutdown triggered via IPC", "reason", reason)
-	_ = d.listener.Close() // unblocks Accept(), but doesn't kill Source
-	// Best-effort: a future version wires a context.CancelFunc here.
+	select {
+	case d.stopReq <- reason:
+	default:
+	}
 }
 
 // shutdown performs the graceful tear-down sequence:
 //  1. mark shuttingDown so acceptLoop exits cleanly
 //  2. broadcast Bye to all consumers
 //  3. close listener (interrupts pending Accept)
-//  4. wait for all per-connection goroutines to drain
-//  5. lock + meta cleanup via Run's defers
-func (d *daemon) shutdown() {
+//  4. wait for acceptLoop to return so no future consumerWG.Add can occur
+//  5. close all accepted connections and wait for handlers to drain
+//  6. lock + meta cleanup via Run's defers
+func (d *daemon) shutdown(acceptDone <-chan struct{}, reasons ...string) {
 	d.shutdownMu.Lock()
 	defer d.shutdownMu.Unlock()
 	if !d.shuttingDown.CompareAndSwap(false, true) {
 		return
 	}
-	d.hub.Broadcast(transport.Bye{Type: transport.FrameTypeBye, Reason: "shutdown"})
+	reason := normalizedShutdownReason(reasons...)
+	if reason == transport.ByeReasonRuntimeTokenRejected {
+		d.hub.StopAll(reason)
+	} else {
+		d.hub.Broadcast(transport.Bye{Type: transport.FrameTypeBye, Reason: reason})
+	}
 	_ = d.listener.Close()
-	// Force-close all open IPC connections so any reader goroutine blocked
-	// on Read() returns with a network error and exits cleanly. Without
-	// this the consumerWG never drains and Run hangs forever.
-	d.conns.Range(func(k, _ any) bool {
-		if c, ok := k.(net.Conn); ok {
-			_ = c.Close()
-		}
-		return true
-	})
-	// Give consumers a brief moment to drain final frames before we tear
-	// down their channels.
+	<-acceptDone
+	// Let local consumers drain the final Bye before force-closing their
+	// connections. This short grace period is what makes typed shutdown
+	// reasons (notably runtime_token_rejected) observable instead of racing
+	// with EOF. Consumers close their side immediately after reading Bye.
 	doneCh := make(chan struct{})
 	go func() {
 		d.consumerWG.Wait()
@@ -498,9 +799,37 @@ func (d *daemon) shutdown() {
 	}()
 	select {
 	case <-doneCh:
-	case <-time.After(2 * time.Second):
+		return
+	case <-time.After(daemonByeDrainTimeout):
+	}
+
+	// A wedged/old consumer may not close after Bye. Force-close remaining
+	// connections so the daemon still has a bounded shutdown.
+	d.conns.Range(func(k, _ any) bool {
+		if c, ok := k.(net.Conn); ok {
+			_ = c.Close()
+		}
+		return true
+	})
+	select {
+	case <-doneCh:
+	case <-time.After(daemonShutdownTimeout):
 		d.log.Warn("bus: shutdown: consumer goroutines did not drain within 2s")
 	}
+}
+
+func sourceShutdownReason(err error) string {
+	if errors.Is(err, runtimecred.ErrRuntimeTokenRejected) {
+		return transport.ByeReasonRuntimeTokenRejected
+	}
+	return "shutdown"
+}
+
+func normalizedShutdownReason(reasons ...string) string {
+	if len(reasons) > 0 && reasons[0] == transport.ByeReasonRuntimeTokenRejected {
+		return transport.ByeReasonRuntimeTokenRejected
+	}
+	return "shutdown"
 }
 
 // signalReady writes a single 'R' byte to the ready pipe (if provided) and

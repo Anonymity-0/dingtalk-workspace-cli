@@ -30,6 +30,8 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pat"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/agentproduct"
 )
 
 func TestIsPatScopeError_MissingScope(t *testing.T) {
@@ -129,6 +131,10 @@ func TestPrintPatAuthError_HumanReadable(t *testing.T) {
 
 func TestPrintPatAuthJSON_MachineReadable(t *testing.T) {
 	t.Setenv(authpkg.AgentCodeEnv, "")
+	// PAT browser policy is user-configurable. Isolate the config directory so
+	// this serializer test exercises the built-in CLI-owned default instead of
+	// inheriting the developer's ~/.dws/pat_policy.json.
+	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
 	var buf strings.Builder
 	scopeErr := &PatScopeError{
 		Identity:     "user",
@@ -213,8 +219,16 @@ func TestPatScopeError_Error(t *testing.T) {
 // /cli/oauth/device/poll?flowId=<fid> with the given status sequence.
 // It also writes the server URL into a temp DWS_CONFIG_DIR/mcp_url so that
 // GetMCPBaseURL() returns the test server address.
+func stubPATPollAccessToken(t *testing.T) {
+	t.Helper()
+	testseam.Swap(t, &patResolveAccessToken, func(context.Context, string, string) (string, error) {
+		return "", authpkg.ErrTokenDataNotFound
+	})
+}
+
 func setupPollServer(t *testing.T, statuses []authpkg.DevicePollResponse) (*httptest.Server, string) {
 	t.Helper()
+	stubPATPollAccessToken(t)
 	var callCount atomic.Int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -376,6 +390,7 @@ func TestPollPatDeviceFlow_ServerErrorFallback(t *testing.T) {
 }
 
 func TestPollPatDeviceFlow_RedirectSkipped(t *testing.T) {
+	stubPATPollAccessToken(t)
 	// When server returns 302 (SSO redirect), poll should continue until real response.
 	var callCount int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -535,6 +550,7 @@ func (m *mockRunner) Run(ctx context.Context, inv executor.Invocation) (executor
 // It responds to device poll requests with the given status after the first poll.
 func setupHandlePATServer(t *testing.T, terminalStatus string, authCode string) (*httptest.Server, string) {
 	t.Helper()
+	stubPATPollAccessToken(t)
 	var pollCount atomic.Int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -643,6 +659,95 @@ func TestEnrichPATErrorWithOpenBrowserKeepsAuthorizationURLAmpersandReadable(t *
 	}
 	if _, ok := data["authorizationUrl"]; ok {
 		t.Fatalf("data.authorizationUrl should be omitted from enriched PAT payload")
+	}
+}
+
+func TestCrossPlatformCoverageHandlePatAuthCheckOrgPolicyDenied(t *testing.T) {
+	t.Setenv(authpkg.AgentCodeEnv, "")
+	originalClientID := authpkg.ClientID()
+	originalClientSecret := authpkg.ClientSecret()
+	t.Cleanup(func() {
+		authpkg.SetClientID(originalClientID)
+		authpkg.SetClientSecret(originalClientSecret)
+	})
+
+	originalOpenBrowser := openBrowserFunc
+	t.Cleanup(func() { openBrowserFunc = originalOpenBrowser })
+
+	for _, test := range []struct {
+		name   string
+		format string
+	}{
+		{name: "structured", format: "json"},
+		{name: "human"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			configDir := t.TempDir()
+			t.Setenv("DWS_CONFIG_DIR", configDir)
+			if _, err := pat.SetBrowserPolicy(configDir, "", true); err != nil {
+				t.Fatalf("SetBrowserPolicy(default) error = %v", err)
+			}
+
+			authpkg.SetClientID("existing-client-id")
+			authpkg.SetClientSecret("existing-client-secret")
+			opened := false
+			openBrowserFunc = func(string) error {
+				opened = true
+				return nil
+			}
+			retried := false
+			runner := &runtimeRunner{
+				globalFlags: &GlobalFlags{Format: test.format},
+				fallback: &mockRunner{runFunc: func(context.Context, executor.Invocation) (executor.Result, error) {
+					retried = true
+					return executor.Result{}, nil
+				}},
+			}
+			raw := `{"success":false,"code":"PAT_ORG_POLICY_DENIED","data":{"hint":"组织策略已禁止当前工具所需的开源数据权限","scope":"contact.user.read","flowId":"terminal-flow","uri":"https://example.com/pat","clientId":"denied-client-id","clientSecret":"denied-client-secret","openBrowser":true}}`
+
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+			var out bytes.Buffer
+			_, err := handlePatAuthCheck(ctx, runner, executor.Invocation{
+				CanonicalProduct: "contact",
+				Tool:             "get_current_user_profile",
+				CanonicalPath:    "contact.get_current_user_profile",
+			}, &apperrors.PATError{RawJSON: raw}, configDir, &out)
+			if err == nil {
+				t.Fatal("expected PATError")
+			}
+			if got := strings.TrimSpace(out.String()); got != "" {
+				t.Fatalf("terminal denial produced human authorization or polling output %q", got)
+			}
+			if opened {
+				t.Fatal("terminal denial opened a browser")
+			}
+			if retried {
+				t.Fatal("terminal denial retried the invocation")
+			}
+			if got := authpkg.ClientID(); got != "existing-client-id" {
+				t.Fatalf("client ID = %q, want existing process credential preserved", got)
+			}
+			if got := authpkg.ClientSecret(); got != "existing-client-secret" {
+				t.Fatalf("client secret = %q, want existing process credential preserved", got)
+			}
+
+			patOut, ok := err.(*apperrors.PATError)
+			if !ok {
+				t.Fatalf("expected *PATError, got %T: %v", err, err)
+			}
+			var payload map[string]any
+			if err := json.Unmarshal([]byte(patOut.RawJSON), &payload); err != nil {
+				t.Fatalf("json.Unmarshal(PAT payload) error = %v\nraw=%s", err, patOut.RawJSON)
+			}
+			data, _ := payload["data"].(map[string]any)
+			if got, ok := data["openBrowser"].(bool); !ok || got {
+				t.Fatalf("data.openBrowser = %#v, want false", data["openBrowser"])
+			}
+			if got, _ := data["hint"].(string); !strings.Contains(got, "组织策略") {
+				t.Fatalf("data.hint = %q, want org policy guidance", got)
+			}
+		})
 	}
 }
 
@@ -913,10 +1018,11 @@ func TestHandlePatAuthCheck_HostControlledFlowIDPassthrough(t *testing.T) {
 	t.Setenv("DWS_CONFIG_DIR", tmpDir)
 	// Host-owned decision: driven ONLY by DINGTALK_DWS_AGENTCODE.
 	// DINGTALK_AGENT is set to demonstrate it does NOT leak into
-	// hostControl.clawType — the open-source build pins that to the
-	// literal edition.DefaultOSSClawType value ("openClaw").
+	// hostControl.clawType. DWS_AGENT_PRODUCT is also set to demonstrate
+	// that Product does not change the open-source fixed "openClaw" value.
 	t.Setenv(authpkg.AgentCodeEnv, "agt-sales")
 	t.Setenv("DINGTALK_AGENT", "sales-copilot")
+	t.Setenv(agentproduct.EnvName, "qwenwork")
 
 	mock := &mockRunner{
 		runFunc: func(ctx context.Context, inv executor.Invocation) (executor.Result, error) {
@@ -960,7 +1066,7 @@ func TestHandlePatAuthCheck_HostControlledFlowIDPassthrough(t *testing.T) {
 	}
 	hostControl, _ := data["hostControl"].(map[string]any)
 	if got, _ := hostControl["clawType"].(string); got != "openClaw" {
-		t.Fatalf("hostControl.clawType = %q, want openClaw (hard-wired by open-source edition)", got)
+		t.Fatalf("hostControl.clawType = %q, want openClaw (open-source edition default)", got)
 	}
 	if got, _ := hostControl["callbackOwner"].(string); got != "host" {
 		t.Fatalf("hostControl.callbackOwner = %q, want host", got)

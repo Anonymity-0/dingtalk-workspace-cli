@@ -65,7 +65,10 @@ func TestValidate_ForceRequiresForeground(t *testing.T) {
 	if !errors.Is(err, ErrForceRequiresForeground) {
 		t.Fatalf("err = %v, want ErrForceRequiresForeground", err)
 	}
-	if !strings.Contains(err.Error(), "event stop && dws event consume") {
+	for _, recoveryStep := range []string{"event stop --all --dry-run", "event stop --all --yes", "event consume"} {
+		if strings.Contains(err.Error(), recoveryStep) {
+			continue
+		}
 		t.Errorf("error message must include the recovery hint, got: %s", err.Error())
 	}
 
@@ -134,6 +137,7 @@ func TestPrintDryRun_RendersAllSetFields(t *testing.T) {
 	c.EventTypes = []string{"im.*", "approval.*"}
 	c.Filter = "^im\\."
 	c.Format = FormatCompact
+	c.Flatten = true
 	c.OutputDir = "/tmp/events"
 	c.Routes, _ = ParseRoutes([]string{`^im\.=dir:/tmp/im/`})
 	c.MaxEvents = 5
@@ -148,7 +152,7 @@ func TestPrintDryRun_RendersAllSetFields(t *testing.T) {
 	wants := []string{
 		"client_id", "workdir", "ipc_endpoint", "im.*,approval.*",
 		"^im\\.", "compact", "/tmp/events", "route[0]", "max_events       : 5",
-		"duration", "true",
+		"duration", "flatten          : true", "true",
 	}
 	for _, w := range wants {
 		if !strings.Contains(out, w) {

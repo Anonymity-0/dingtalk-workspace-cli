@@ -30,9 +30,9 @@ import (
 type SpawnFunc func(SpawnConfig) (pid int, err error)
 
 // DiscoverConfig describes one discover attempt. WorkDir holds bus.lock and
-// usually (on Unix) bus.sock — see dwsevent.IPCEndpoint for the short-path
-// fallback when WorkDir is too deep; the caller must mkdir it with
-// pkg/config.DirPerm beforehand.
+// persistent bus metadata; Unix sockets live in a private per-user runtime
+// directory so WorkDir may reside on a shared filesystem without socket
+// support. The caller must mkdir WorkDir with pkg/config.DirPerm beforehand.
 type DiscoverConfig struct {
 	WorkDir     string
 	IPCEndpoint string
@@ -55,6 +55,12 @@ const (
 	defaultDialBackoff    = 25 * time.Millisecond
 	defaultDialMaxBackoff = 250 * time.Millisecond
 	defaultDialDeadline   = 5 * time.Second
+)
+
+var (
+	discoverDial     = transport.Dial
+	discoverMkdirAll = os.MkdirAll
+	discoverSpawn    = Spawn
 )
 
 // Discover returns a connected net.Conn to the bus for cfg.ClientID. If the
@@ -84,7 +90,7 @@ func Discover(cfg DiscoverConfig) (net.Conn, error) {
 		return nil, errors.New("busctl: ClientID is required")
 	}
 	if cfg.Spawn == nil {
-		cfg.Spawn = Spawn
+		cfg.Spawn = discoverSpawn
 	}
 	if cfg.DialBackoff == 0 {
 		cfg.DialBackoff = defaultDialBackoff
@@ -97,17 +103,18 @@ func Discover(cfg DiscoverConfig) (net.Conn, error) {
 	}
 
 	// Step 1: try dial.
-	if conn, err := transport.Dial(cfg.IPCEndpoint); err == nil {
+	if conn, err := discoverDial(cfg.IPCEndpoint); err == nil {
 		return conn, nil
 	}
 
 	// Step 2: ensure WorkDir, then spawn _bus.
-	if err := os.MkdirAll(cfg.WorkDir, config.DirPerm); err != nil {
+	if err := discoverMkdirAll(cfg.WorkDir, config.DirPerm); err != nil {
 		return nil, fmt.Errorf("busctl: mkdir workdir: %w", err)
 	}
 	_, spawnErr := cfg.Spawn(SpawnConfig{
-		ClientID:  cfg.ClientID,
-		ExtraArgs: cfg.SpawnExtraArgs,
+		ClientID:    cfg.ClientID,
+		IPCEndpoint: cfg.IPCEndpoint,
+		ExtraArgs:   cfg.SpawnExtraArgs,
 	})
 	if spawnErr != nil && !errors.Is(spawnErr, ErrSpawnFailed) {
 		// Hard error (couldn't even exec the child). Stop here — no bus
@@ -124,7 +131,7 @@ func Discover(cfg DiscoverConfig) (net.Conn, error) {
 	backoff := cfg.DialBackoff
 	var lastDialErr error
 	for time.Now().Before(deadline) {
-		conn, err := transport.Dial(cfg.IPCEndpoint)
+		conn, err := discoverDial(cfg.IPCEndpoint)
 		if err == nil {
 			return conn, nil
 		}

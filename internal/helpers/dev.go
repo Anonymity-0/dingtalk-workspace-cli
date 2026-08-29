@@ -14,6 +14,7 @@
 package helpers
 
 import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/spf13/cobra"
 )
@@ -34,6 +35,8 @@ func init() {
 //	             not a robot configuration)
 //	dev doc      open-platform developer doc search (bridges the devdoc
 //	             product; `dws devdoc` keeps working independently)
+//	dev mcp      MCP service, tool, auth, credential, and collaborator
+//	             authoring
 //
 // Future developer capabilities join as new subtrees here instead of new
 // top-level commands.
@@ -44,10 +47,30 @@ func (devHandler) Name() string {
 }
 
 func (devHandler) Command(runner executor.Runner) *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/dev.json
+	// products.dev). Catalog assembly stamps provenance contract_final.
+	contract.RegisterProductDecl(contract.ProductDecl{
+		ID: "dev",
+		HelpReferences: contract.HelpReferences{
+			RelatedSkills: []string{"dingtalk-misc"},
+			Documentation: []contract.HelpDocumentation{
+				contract.SkillDocumentation("开放平台应用深度指南", "dingtalk-misc", "references/devapp.md"),
+			},
+		},
+		Selection: contract.ProductSelectionDecl{
+			AgentSummary: "管理开放平台应用、权限、机器人、版本发布、本地连接器与 MCP 开发配置",
+			UseWhen: []string{
+				"创建/配置开放平台应用、机器人、权限、事件订阅、MCP 服务工具或发布版本",
+			},
+			AvoidWhen: []string{
+				"只查开放平台文档用 devdoc；业务聊天/邮信用 chat/mail",
+			},
+		},
+	})
 	root := &cobra.Command{
 		Use:               "dev",
 		Short:             "开放平台开发者能力",
-		Long:              "钉钉开放平台开发者命令组：应用生命周期管理（app）、机器人本地调试建联（connect）和开发文档搜索（doc）。MCP 服务/工具管理已迁移到 connector mcp。",
+		Long:              "钉钉开放平台开发者命令组：应用生命周期管理（app）、机器人本地调试建联（connect）、开发文档搜索（doc）与 MCP 服务工具配置（mcp）。",
 		Args:              cobra.NoArgs,
 		TraverseChildren:  true,
 		DisableAutoGenTag: true,
@@ -55,6 +78,7 @@ func (devHandler) Command(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	newGroupCommand(root)
 
 	doc := &cobra.Command{
 		Use:               "doc",
@@ -66,12 +90,14 @@ func (devHandler) Command(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
-	doc.AddCommand(newDevdocArticleSearchCommand())
+	newGroupCommand(doc)
+	doc.AddCommand(newDevDocSearchCommand(runner))
 
 	root.AddCommand(
 		newDevAppCommand(runner),
 		newDevAppRobotConnectCommand(runner),
 		doc,
+		newDevMCPCommand(runner),
 	)
 	return root
 }

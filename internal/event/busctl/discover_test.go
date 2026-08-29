@@ -36,6 +36,9 @@ func skipOnWindows(t *testing.T) {
 
 func shortTempDir(t *testing.T) string {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		return t.TempDir()
+	}
 	dir, err := os.MkdirTemp("/tmp", "dws-busctl-")
 	if err != nil {
 		t.Fatalf("mktemp: %v", err)
@@ -119,7 +122,10 @@ func TestDiscover_NoBus_SpawnSucceeds(t *testing.T) {
 			closer()
 		}
 	})
-	fakeSpawn := func(SpawnConfig) (int, error) {
+	fakeSpawn := func(cfg SpawnConfig) (int, error) {
+		if cfg.IPCEndpoint != sock {
+			t.Fatalf("spawn IPC endpoint = %q, want %q", cfg.IPCEndpoint, sock)
+		}
 		closer = startStubBus(t, sock)
 		return 12345, nil
 	}

@@ -24,6 +24,8 @@ import (
 	"time"
 )
 
+var busctlReadFull = io.ReadFull
+
 // ReadyFDEnv is the env var the spawned `event _bus` child inspects to find
 // the ready-pipe write end. The parent passes the FD number; child opens it
 // via os.NewFile(fd, "ready") and writes 'R' on success or 'E' on failure.
@@ -34,20 +36,21 @@ const ReadyFDEnv = "DWS_EVENT_BUS_READY_FD"
 // 10s is generous — bus startup is local-only work (file I/O + socket bind),
 // so 1s would normally suffice; the extra headroom covers cold-start
 // keychain prompts and slow CI machines.
-const ReadyTimeout = 10 * time.Second
+var ReadyTimeout = 10 * time.Second
 
-// ErrSpawnFailed is returned when the child reports startup failure via
-// the ready pipe ('E' byte). The child's exit error / log file holds the
-// actual cause; this sentinel just lets the caller distinguish "ready
-// pipe said no" from "ready pipe timed out / closed early".
-var ErrSpawnFailed = errors.New("busctl: bus child reported startup failure on ready pipe")
+var (
+	spawnExecutable = os.Executable
+	spawnPipe       = os.Pipe
+)
+
+// ErrSpawnFailed is returned when the child reports startup failure through
+// the Unix ready pipe or exits before binding the Windows named pipe.
+var ErrSpawnFailed = errors.New("busctl: bus child reported startup failure")
 
 // ErrSpawnTimeout is returned when ReadyTimeout elapses without any signal.
 var ErrSpawnTimeout = errors.New("busctl: bus child did not signal readiness within deadline")
 
-// SpawnConfig describes one spawn attempt. ClientID is the only field
-// inspected by the child; the rest govern process attributes the parent
-// applies before exec.
+// SpawnConfig describes one spawn attempt.
 type SpawnConfig struct {
 	// ExecPath is the dws binary to exec. Default os.Executable().
 	ExecPath string
@@ -55,18 +58,23 @@ type SpawnConfig struct {
 	// ClientID is passed as `--client-id` to `dws event _bus`. Required.
 	ClientID string
 
+	// IPCEndpoint is the bus endpoint the child binds. Windows uses the
+	// existing named pipe as its readiness handshake because os/exec does not
+	// support ExtraFiles there. Unix keeps the inherited ready-pipe protocol.
+	IPCEndpoint string
+
 	// ExtraArgs are appended after `--client-id`. Empty for normal use; tests
 	// pass `--extra-flag-for-test` etc.
 	ExtraArgs []string
 
-	// Env to pass to the child. Defaults to os.Environ(). The ReadyFDEnv
-	// entry is appended automatically.
+	// Env to pass to the child. Defaults to os.Environ(). Unix appends the
+	// ReadyFDEnv entry automatically; Windows removes any inherited copy.
 	Env []string
 }
 
-// Spawn forks a detached `dws event _bus --client-id <id>` child process and
-// waits for it to signal readiness via the ready pipe. Returns the child's
-// PID on success — the caller can then dial the bus IPC endpoint.
+// spawnWithReadyPipe is the Unix implementation behind Spawn. It forks a
+// detached `dws event _bus --client-id <id>` child and waits for the inherited
+// ready pipe. Windows has a named-pipe implementation in spawn_windows.go.
 //
 // stdio detach (plan invariant #7):
 //   - cmd.Stdout / cmd.Stderr set to nil so the child's own writes don't
@@ -82,12 +90,12 @@ type SpawnConfig struct {
 // Parent (this function):
 //   - Holds the read end open until either 1 byte is read or ReadyTimeout
 //   - Returns ErrSpawnFailed for 'E', ErrSpawnTimeout otherwise
-func Spawn(cfg SpawnConfig) (pid int, err error) {
+func spawnWithReadyPipe(cfg SpawnConfig) (pid int, err error) {
 	if cfg.ClientID == "" {
 		return 0, errors.New("busctl: SpawnConfig.ClientID is required")
 	}
 	if cfg.ExecPath == "" {
-		execPath, err := os.Executable()
+		execPath, err := spawnExecutable()
 		if err != nil {
 			return 0, fmt.Errorf("busctl: locate executable: %w", err)
 		}
@@ -97,7 +105,7 @@ func Spawn(cfg SpawnConfig) (pid int, err error) {
 		cfg.Env = os.Environ()
 	}
 
-	pr, pw, err := os.Pipe()
+	pr, pw, err := spawnPipe()
 	if err != nil {
 		return 0, fmt.Errorf("busctl: pipe: %w", err)
 	}
@@ -151,7 +159,7 @@ func waitReady(pr *os.File) error {
 	done := make(chan result, 1)
 	go func() {
 		buf := make([]byte, 1)
-		n, err := io.ReadFull(pr, buf)
+		n, err := busctlReadFull(pr, buf)
 		if err != nil {
 			done <- result{err: err}
 			return

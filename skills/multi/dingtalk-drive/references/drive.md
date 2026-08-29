@@ -1,561 +1,114 @@
-# 钉盘 (drive) 命令参考
+# Drive 低频能力参考
 
-钉盘 = DingTalk Drive，用于云端文件存储 / 上传 / 下载 / 目录管理。不是在线文档编辑；要编辑文档请用 [doc](./doc.md)。
+仅在根 Skill 的 Golden Route 不足时读取本文件的一个相关章节。高频搜索、列表、检查、单文件传输和文件夹同步直接按根 Skill 执行。
 
-## 查询命令帮助
+## 身份与目标位置
 
-当你不确定某个命令的具体参数、格式或可选项时，**优先执行 `--help` 查询**，不要猜测参数名或凭记忆编造。
+- `--node`、`--folder`、`--remote-folder` 使用 dentryUuid/fileId；数字 dentryId 不能替代。
+- 回收站恢复使用 `recycleItemId`，不能复用删除前的 nodeId。
+- URL 类型不明时只执行一次 `dws drive info --node <URL> --format json`，按真实 nodeId/nodeType 分流。
+- 普通文件夹目标使用 `--folder`；明确知识库 workspace 才使用 `--workspace`。零命中、多候选或类型不明时停止。
+
+## Runtime 确认与首次执行
+
+- 先解析唯一目标，再以精确 leaf Schema 和 Runtime gate 判断是否需要确认；不要通过一次缺少 `--yes` 的失败调用探测确认要求。
+- Runtime 要求确认且当前请求已明确授权具体节点/文件夹、动作与影响时，首次正式远端写调用直接追加 `--yes`。诸如“整理一下”“处理这些文件”不能视为对删除、覆盖、移动或公开状态变更的精确授权。
+- Runtime 不要求确认时不添加 `--yes`。对象、范围或影响不完整时先询问；确认后必须保持同一 profile、目标、动作、范围和关键参数，任一项变化都要重新确认。
+- `--dry-run`、差异预览和只读检查不加 `--yes`；预览结果符合授权范围后，正式执行才追加。收到 `confirmation_required` 仅表示尚未通过预执行门禁，不代表业务写入成功，也不能据此盲目重放。
+
+## 高级目录列表
+
+普通浏览优先 `+list`。需要递归、名称模式、节点类型或修改时间过滤时使用 managed leaf：
 
 ```bash
-# 查看 drive 下所有子命令
-dws drive --help
-
-# 查看具体命令的完整参数说明
-dws drive list --help
-dws drive search --help
-dws drive upload --help
-dws drive download --help
-dws drive stats --help
-dws drive shortcut --help
+dws drive list --folder <dentryUuid> --depth 2 --pattern "*周报*" --format json
+dws drive list --folder <dentryUuid> --type file --start 7d --format json
 ```
 
-规则：
-- 参数名不确定时 → 先 `--help`，再调用
-- 报错 "unknown flag" 时 → `--help` 确认正确的 flag 名称
-- 不确定某个功能是否存在时 → `dws drive --help` 查看命令列表
-
-## 命令总览
-
-### 获取文件/文件夹列表
-
-```
-Usage:
-  dws drive list [flags]
-Example:
-  dws drive list --limit 20
-  dws drive list --limit 20 --folder <dentryUuid> --order-by name --order asc
-Flags:
-      --limit int           每页返回数量，默认 20，最大 50 (可选)
-      --cursor string       分页游标，首次不传 (可选)
-      --order string        排序方向: asc|desc，默认 desc (可选，仅钉盘)
-      --order-by string     排序字段: createTime|modifyTime|name (可选，仅钉盘)
-      --folder string       父节点 ID (dentryUuid)，不传则列出空间根目录 (可选)
-      --space-id string     钉盘空间 ID (纯数字)，不传则使用「我的文件」对应 spaceId (可选)
-      --workspace string    文档空间/知识库 ID (加密 string 或 URL)，传入则路由到文档空间 (可选)
-      --thumbnail           是否返回缩略图信息 (可选，仅钉盘)
-```
-
-> 统一入口：默认列钉盘空间（`--space-id` 纯数字）；传 `--workspace` 时路由到文档空间/知识库列表。
-
-### 获取钉盘空间列表
-
-> **Deprecated**：推荐改用 `dws wiki space list --type orgSpace` / `--type mySpace`（见 [wiki.md](./wiki.md)）。本命令仍可用，仅作兼容保留。
-> 适用场景：复制/移动文件到「我的文件」或团队空间根目录时，先取 `rootFolderId`；或者枚举用户可访问的团队空间。
-
-```
-Usage:
-  dws drive list-spaces [flags]
-Example:
-  dws wiki space list --type orgSpace     # 推荐
-  dws wiki space list --type mySpace      # 推荐
-  dws drive list-spaces                   # deprecated
-  dws drive list-spaces --space-type orgSpace --limit 20 --cursor <TOKEN>
-Flags:
-      --space-type string   空间类型: orgSpace=企业空间(默认), mySpace=我的文件 (可选)
-      --limit int           每页返回数量 (默认 20，最大 50)，仅 spaceType 为 orgSpace 时有效
-      --cursor string       分页游标，仅企业空间支持分页 (可选)
-```
-
-spaceType 筛选规则：
-- `orgSpace`（默认/不传）：返回企业空间列表，支持 `nextToken` 分页
-- `mySpace`：返回用户的"我的文件"个人空间（单个，不支持分页）
-
-返回字段说明：
-- `spaceId` — 空间 ID，用于 `list`/`info`/`upload` 等命令的 `--space-id`
-- `spaceName` — 空间名称（如"全员文件夹"、"我的文件"）
-- `rootFolderId` — 空间根目录的 dentryUuid，可作为 `drive copy/move` 的 `--folder` 参数
-- `spaceType` — 空间类型（如 `orgSpace`）
-- `nextToken` — 若不为空，表示还有更多空间可查询（仅企业空间）
-
-### 搜索钉盘文件/文件夹/空间
-
-按关键词全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果。不同于 `list`（需要明确的 spaceId/folder 逐层遍历），`search` 用于不知道具体位置、只记得名称/关键词的场景。
-
-```
-Usage:
-  dws drive search [flags]
-Example:
-  dws drive search --query "季度汇报"
-  dws drive search --query "合同" --target file --extensions pdf,docx
-  dws drive search --query "项目" --target space
-  dws drive search --query "方案" --created-from 1700000000000 --created-to 1710000000000
-  dws drive search --query "周报" --creator-uids 012345
-  dws drive search --query "报告" --limit 30 --cursor <pageToken>
-Flags:
-      --query string           搜索关键词 (必填)
-      --target string          搜索范围: all(默认,聚合钉盘+文档空间) | file(仅钉盘文件) | space(仅钉盘空间) (可选)
-      --file-types strings     按文件内容类型过滤，逗号分隔: alidoc,document,image,video,audio,archive (仅 target=file/all 生效)
-      --extensions strings     按文件扩展名过滤，不含点号，逗号分隔 (如 pdf,docx,adoc)
-      --creator-uids strings   按创建者用户 ID 过滤，逗号分隔
-      --created-from int       创建时间起始 (毫秒时间戳，含)
-      --created-to int         创建时间截止 (毫秒时间戳，含)
-      --modified-from int      修改时间起始 (毫秒时间戳，含)
-      --modified-to int        修改时间截止 (毫秒时间戳，含)
-      --limit int              每页返回数量（默认 10，最大 30）
-      --cursor string          分页游标，从上次返回的 nextCursor 获取 (可选)
-```
-
-搜索范围 (`--target`) 选择规则：
-- `all`（默认）：同时搜钉盘文件与文档空间，聚合返回 — 不确定目标位置时使用
-- `file`：只搜钉盘文件 / 文件夹，支持 `--file-types` / `--extensions` 过滤 — 明确是找钉盘文件时使用
-- `space`：只搜钉盘团队空间 — 明确知道空间名、需快速定位空间 spaceId/rootFolderId 时使用
-
-结果中 `source` 字段区分来源：`drive` / `doc`。如果需要在某个知识库内搜索，请使用 `dws wiki node search --workspace <workspaceId>`。
-
-> **提示**：结果按相关性排序，首页未命中时优先调整关键词 / 补充 `--file-types`/`--extensions` 缩小范围 / 加上时间范围，而非反复翻页。
-
-### 获取最近访问/编辑的文档列表
-
-```
-Usage:
-  dws drive recent [flags]
-Example:
-  dws drive recent
-  dws drive recent --operate-type 1
-  dws drive recent --creator-type 1 --limit 10
-  dws drive recent --file-types 0,1 --operate-type 0
-Flags:
-      --file-types ints     按文档类型过滤，逗号分隔 (参考 RecentAccessType 枚举) (可选)
-      --operate-type ints   按操作类型过滤: 0=最近访问(默认), 1=最近编辑; 不传默认仅返回最近访问(0) (可选)
-      --creator-type int    按创建人过滤: 0=全部(默认), 1=我创建, 2=他人创建 (可选)
-      --org-ids ints        按资源所属组织 ID 过滤，逗号分隔 (可选)
-      --limit int           每页数量 (默认 20，最大 20) (可选)
-      --cursor string       分页游标，从上次返回的 nextCursor 获取 (可选)
-```
-
-返回字段说明：
-- `recentItems[]` — 最近访问/编辑的文档列表
-  - `nodeId` — 文档节点 ID，可用于 `doc read/info/update` 的 `--node`
-  - `name` — 文档名称
-  - `contentType` — 内容类型（如 ALIDOC）
-  - `extension` — 扩展名（如 adoc、axls、able）
-  - `docUrl` — 文档在线访问 URL
-  - `operateType` — 操作类型：LAUNCH=访问，EDIT=编辑
-  - `accessTime` — 最近访问时间
-  - `createTime` / `updateTime` — 创建/更新时间
-- `nextCursor` — 翻页游标，传入 `--cursor` 获取下一页
-- `hasMore` — 是否还有更多数据
-
-### 获取文件元数据信息
-
-```
-Usage:
-  dws drive info [flags]
-Example:
-  dws drive info --node <dentryUuid>
-Flags:
-      --node string       节点 ID (dentryUuid) (必填)
-      --space-id string   节点所属空间 ID (可选)
-```
-
-### 获取节点统计信息
-
-```text
-Usage:
-  dws drive stats --node <NODE_ID_OR_URL>
-```
-
-返回节点可用的阅读、编辑、评论、点赞、预览或下载等统计维度；不同文件类型返回字段可能不同。本命令只读。
-
-### 创建节点快捷方式
-
-```text
-Usage:
-  dws drive shortcut --node <SOURCE_NODE> [--folder <TARGET_FOLDER>] [--workspace <WORKSPACE_ID>]
-Example:
-  dws drive shortcut --node <SOURCE_NODE>
-  dws drive shortcut --node <SOURCE_NODE> --folder <TARGET_FOLDER>
-  dws drive shortcut --node <SOURCE_NODE> --workspace <WORKSPACE_ID>
-```
-
-`--folder` 和 `--workspace` 均可省略，此时由服务端选择默认位置。创建后应通过 `drive list` 回读目标位置。
-
-### 文件内容获取路由规则
-
-> 当用户请求"分析/查看/读取某个钉盘文件内容"时，**必须先调用 `dws drive info` 获取文件元数据**，再根据返回的 `extension` 字段选择对应链路。
-> 注意：若检测到钉钉文档类型（adoc/axls/amind/adraw），会自动跟进调用 `doc info` 返回更准确的文档信息。
-
-| extension | 文件类型 | 操作 | 命令 |
-|-----------|---------|------|------|
-| adoc | 在线文档 | 在线获取 Markdown 内容 | `dws doc read --node <nodeId>` |
-| axls | 在线表格 | 在线读取表格数据 | `dws sheet list` → `dws sheet range read` |
-| able | 多维表格 | 在线查询记录 | `dws aitable base get` → `dws aitable record query` |
-| 其他（pdf/docx/txt/png 等） | 普通文件 | **不支持在线分析**，需用户主动下载后本地查看 | `dws drive download --node <nodeId> --output <path>` |
-
-### 下载钉盘文件到本地
-
-下载流程一步到位：获取下载 URL → HTTP GET 下载文件二进制内容到本地。
-
-```
-Usage:
-  dws drive download [flags]
-Example:
-  dws drive download --node <dentryUuid> --output ./report.pdf
-  dws drive download --node <dentryUuid> --output ~/downloads/
-Flags:
-      --node string       文件 ID (dentryUuid) (必填)
-      --output string     本地保存路径 (必填)，可以是文件路径或目录；如果指定目录，文件名从下载 URL 中自动推断
-      --space-id string   文件所属空间 ID (可选)
-```
-
-> **注意**：`--output` 是必填参数，不传会报错。
-
-### 创建文件夹
-
-```
-Usage:
-  dws drive mkdir [flags]
-Example:
-  dws drive mkdir --name "项目资料"
-  dws drive mkdir --name "子目录" --folder <dentryUuid>
-Flags:
-      --name string       文件夹名称，最长 50 字符 (必填)
-      --folder string     父节点 ID (dentryUuid)，不传则在空间根目录下创建 (可选)
-      --space-id string   目标空间 ID，不传则使用「我的文件」 (可选)
-```
-
-> `mkdir` 在钉盘空间创建文件夹；要在文档空间/知识库中创建文件夹，用 `dws wiki node create --type folder --workspace <ID>`（见 [wiki.md](./wiki.md)）。
-
-### 上传本地文件到钉盘
-
-> **注意：** 上传文件首选 `dws drive upload` 一条命令（内部自动完成三步流程），不要手动走 `upload-info` + `curl` + `commit` 三步。
-
-```
-Usage:
-  dws drive upload [flags]
-Example:
-  dws drive upload --file ./report.pdf
-  dws drive upload --file ./slides.pptx --file-name "Q1汇报.pptx"
-  dws drive upload --file ./data.xlsx --folder <dentryUuid>
-Flags:
-      --file string        本地文件路径 (必填)
-      --file-name string   文件显示名称 (默认使用文件名)
-      --folder string      父节点 ID (dentryUuid)，不传则上传到空间根目录 (可选)
-      --space-id string    目标钉盘空间 ID，不传则使用「我的文件」 (可选)
-      --workspace string   目标知识库 ID，传入时路由到文档空间上传 (可选)
-      --convert            是否转换为钉钉在线文档 (仅文档空间上传时生效)
-      --mime-type string   文件 MIME 类型，不传则自动推断 (可选)
-```
-
-`upload` 命令内部自动完成三步流程（获取凭证 → OSS PUT → 提交入库），无需手动分步操作。上传到知识库/文档空间时加 `--workspace` 参数。
-
-### 获取上传凭证 (手动三步·仅特殊场景)
-
-> 仅当需要自定义流式上传、无法使用 `upload` 一条命令时才走手动三步：`upload-info` → HTTP PUT → `commit`。
-
-```
-Usage:
-  dws drive upload-info [flags]
-Example:
-  dws drive upload-info --file-name "report.pdf" --file-size 102400
-  dws drive upload-info --file-name "slides.pptx" --file-size 512000 --folder <dentryUuid>
-Flags:
-      --file-name string   文件名含后缀 (必填)
-      --file-size int      文件大小，单位字节 (必填)
-      --mime-type string   MIME 类型 (可选，服务端会自动推断)
-      --folder string      父节点 ID (dentryUuid)，不传则上传到空间根目录 (可选)
-      --space-id string    目标空间 ID，不传则使用「我的文件」 (可选)
-```
-
-### 提交上传 (手动三步·第三步)
-
-```
-Usage:
-  dws drive commit [flags]
-Example:
-  dws drive commit --file-name "report.pdf" --file-size 102400 --upload-id <UPLOAD_ID>
-Flags:
-      --file-name string   文件名含后缀 (必填，须与 upload-info 一致)
-      --file-size int      文件大小，单位字节 (必填，须与 upload-info 一致)
-      --upload-id string   upload-info 返回的 uploadId (必填)
-      --folder string      父节点 ID (dentryUuid)，须与 upload-info 一致 (可选)
-      --space-id string    空间 ID，不传则使用「我的文件」 (可选)
-```
-
-### 删除文件/文件夹到回收站
-
-> **CAUTION:** 不可逆操作 — 执行前必须向用户确认。
-
-```
-Usage:
-  dws drive delete [flags]
-Example:
-  dws drive delete --node <dentryUuid> --format json    # 查询 fileId: dws drive list
-Flags:
-      --node string   文件/文件夹 ID (dentryUuid)，即 drive list 返回的 fileId (必填)
-
-Global Flags:
-      --yes   跳过二次确认 (危险操作，建议先与用户确认)
-```
-
-> 由当前二进制静态注册（路由到 doc 服务的 `delete_document` tool）；如果当前版本未暴露，调用前可用 `dws drive delete --help` 验证。
-注意：`--node` 使用的是 `drive list` 返回结果中的 `fileId` 字段（即 `dentryUuid`），**不是** `dentryId` 字段。
-删除是软删除（进回收站），但仍需用户明确确认；不要在自动化脚本里默认带 `--yes`。
-
-### 查看回收站文件列表
-
-```
-Usage:
-  dws drive recycle list [flags]
-Example:
-  dws drive recycle list
-  dws drive recycle list --space-id 12345 --limit 10
-Flags:
-      --space-id string    钉盘空间 ID (选填，不传则返回所有空间)
-      --limit int          返回条数上限 (默认 20，最大 50)
-      --cursor string      分页游标 (选填)
-```
-
-### 还原回收站文件
-
-```
-Usage:
-  dws drive recycle restore [flags]
-Example:
-  dws drive recycle restore --id <recycleItemId>
-Flags:
-      --id string    回收项 ID (必填，从 recycle list 获取)
-```
-
-> **注意**：还原操作可能是异步的（返回 `async=true` 和 `taskId`）。
-
-## 意图判断
-
-用户说"我的文件/钉盘/网盘/云盘" → `list`
-用户说"最近访问/最近打开/最近编辑/最近文档" → `recent`（默认仅最近访问，`--operate-type 1` 仅最近编辑，`--operate-type 0,1` 全部）
-用户说"钉盘空间/团队文件/有哪些空间/空间列表/团队文件列表" → `wiki space list --type orgSpace`（`drive list-spaces` 已 deprecated）
-用户说"搜索钉盘文件/钉盘里找个文件/查找某个钉盘文件/钉盘中搜索" → `search`
-用户说"文件详情/文件信息" → `info`
-用户说"文件阅读量/编辑量/评论数/下载数/节点统计" → `stats`
-用户说"给文件创建快捷方式/放一个链接到目标文件夹" → `shortcut`
-用户说"下载文件" → `download` 指定 `--output` 保存到本地
-用户说"新建文件夹/创建目录" → `mkdir`（钉盘空间）/ `wiki node create --type folder`（文档空间）
-用户说"上传文件/传文件到钉盘" → `upload`（首选此命令，自动完成三步流程）
-用户说"复制文件/移动文件/搬到/移到" → `copy` / `move`
-用户说"重命名/改名" → `rename`
-用户说"删除文件/删除文件夹/移到回收站" → `delete`（危险操作，需确认）
-用户说"回收站/查看回收站/回收站列表/回收站里有什么" → `recycle list`
-用户说"恢复文件/还原删除的文件/从回收站恢复/还原回收站文件" → `recycle restore`
-用户说"给文档授权/分享权限" → `permission add`
-用户说"公开文件/互联网公开/设置公开/让互联网所有人可访问" → `publish set`
-用户说"关闭公开/取消公开/取消互联网访问" → `publish unset`
-用户说"查看公开状态/是否公开/发布状态" → `publish get`
-
-关键区分: drive(文件管理) vs doc(文档内容读写) vs wiki(空间管理)
-
-**drive search vs wiki node search**: 用户提到"钉盘/网盘/我的文件里搜" → `drive search`；提到"知识库/文档空间/workspace 里搜" → `wiki node search`；未明确目标时 `drive search`（全局聚合搜索）。
-
-**drive upload vs doc upload**: 文件上传统一走 `drive upload`。上传到知识库/文档空间时加 `--workspace` 参数。
-
-**drive permission vs wiki member**: "给某篇文档/文件授权" → `drive permission add`（节点级）；"给某个知识库整体加成员" → `wiki member add`（空间级）
-
-**创建在线文档/表格/脑图**: drive 不支持创建文件，需走 `wiki node create --type <type>`（创建空节点）或 `doc create`（创建并写入内容）。
-
-**导出文档/导出为Word**: 导出是内容层操作，走 `doc export`，不属于 drive。
-
-把图片/文件发到群里一般直接用 `chat message send --msg-type file --file-path <本地路径>`（见 [chat.md](./chat.md)），无需先经 drive 上传。
-
-## 核心工作流
+- `--depth` 最大 5；递归总量上限以结果中的 `truncated/errors` 为准。
+- `--type file|folder` 是节点类型；`search --file-types` 是内容类型，二者不同。
+- `--start/--end` 接受 `24h/7d/2w`、日期或 RFC3339，按修改时间过滤。
+- 过滤模式是客户端有界扫描；`truncated=true` 不能声称全量。需要关键词检索时改用 `+search`。
+- `--latest` 遇到截断或目录读取失败会拒绝给出不完整 Top-N，按错误中的目录和恢复命令缩小范围。
+
+## 回收站
 
 ```bash
-# 1. 浏览「我的文件」根目录
-dws drive list --limit 20 --format json
-
-# 2. 进入子目录 — 提取 dentryUuid 作为 folder
-dws drive list --limit 20 --folder <dentryUuid> --format json
-
-# 3. 查看文件元数据
-dws drive info --node <dentryUuid> --format json
-
-# 4. 下载文件到本地
-dws drive download --node <dentryUuid> --output /tmp/ --format json
-
-# 5. 创建文件夹
-dws drive mkdir --name "项目资料" --format json
-
-# 6. 上传文件（首选 upload 命令，自动完成三步流程）
-dws drive upload --file ./报告.pdf --format json
-dws drive upload --file ./报告.pdf --folder <dentryUuid> --format json
-
-# 7. 删除文件/文件夹到回收站（危险操作：必须先向用户确认，用户同意后才加 --yes 执行）
-# 正确流程：1.向用户展示"即将删除「文件名」到回收站" → 2.等用户确认 → 3.执行下面命令
-dws drive delete --node <dentryUuid> --yes --format json
-
-# 8. 查看回收站并还原文件
-dws drive recycle list --format json
-dws drive recycle restore --id <recycleItemId> --format json
+dws drive +delete --node <dentryUuid>
+dws drive +recycle-list --limit 20
+dws drive +recycle-restore --id <recycleItemId>
 ```
 
-## 文档空间管理命令
+删除前核对名称、类型和 ID；恢复从列表真实返回取 `id`。恢复后使用返回的新 nodeId，不沿用旧 ID。
 
-> 以下命令操作的是**文档空间**（知识库 / 我的文档），底层路由到 doc 服务。
-> 与钉盘命令（list / mkdir / upload 等）的区别：钉盘命令操作钉盘空间（spaceId 纯数字），文档空间命令操作知识库/我的文档（workspaceId 加密 string）。
+## 普通文件历史版本
 
-### 复制/移动/重命名文件
+| 意图 | 入口 | 完成证据 |
+|---|---|---|
+| 列版本 | `+version-history` | 版本集合与分页字段 |
+| 查看版本 | `+version-get` | 请求的 version |
+| 下载版本 | `+version-download` | 相对路径存在且 sizeBytes > 0 |
+| 回滚版本 | `+version-revert` | Runtime 确认后读回最新版本 |
 
-```
-Usage:
-  dws drive copy --node <ID> [--folder <TARGET>] [--workspace <WS>]
-  dws drive move --node <ID> [--folder <TARGET>] [--workspace <WS>]
-  dws drive rename --node <ID> --name "新名称"
-Flags:
-      --node string        文档/文件 ID 或 URL (必填)
-      --folder string      目标文件夹 nodeId
-      --workspace string   目标知识库 ID
-      --name string        新名称 (仅 rename 必填)
-```
+这些入口只用于普通文件。adoc 版本走 Doc，axls 版本走 Sheet。
 
-> **rename 只传主名，不要带扩展名**：服务端会按文件原扩展名自动补一个后缀。若 `--name` 里已带扩展名（如 `报告.txt`），回读会变成双扩展名 `报告.txt.txt`。正确做法：`dws drive rename --node <ID> --name "报告"`（不含 `.txt`），系统自动补回 `报告.txt`。
+## 收藏、统计与封面
 
-权限要求：copy 需对源文档有"阅读"权限且对目标文件夹有"编辑"权限；move 需对源文档有"管理"权限且对目标文件夹有"编辑"权限；rename 需对文档有"编辑"权限。
+- 收藏列表：`+star-list`；收藏/取消：`+star-add` / `+star-remove`。
+- 节点统计和封面优先并入 `+inspect --include-stats` / `--include-cover`；只取单项才用 `+stats` / `+cover`。
+- 收藏是个人状态，不代表共享或权限变化。
 
-> **字段选择**：`drive list` 返回中有 `dentryId`（数字格式）和 `fileId`（UUID 格式），**必须使用 `fileId`（UUID 格式）**作为 `--node` 和 `--folder` 参数值。
+## 普通文件评论
 
-### 创建文件夹（文档空间）
+普通 PDF、DOCX、XLSX 等本地文件使用 `dws drive comment`，复用 Doc/Sheet 的新评论服务链路。当前固定为文件级全文评论 `topicId=global`，不支持划词、单元格、页码、anchor 或 mention。
 
-drive 没有独立的文档空间建文件夹命令，在知识库/文档空间中创建文件夹走：
+旧 `drive comment list/create` 保留旧评论服务的行为和输出，仅作 deprecated 兼容入口。Agent 必须使用下面的 `list-v2/create-v2` 进入新评论体系。
 
 ```bash
-dws wiki node create --type folder --name "文件夹名" --workspace <WORKSPACE_ID> --format json
+dws drive comment list-v2 --node <dentryUuid> --format json
+dws drive comment create-v2 --node <dentryUuid> --content "请补充结论"
+dws drive comment list-replies --node <dentryUuid> --comment-key <commentKey> --format json
 ```
 
-详见 [wiki.md](./wiki.md)。
+完整生命周期包括 `list-v2/create-v2/reply/update/delete/batch-query/list-replies/resolve/restore/react-reply`。分页游标必须原样回传；`list-v2` 每页上限为 50，超过上限直接报错；写操作按 Runtime confirmation 执行，后续操作的 `commentKey` 必须来自真实返回。
 
-### 权限管理（文档节点级）
-
-> 仅适用于文档空间节点，不适用于钉盘文件。
-
-```
-Usage:
-  dws drive permission add --node <ID> --users uid1,uid2 --role READER
-  dws drive permission update --node <ID> --users uid1 --role EDITOR
-  dws drive permission list --node <ID>
-  dws drive permission remove --node <ID> --users uid1
-Flags:
-      --node string        目标节点 ID 或 URL (必填)
-      --users string       用户 userId 列表，逗号分隔 (add/update/remove 必填)
-      --role string        角色: MANAGER / EDITOR / DOWNLOADER / READER (add/update 必填)
-      --workspace string   知识库 ID (选填)
-      --limit int          返回成员数上限 (仅 list，默认 30，最大 200)
-      --filter-role string 按角色过滤: OWNER / MANAGER / EDITOR / DOWNLOADER / READER (仅 list)
-```
-
-### 文件互联网公开发布
-
-管理文件的互联网公开发布状态。公开后任何人通过链接即可访问，无需登录钉钉。操作者需要是文件的管理员或拥有者。
-
-> **`publish set` 和 `publish unset` 为 [危险] 操作，执行前需要向用户确认。确认后传入 `--yes` 跳过交互式确认。**
-
-```
-Usage:
-  dws drive publish set --node <fileId> [--permission READER|DOWNLOADER|EDITOR]
-  dws drive publish unset --node <fileId>
-  dws drive publish get --node <fileId>
-Example:
-  dws drive publish set --node <dentryUuid>
-  dws drive publish set --node <dentryUuid> --permission READER
-  dws drive publish get --node <dentryUuid>
-  dws drive publish unset --node <dentryUuid>
-Flags:
-      --node string         目标文件 ID (dentryUuid) 或 URL (必填)
-      --permission string   公开后的权限: READER(仅可查看) / DOWNLOADER(可查看和下载，默认) / EDITOR(可编辑)，仅 set 有效
-```
-
-子命令说明：
-- `publish set` — [危险] 设置文件为互联网公开，可选指定公开权限
-- `publish unset` — [危险] 关闭文件互联网公开
-- `publish get` — 查询文件当前的公开发布状态
-
-返回字段说明：
-- `published` — true=已公开，false=未公开
-- `publishPermission` — 当前公开权限（READER/DOWNLOADER/EDITOR）
-- `pendingApproval` — true=已提交审批待生效，false/null=无需审批或已直接生效
-- `docUrl` — 文件访问链接
-
-> **注意**：`drive export` 不存在。导出仅对自研文档 (adoc) 有意义，属于内容层操作，应使用 `doc export`。
-
-### 目标位置参数规则
-
-| 目标位置 | 参数传递方式 | 前置步骤 |
-|---------|-----------|---------|
-| 未指定目标（默认） | `--folder <rootFolderId>` | 先 `dws wiki space list --type mySpace` 获取「我的文件」的 `rootFolderId` |
-| 知识库空间根目录 | `--workspace <workspaceId>` | 无需额外步骤，直接传入 workspaceId |
-| 钉盘 space 根目录 | `--folder <rootFolderId>` | 先 `dws wiki space list --type orgSpace` 获取目标 space 的 `rootFolderId` |
-| 钉盘 space 下的子文件夹 | `--folder <fileId>` | 先 `dws drive list --space-id <spaceId>` 逐层浏览，获取目标文件夹的 `fileId`（dentryUuid 格式） |
-
-### 工作流示例
+## 公开状态
 
 ```bash
-# ── 场景默认: 用户未指定目标位置 → 复制/移动到「我的文件」根目录 ──
-dws drive list --space-id <SPACE_ID> --format json                       # 获取源文件 dentryUuid
-dws wiki space list --type mySpace --format json                         # 获取「我的文件」rootFolderId
-dws drive copy --node <源文件dentryUuid> --folder <我的文件rootFolderId> --format json
-
-# ── 场景 A: 复制钉盘文件到知识库空间根目录 ──
-dws drive copy --node <源文件dentryUuid> --workspace <TARGET_WS_ID> --format json
-
-# ── 场景 B: 移动钉盘文件到另一个钉盘 space 根目录 ──
-dws wiki space list --type orgSpace --format json
-dws drive move --node <源文件dentryUuid> --folder <目标space的rootFolderId> --format json
-# 注意：移动到其他 space 时只传 --folder，不传 --workspace
-
-# ── 场景 C: 复制钉盘文件到钉盘 space 下的子文件夹 ──
-dws drive list --space-id <TARGET_SPACE_ID> --format json
-dws drive copy --node <源文件dentryUuid> --folder <目标文件夹fileId> --format json
+dws drive +publish-get --node <dentryUuid>
+dws drive +publish-unset --node <dentryUuid>
 ```
 
-## 上下文传递表
+`+publish-get` 只读；`+publish-unset` 为高风险写。Runtime 虽注册了 `+publish-set`，但当前普通文件和在线文档都没有经过验证的开启公开闭环，因此根 Skill 明确不将它开放给 Agent。用户要求开启公开时，说明当前 Agent 路由不支持并停止；不要查询或执行 `+publish-set`、`drive publish set` 或其他替代写入口。只有补齐受支持节点上的真实 set→get→unset 闭环证据并更新 Agent 路由后，才重新开放该能力。
 
-| 操作 | 从返回中提取 | 用于 |
-|------|-------------|------|
-| `list` | **`fileId`**（UUID 格式，注意：不是 `dentryId`） | info / stats / shortcut / download / delete 的 --node；list / mkdir 的 --folder；`drive copy/move/shortcut` 的 --node 或 --folder |
-| `list` | `spaceId` | info / download / mkdir / upload 的 --space-id |
-| `list` | `nextCursor` | 下次 list 的 --cursor |
-| `list-spaces` / `wiki space list` | `rootFolderId` | `drive copy/move` 的 --folder（复制/移动到钉盘 space 根目录时） |
-| `list-spaces` / `wiki space list` | `spaceId` | list / info / download / mkdir / upload 的 --space-id |
-| `search` | **`fileId`**（文件/文件夹结果） | info / download / delete 的 --node；list 的 --folder |
-| `search` | `spaceId` / `rootFolderId`（空间结果） | list 的 --space-id；`drive copy/move` 的 --folder |
-| `search` | `nextCursor` | search 的 --cursor（翻页） |
-| `mkdir` | `fileId`（UUID 格式） | list / upload 的 --folder |
-| `upload` | `dentryUuid` | download / info 的 --node |
-| `recycle list` | `id`（回收项 ID） | recycle restore 的 --id |
-| `recycle list` | `name`（原始文件名） | 供用户确认还原目标 |
-| `recent` | `recentItems[].nodeId` / `docUrl` | doc read / info / update / block 操作的 --node |
-| `recent` | `nextCursor` | recent 的 --cursor（翻页） |
+## 权限
 
-> **重要**：`drive list` 返回结果中同时包含 `dentryId` 和 `fileId` 两个字段。所有需要传 `--node` 的命令（info / download / delete）必须使用 `fileId`（即 dentryUuid），**不要使用** `dentryId`。
+| 意图 | managed leaf |
+|---|---|
+| 查看成员权限 | `drive permission list` |
+| 查询节点权限设置（权限模式/分享范围/策略） | `permission get-setting` |
+| 添加、修改、移除成员 | `permission add` / `update` / `remove` |
+| 转移所有者 | `permission transfer-owner` |
+| 查看可申请权限和审批人 | `permission apply-info` |
+| 发起权限申请 | `permission apply` |
 
-## 注意事项
+只在意图命中时读取一个精确 leaf Schema。成员变更、转移所有者、发起申请和公开状态变更必须明确节点、用户、角色与影响范围。转移所有者时，在构造最终命令前必须让用户分别明确决定 `--reserve-role <MANAGER|EDITOR|DOWNLOADER|READER|NONE>` 和 `--recursive=<true|false>`；Agent 不得根据默认值、对象类型或便捷性自行选择任一项。两项决策与目标、新所有者均明确后，才按 Runtime confirmation 构造首次正式调用。
 
-- 不传 `--space-id` 时默认使用「我的文件」空间
-- 不传 `--folder` 时默认操作空间根目录
-- `--folder` 只能使用父文件夹的 `dentryUuid`。不要把 `drive info` 返回的数字型 `dentryId` 当作父目录
-- **`--limit` 有效上限为 50**：CLI 不做本地校验，传 `--limit 100` 不会报错，但服务端每页最多返回 50 条，超出部分无效。用户要求超过 50 条时，应使用 `--limit 50` 配合 `--cursor` 分页查询
-- `--order-by` 支持: `createTime`、`modifyTime`、`name`
-- **上传文件首选 `dws drive upload` 命令**；手动三步（`upload-info` → HTTP PUT → `commit`）仅用于自定义流式上传等特殊场景。手动三步时 HTTP PUT 必须把 upload-info 返回的 `headers` 全部回传，`Content-Type` 通常要留空；PUT 返回 200 后才能调 `commit`；`uploadId` 有过期时间，过期需重新 `upload-info`；`--folder` 在 upload-info / commit 中要保持一致
-- `--file-name` 必须包含扩展名（如 `report.pdf`）
-- `download` 需要指定 `--output`，CLI 会把文件保存到本地路径或目录
-- 文件名规则：头尾不能有空格；不能含 `*`、`"`、`<`、`>`、`|`、制表符；不能以 `.` 结尾
-- `shortcut` 会创建新节点，执行后必须通过 `drive list` 回读确认目标位置；`stats` 为只读命令
+`permission get-setting` 返回 `permissionMode`（INHERITED/INDEPENDENT，未知时为 null）、`shareScope`（可见范围与链接分享，密码明文不返回；`partnerIncluded`、`defaultRole` 等仅 ORGANIZATION 有意义，`linkShare` 仅开启链接分享时返回）和 `policies[]`（code/name/description/value/disabledValues/allowedValues；name/description 为中文名与值语义说明，随行必带；未下发的策略不返回，`node_spread_scope` 仅文件夹）。`disabledValues` 为不可设置取值列表（恒返回，无被禁档位时为空数组），每项含 `value`（被禁档位取值，与 value 同一值域）与 `reason`（服务端按请求语言返回的禁用原因文案，仅供展示理解，可为 null），与 allowedValues 互斥；示例：`{"value": "READER_AND_ABOVE", "reason": "企业安全策略要求不可低于可下载角色"}`。`value` 按策略分型：开关型为 ENABLED/DISABLED；member_invite、comment 为 READER_AND_ABOVE/DOWNLOADER_AND_ABOVE/EDITOR_AND_ABOVE/MANAGER_AND_ABOVE；node_spread、online_content_copy 为 DOWNLOADER_AND_ABOVE/EDITOR_AND_ABOVE/MANAGER_AND_ABOVE 或 NOBODY；node_spread_scope 为 ALL_NODES（限制对所有文档生效）/ PREVIEWABLE_ONLY（仅对可预览的文档生效）。NOBODY=该操作对所有人禁止；XXX_AND_ABOVE=不低于该角色才允许。name/description 示例（文案与产品权限设置页一致）：external_share「添加企业外协作者」：是否允许添加企业外的人为协作者（ENABLED=允许，DISABLED=禁止）；node_spread「谁可以下载、创建副本、打印」：允许哪些角色及以上的用户下载、创建副本、打印；NOBODY=所有人禁止下载、创建副本、打印；node_move_forbidden「禁止移动」：是否禁止移动到其他知识库或团队共享文件夹（ENABLED=禁止移动，DISABLED=允许移动）。
 
-## 自动化脚本
+发起权限申请先只读执行 `permission apply-info`。正式 `permission apply` 会通知审批人；调用前必须向用户逐项回显并确认资源、申请角色、审批人和理由。Agent 不得默认选择第一位审批人、最高/最低角色或代写申请理由；用户未明确同意完整申请内容时停在确认环节。
 
-| 脚本 | 场景 | 用法 |
-|------|------|------|
-| [drive_tree_list.py](../../scripts/drive_tree_list.py) | 递归列出钉盘目录树结构 | `python drive_tree_list.py --depth 2` |
+## 快捷方式节点
 
-## 相关产品
+`+create-shortcut --node <源ID> [--folder <目标ID>|--workspace <知识库ID>]` 创建链接。在线文档节点需要保留版式的独立副本时使用 `+copy`；普通钉盘文件的独立副本必须经用户授权后走 download→upload，因为当前 `+copy` 会拒绝普通文件。源/目标类型不兼容时停止，不把快捷方式当普通文件继续覆盖。
 
-- [doc](./doc.md) — 文档内容读写（Markdown/块级编辑/导出），不是文件存储
-- [wiki](./wiki.md) — 知识库/空间管理层（空间列表、节点创建、空间内搜索、成员管理）
-- [chat](./chat.md) — 发送图片/文件消息用 `chat message send --msg-type file --file-path`
+## 错误恢复
+
+1. `unknown flag` 只查当前 leaf Help；`unknown command` 只查一次 Drive Shortcut 清单。
+2. 分页、递归或过滤未完成时保留 cursor/truncated/errors，不包装成全量成功。
+3. 写入超时或响应丢失先按 nodeId、名称、路径和大小回读，不能盲目重放。
+4. 在线文档误入普通下载/覆盖时切 Doc、Sheet 或 AITable；不要用 Drive 重试改变内容。
+
+## 辅助脚本
+
+- [drive_tree_list.py](../scripts/drive_tree_list.py)：递归列出钉盘目录树；普通浏览仍优先使用 `dws drive +list`。

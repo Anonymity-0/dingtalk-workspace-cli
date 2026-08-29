@@ -14,21 +14,51 @@
 package app
 
 import (
+	"log/slog"
 	"sort"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cobracmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/builtin"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/userdef"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/mcptypes"
 	"github.com/spf13/cobra"
 )
 
-func newLegacyPublicCommands(runner executor.Runner, caller edition.ToolCaller) []*cobra.Command {
+// mountLegacyPublicCommands builds the product + shortcut command tree without
+// mutating process-global MCP deps or dynamic server endpoints. Used by the
+// Schema source root (declaration-only) path so assembly cannot clobber a live
+// runtime's InitDeps caller or plugin endpoints.
+func mountLegacyPublicCommands(runner executor.Runner, loadUserShortcuts bool) []*cobra.Command {
+	commands := helpers.NewPublicCommands(runner)
+	// Load user-defined shortcuts (~/.dws/shortcuts/*.yaml) BEFORE compiling the
+	// command tree, so distilled high-frequency operations mount alongside the
+	// built-ins. Conflicts with built-ins are skipped inside Load.
+	if loadUserShortcuts {
+		if _, err := userdef.Load(); err != nil {
+			slog.Warn("shortcut: failed to load user-defined shortcuts", "error", err)
+		}
+	}
+	// Built-in + user shortcuts (`dws <service> +<command>`) share the same
+	// command tree; mergeTopLevelCommands folds each shortcut's service parent
+	// into the matching helper command so the `+leaf` sits alongside existing
+	// subcommands.
+	if loadUserShortcuts {
+		commands = append(commands, builtin.Commands()...)
+	} else {
+		commands = append(commands, builtin.BaseCommands()...)
+	}
+	return mergeTopLevelCommands(commands)
+}
+
+// newLegacyPublicCommands is the executable CLI path: inject static MCP
+// endpoints, InitDeps, then mount the public command tree.
+func newLegacyPublicCommands(runner executor.Runner, caller edition.ToolCaller, loadUserShortcuts bool) []*cobra.Command {
 	injectStaticServers()
 	helpers.InitDeps(caller)
-	commands := helpers.NewPublicCommands(runner)
-	return mergeTopLevelCommands(commands)
+	return mountLegacyPublicCommands(runner, loadUserShortcuts)
 }
 
 func injectStaticServers() {
@@ -60,10 +90,6 @@ func injectStaticServers() {
 		})
 	}
 	SetDynamicServers(descriptors)
-}
-
-func newLegacyHiddenCommands(_ executor.Runner) []*cobra.Command {
-	return nil
 }
 
 func mergeTopLevelCommands(commands []*cobra.Command) []*cobra.Command {

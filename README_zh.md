@@ -19,7 +19,7 @@
 </p>
 
 > [!IMPORTANT]
-> **共创阶段**：本项目涉及钉钉企业数据访问，需企业管理员授权后方可使用。欢迎加入钉钉 DWS 共创群获取支持与最新动态。详见下方 [开始使用](#开始使用)。
+> **钉钉 DWS CLI 已全面开放，欢迎使用**：本项目涉及钉钉企业数据访问，需企业管理员授权后方可使用。欢迎加入钉钉 DWS 共创群获取支持与最新动态。详见下方 [开始使用](#开始使用)。
 >
 > <img src="https://img.alicdn.com/imgextra/i1/O1CN01WJyAsJ1prD2ovQACM_!!6000000005413-2-tps-718-720.png" alt="dws 开源沟通群二维码" width="150">
 
@@ -70,17 +70,17 @@ irm https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/ma
 
 | 模式 | 安装内容 | 适合场景 |
 |------|----------|----------|
-| **mono**（稳定，默认） | 一个 `dws` skill，覆盖全部产品 | 跨产品组合操作；单一入口召唤 |
-| **multi** 🧪 **试验版 / Preview** | 22 个独立产品 skill（`dingtalk-aitable` / `dingtalk-calendar` / `dingtalk-chat` ...） | 单产品任务；每次召唤上下文更小 |
+| **multi**（默认） | 按产品拆分的独立 skill（`dingtalk-aitable` / `dingtalk-calendar` / `dingtalk-chat` ...） | 单产品任务；每次召唤上下文更小 |
+| **mono**（legacy） | 一个 `dws` skill，覆盖全部产品 | 跨产品组合操作；单一入口召唤 |
 
-> 🧪 **multi 模式当前为 EXPERIMENTAL（试验版 / Preview）**。22 个独立 skill 全部通过 dispatch verifier，但接口、命名、跨 skill 引用后续可能调整。生产 / 共享环境建议优先用 `mono`。问题请提 issue 反馈。
+> 安装与升级默认均为 multi。mono 仍可通过 `DWS_SKILL_MODE=mono` 或 `dws skill setup --mode mono` 使用。问题请提 issue 反馈。
 
 怎么选：
 
-- **快速安装**（上方一行 curl）：非交互，默认装 `mono`。
-- **TTY 安装**（先下载再执行）：`curl -O .../install.sh && bash install.sh`，会弹出 `1) mono  2) multi` 选项（默认 1）。
-- **环境变量覆盖**：`DWS_SKILL_MODE=multi curl -fsSL ... | sh`。
-- **装完之后再切换**：`dws skill setup --mode multi`（或 `--mode mono`），随时重跑都行。
+- **快速安装**（上方一行 curl）：非交互，默认装 `multi`。
+- **TTY 安装**（先下载再执行）：`curl -O .../install.sh && bash install.sh`，会弹出 `1) multi  2) mono` 选项（默认 1）。
+- **环境变量覆盖**：`DWS_SKILL_MODE=mono curl -fsSL ... | sh`。
+- **装完之后再切换**：`dws skill setup --mode mono`（或 `--mode multi`），核对列出的路径后交互确认。
 
 </details>
 
@@ -92,6 +92,30 @@ irm https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/ma
 ```bash
 npm install -g dingtalk-workspace-cli
 ```
+
+安装最新 beta：
+
+```bash
+npm install -g dingtalk-workspace-cli@beta
+```
+
+**Homebrew**（macOS / Linux）：
+
+```bash
+brew tap DingTalk-Real-AI/dingtalk-workspace-cli https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli.git
+brew install dingtalk-workspace-cli
+```
+
+> Formula 与代码位于同一个仓库，因此首次 `tap` 需要显式指定仓库 URL。后续可直接使用 `brew upgrade dingtalk-workspace-cli`。
+
+安装 Homebrew beta（keg-only，不覆盖稳定版）：
+
+```bash
+brew install dingtalk-workspace-cli-beta
+$(brew --prefix dingtalk-workspace-cli-beta)/bin/dws version
+```
+
+如需让 beta 的 `dws` 成为当前 shell 默认版本，将 `$(brew --prefix dingtalk-workspace-cli-beta)/bin` 放到 PATH 最前面。
 
 **预编译二进制文件**：从 [GitHub Releases](https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli/releases) 下载。
 
@@ -165,13 +189,25 @@ dws upgrade -y                 # 跳过确认直接升级
 
 默认情况下，`dws upgrade` 只跟随正式 release 轨道。只有显式传入 `--beta` 时，才会选择 GitHub pre-release 里的 beta 构建。
 
+### 六渠道发布后验证
+
+维护者和验证同学可按发版质量保障 SOP，对 curl、PowerShell、npm stable、npm beta、Homebrew、`dws upgrade` 执行安装与冒烟验证：
+
+```bash
+git clone https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli.git /tmp/dws-verify
+cd /tmp/dws-verify/verify
+bash verify-all-channels.sh
+```
+
+脚本使用隔离目录，不会替换当前 PATH 中的 `dws`；输出 `PASS`、`FAIL`、`SKIP` 汇总。跨平台渠道必须由对应平台补测，`SKIP` 不计为通过。验证范围和平台矩阵见 [`verify/README.md`](verify/README.md)。
+
 <details>
 <summary><strong>工作原理</strong></summary>
 
 升级过程采用两阶段原子流程，确保一致性：
 
 1. **准备阶段** — 将平台对应的二进制文件和技能包下载到临时目录，校验 SHA256 校验和，解压并验证所有文件。任何步骤失败则立即中止，不会修改现有安装。
-2. **执行阶段** — 仅在所有准备工作成功后，替换二进制文件并将技能包安装到所有已检测到的 Agent 目录（`~/.agents/skills/dws`、`~/.claude/skills/dws`、`~/.cursor/skills/dws` 等）。
+2. **执行阶段** — 仅在所有准备工作成功后，替换二进制文件并将技能包平铺到已检测到的具体 Agent 目录（例如 `~/.codex/skills/dingtalk-chat`、`~/.claude/skills/dingtalk-chat`）。只有未检测到具体 Agent 时才使用 `~/.agents/skills`；检测到具体 Agent 后会备份迁走旧的 DWS 通用副本，避免同一 Skill 被重复发现。
 
 每次升级前自动备份当前版本，可通过 `dws upgrade --rollback` 随时回滚。
 
@@ -244,16 +280,22 @@ dws auth login --client-id <your-app-key> --client-secret <your-app-secret>
 <details>
 <summary><strong>多组织（profile）</strong></summary>
 
-`dws` 可以同时登录多个钉钉组织。一个组织就是一个 **profile**，当前 profile 决定本次命令操作哪个组织（凭证按组织分别存储）。
+`dws` 可以同时登录多个钉钉账号，同一组织也能保留多个账号。一个 profile 由 `corpId + userId` 唯一确定。
 
 ```bash
-dws auth login                              # 再登录一个组织 → 新增一个 profile（首次登录的为主组织）
-dws profile list                            # 列出已登录组织（主 / 当前标记、状态）
-dws profile switch <名称|corpId>            # 切换默认组织（用 - 切回上一个）
-dws --profile <名称|corpId> contact user search --query "..."   # 单次对指定组织执行，不改默认组织
+dws auth login                              # 新增或刷新一个账号
+dws profile list                            # 列出全部账号，profile 字段是稳定的 corpId:userId
+dws profile switch <corpId:userId>          # 持久切换账号；用 - 切回上一个
+dws profile switch "组织名:用户名"          # 名称输入要求唯一
+dws --profile <corpId> contact user search --query "..."        # 使用该组织明确记录的当前账号
+dws --profile <corpId:userId> contact user search --query "..." # 单次精确指定账号，不改默认账号
 ```
 
-跨组织读取由 agent 编排，而非内置 `--all-orgs`：先 `dws profile list` 拿到组织，再对每个组织带 `--profile` 各查一遍，然后合并。写操作默认只在当前组织进行——跨组织写之前先确认目标组织。
+支持 `corpId:userId`、`corpId:userName`、`corpName:userId`、`corpName:userName`。名称只用于输入，自动化应使用 `profile list` 返回的稳定 `profile`。组织名或用户名重名时会列出候选并报错；同组织多账号但没有明确当前账号时，只传组织也会报错，不会选择第一项或最近使用账号。
+
+`currentProfile`、`previousProfile` 和组织默认账号都保存精确身份。`primaryProfile` 只为 JSON 兼容保留，不再参与选择。`profile list` 直接读取各身份 Token 计算状态和到期时间，不触发刷新。`auth logout --profile <corpId>` 退出该组织全部账号；精确选择器或本地 profile 名只退出一个账号。
+
+跨组织读取由 agent 编排，而非内置 `--all-orgs`：先 `dws profile list`，每个组织使用唯一的 `isOrgCurrent=true` 账号；若多账号组织没有默认账号，先让用户指定账号。写操作默认只在当前账号执行——跨组织写之前先确认目标组织和账号。
 
 macOS 下，如果已登记的 token slot 无法解密，为避免把系统 Keychain 和 file-DEK 写成混合状态，新的 OAuth 登录会直接拒绝。如果普通终端仍能读取登录态、只有设置 `DWS_DISABLE_KEYCHAIN=1` 的沙箱读不到，可在不暴露 token 的情况下迁移 legacy 与各 profile 的认证条目：
 
@@ -263,7 +305,7 @@ env -u DWS_DISABLE_KEYCHAIN dws auth migrate-keychain --to file-dek --yes --form
 DWS_DISABLE_KEYCHAIN=1 dws auth status --format json
 ```
 
-迁移会先验证全部认证密文再写入、忽略无关的应用密钥；提交中断后可安全重跑。如果预检确认是密文本身损坏，报错会给出对应 `corpId`；只清理这个组织可执行 `dws auth logout --profile <名称|corpId>`，再重新登录。只有确认要丢弃全部本地 profile 时才用 `dws auth reset`。
+迁移会先验证全部认证密文再写入、忽略无关的应用密钥；提交中断后可安全重跑。如果预检确认是密文本身损坏，优先使用 `dws auth logout --profile <corpId:userId>` 只清理受影响账号；只有确认要丢弃全部本地 profile 时才用 `dws auth reset`。
 
 </details>
 
@@ -320,34 +362,44 @@ dws contact user get-self --jq '.result[0].orgEmployeeModel | {name: .orgUserNam
 
 ### 命令帮助与 Schema
 
-产品命令在静态端点模式下已经编译进二进制。Agent 以 `--help` 和内置 Skill 为事实源；`dws schema` 仅保留给 `dev.*` 等 helper-only schema 查询。
+命令帮助和 Schema 分别负责命令契约的不同部分：
+
+- `dws <path> --help` 是命令是否存在、当前二进制接受哪些 flags 的事实源。
+- `dws schema "<path>" --compact` 是 Agent 选命令、CLI 参数与约束、风险和确认语义的规范视图；映射或 provenance 审计使用 full leaf 配合 `--jq` 精确投影。
+- Help 与 Schema 冲突时视为契约漂移：执行只传 Cobra 接受的参数，安全语义取更保守值。
+- Schema 只描述命令，不读取或搜索钉钉业务数据；发现命令后仍需执行真实产品命令。
 
 ```bash
-# 查看当前编译出的命令面
+# 确认命令存在并查看当前接受的 flags
 dws aitable record query --help
 
-# helper-only schema 自省
-dws schema "dev app create"
+# 先在产品内发现命令，再查看选中 leaf 的契约
+dws schema aitable --compact
+dws schema "aitable record query" --compact
 
-# 构造正确的调用
+# 执行真实业务查询
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 ```
 
+`dws schema --all` 会完整导出命令契约，供工具、CI、审计和兼容性基线使用。Agent 应使用 `--compact` 渐进查询；该视图采用正向字段白名单，full 新增的审计字段不会自动进入 Agent 上下文。
+
 ### Agent Skills
 
-仓库内置完整的 Agent Skill 体系（`skills/` 目录），目前重组为两套布局：
+仓库内置完整的 Agent Skill 体系（`skills/` 目录），分为两套布局：
 
-- `skills/mono/` — 单 skill 布局（一个 `SKILL.md` + `references/products/`），默认推荐。
-- `skills/multi/` — 每个产品一个独立 skill（`dingtalk-aitable/` / `dingtalk-calendar/` / `dingtalk-chat/` ... 共 22 个），每个 skill 自带 `SKILL.md`。🧪 **试验版 / Preview — 各 multi `SKILL.md` 头部有详细注意事项。**
+- `skills/mono/` — 单 skill 布局（一个 `SKILL.md` + `references/products/`），legacy。
+- `skills/multi/` — 每个产品一个独立 skill（`dingtalk-aitable/` / `dingtalk-calendar/` / `dingtalk-chat/` ...），每个 skill 自带 `SKILL.md`。默认布局。
+
+Schema 生成的叶子 safety/参数/选型文案由 Go 中的 ProductDecl / ContractFinal 声明驱动。原 `internal/cli/schema_hints/` HintFile 目录已完全退役，不得重新引入。
 
 安装之后，Claude Code / Cursor 等 AI 工具就能通过自然语言直接操作钉钉：
 
 ```bash
-# 安装 skills 到当前项目（默认 mono）
+# 安装 skills 到当前项目（默认 multi；DWS_SKILL_MODE=mono 可切回）
 curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/main/scripts/install-skills.sh | sh
 ```
 
-> `install.sh` 安装到 `$HOME/.agents/skills/dws`（全局）；`install-skills.sh` 安装到 `./.agents/skills/dws`（当前项目）。
+> 安装器优先使用检测到的具体 Agent 根目录（如 `$HOME/.codex/skills/`）；仅在未检测到具体 Agent 时回退到 `.agents/skills/`。multi 为按产品平铺，mono 为 `dws/` 子目录。
 >
 > 国内用户加 `DWS_GITEE_REPO` 走 Gitee 镜像，见 [国内加速安装](#国内加速安装)。
 
@@ -357,22 +409,31 @@ curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace
 # 交互式：提示选模式 + 目标 Agent
 dws skill setup
 
-# 把 mono skill 铺到所有检测到的 Agent home（claude / cursor / codex / opencode / qoder）
-dws skill setup --mode mono --target all --yes
+# 先预览 mono setup 将备份和替换的精确目录
+dws skill setup --mode mono --target all --dry-run
 
-# 只装到某一个 Agent home
-dws skill setup --mode multi --target cursor --yes
+# 交互执行并确认列出的目录
+dws skill setup --mode mono --target all
 
-# 指定本地源目录（比如 fork 或正在改的版本）
+# 先预览，再交互确认装到某一个 Agent home
+dws skill setup --mode multi --target cursor --dry-run
+dws skill setup --mode multi --target cursor
+
+# 指定本地源目录（比如 fork 或正在改的版本），先预览
+DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi --dry-run
 DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 ```
 
 | 参数 | 取值 | 说明 |
 |------|------|------|
 | `--mode` | `mono` \| `multi` | skill 布局，不指定则交互式询问 |
-| `--target` | `all` \| `claude` \| `cursor` \| `codex` \| `opencode` \| `qoder` | 安装目标，`all` 表示铺到所有检测到的 Agent home |
+| `--target` | `all` \| `claude` \| `cursor` \| `codex` \| `zcode` \| `opencode` \| `qoder` | 安装目标；`all` 表示铺到检测到的具体 Agent home（ZCode 为 `~/.zcode/skills`），仅在未检测到具体 Agent 时回退到 `~/.agents/skills` |
 | `--source` | 路径 | 本地源目录（覆盖内置 skills） |
-| `--yes` | — | 跳过确认提示 |
+| `--yes` | — | 仅供脚本使用：跳过确认提示。删除操作仍会先备份到 `~/.dws/skill-backups/` |
+
+> setup 命令可能移除对面模式残留（装 multi 删 `dws/`，装 mono 清理统一状态中登记或属于状态上线前精确官方名称集合的 multi Skill）以及不在 bundle 内的过期受管 Skill。DWS 在 `~/.dws/skills-state.json`（或 `$DWS_CONFIG_DIR/skills-state.json`）集中记录所有权、安装版本、来源和内容摘要。仅有 `dingtalk-*` 前缀不能触发清理，因此其他同前缀市场/用户 Skill 会保留。所有删除都会先列入确认预览，并备份到 `~/.dws/skill-backups/<时间戳>/`；备份失败的目录会保留原样、绝不删除。非交互环境应先用 `--dry-run` 核对输出，再由调用方显式决定是否使用仅供脚本的确认跳过参数。
+
+multi setup 或 upgrade 后，DWS 会把官方 bundle 快照和统一所有权元数据写入 `~/.dws/skills-state.json`（或 `$DWS_CONFIG_DIR/skills-state.json`）。每次 upgrade 都会安装并覆盖该版本的全部预制 Skill；手工删除或通过 setup 排除预制 Skill 不会永久保留，下次 upgrade 会恢复。`dws upgrade --force` 还允许在没有新版本时重装当前 CLI 版本。
 
 环境变量：`DWS_SKILL_MODE=mono|multi`（`install.sh` / `install.ps1` 也认）、`DWS_SKILL_SOURCE=<路径>`。
 
@@ -385,7 +446,6 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 | 意图指南 | `skills/mono/references/intent-guide.md` | 易混淆场景消歧（如 report vs todo） |
 | 全局参考 | `skills/mono/references/global-reference.md` | 认证、输出格式、全局 flag |
 | 错误码 | `skills/mono/references/error-codes.md` | 错误码 + 调试流程 |
-| Recovery 指南 | `skills/mono/references/recovery-guide.md` | `RECOVERY_EVENT_ID` 处理 |
 | 现成脚本 | `skills/mono/scripts/*.py` | 13 个批量操作脚本（见下方） |
 
 <details>
@@ -416,7 +476,9 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 <details>
 <summary><strong>个人事件订阅</strong> — 实时接收钉钉消息，驱动事件触发的 Agent</summary>
 
-`dws event consume` 使用当前 OAuth 登录用户建立托管的 Stream WebSocket 长连接，并把每条事件以 NDJSON 一行输出到 stdout。当前公开目录包括：当前用户被 @ 的消息、与指定用户的单聊消息、指定群的消息。
+`dws event consume` 使用当前 OAuth 登录用户建立托管的 Stream WebSocket 长连接，并把每条事件以 NDJSON 一行输出到 stdout。当前公开目录覆盖指定范围和全量单聊/群消息、指定发送人、已读/撤回/表情回应、群生命周期、七个 OA 审批任务/实例事件，以及三个待办生命周期事件。
+
+默认 `ndjson`、`json`、`pretty` 输出保留兼容 transport envelope（`type`、`event_type`、字符串 `data`、`headers`），`compact` 继续沿用原 processor。Agent 或新脚本显式加 `--flatten` 后，输出稳定的顶层业务字段。`--format` 控制 JSON 序列化，`--flatten` 控制数据结构，且不能与 `-f raw` 或 `--debug-raw-events` 同时使用。
 
 > **前置条件**：先运行 `dws auth login`。个人身份从 OAuth token 解析，不允许通过命令行伪造。
 
@@ -424,31 +486,77 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/main/scripts/install-event.sh | sh
+
+# 或在已有 dws 环境中安装独立的 multi skill
+dws skill setup --mode multi -s event
 ```
 
 ```bash
 # 查看公开个人事件目录和 schema
 dws event list
-dws event schema user_im_message_receive_o2o
+dws event schema user_im_message_receive_o2o --flatten
+dws event list --category oa
+dws event schema user_oa_approval_task_created --flatten
+dws event list --category todo
+dws event schema user_todo_task_create --flatten
 
 # 监听当前用户被 @ 的消息
-dws event consume user_im_message_receive_at -f ndjson
+dws event +listen-im --kind at-me -f ndjson
 
-# 监听与指定用户的单聊消息
-dws event consume user_im_message_receive_o2o --user <userId> -f ndjson
+# 监听指定发送人的消息
+dws event +listen-im --kind sender --user <userId> -f ndjson
+
+# 使用 openDingtalkId 监听外部联系人、机器人或跨组织身份
+dws event +listen-im --kind sender --open-dingtalk-id <openDingtalkId> -f ndjson
 
 # 监听指定群的消息
-dws event consume user_im_message_receive_group --group <openConversationId> -f ndjson
+dws event +listen-im --kind group --chat-id <openConversationId> -f ndjson
+
+# 监听所有单聊或所有群消息
+dws event +listen-im --kind all-direct -f ndjson
+dws event +listen-im --kind all-group -f ndjson
+
+# 监听指定群标题变更、成员进退群或群解散
+dws event consume user_im_group_updated --group <openConversationId> --flatten -f ndjson
+dws event consume user_im_group_member_added --group <openConversationId> --flatten -f ndjson
+dws event consume user_im_group_member_exited --group <openConversationId> --flatten -f ndjson
+dws event consume user_im_group_disbanded --group <openConversationId> --flatten -f ndjson
+
+# 一个进程监听同一发送人的消息、已读和撤回
+dws event +listen-im --kind sender --user <userId> \
+  --events message,read,recall -f ndjson
+
+# 一个进程监听全部七个公开 OA 审批事件
+dws event consume \
+  user_oa_approval_task_created \
+  user_oa_approval_task_finished \
+  user_oa_approval_task_redirected \
+  user_oa_approval_instance_started \
+  user_oa_approval_instance_cc \
+  user_oa_approval_instance_terminated \
+  user_oa_approval_instance_finished \
+  --flatten -f ndjson
+
+# 监听当前用户作为执行者的待办创建、更新和删除事件
+dws event consume \
+  user_todo_task_create \
+  user_todo_task_update \
+  user_todo_task_delete \
+  --role-types executor \
+  --flatten -f ndjson
 
 # 查看本地 consume，并取消指定订阅
 dws event status
 dws event stop <subscribe_id>
 ```
 
+单聊和指定发送人事件必须且只能选择一种目标身份：企业内部 `userId` 使用 `--user`，`openDingtalkId` 使用 `--open-dingtalk-id`。CLI 不会自动猜测或转换身份类型。
+
 | 特性 | 说明 |
 |------|------|
 | 自动编排 | `consume` 创建或复用个人订阅，`stop` 取消订阅并清理本地状态 |
 | 共享连接 | 同一用户的多个 consumer 共享本地 bus 和云端长连接 |
+| 多事件进程 | 同一目标的兼容事件可由一个 consume 进程监听，每个事件仍有独立订阅 |
 | 订阅隔离 | 正常 consumer 同时按事件类型和 `subscribe_id` 匹配 |
 | Agent 友好输出 | Stream 事件写入 stdout，连接状态和诊断信息写入 stderr |
 | 状态可观测 | `status` 同时显示服务端订阅、personal bus 和本地 consumers |
@@ -459,15 +567,23 @@ Agent 工作流和事件参数详见 `skills/multi/dingtalk-event/SKILL.md`。
 </details>
 
 <details>
-<summary><strong>Raw API 调用</strong> — 直接调用钉钉 OpenAPI</summary>
+<summary><strong>Raw API 调用</strong> — 直接调用支持 App Token 的钉钉服务端 OpenAPI</summary>
 
-`dws api` 让你直接调用任意钉钉 OpenAPI，无需 SDK，Token 自动获取和刷新。
+`dws api` 让你直接调用支持企业内部应用 App Token 的钉钉服务端 OpenAPI，无需 SDK，Token 自动获取和刷新。
 
-> **前置条件**：必须使用自有应用凭证登录（见[自建应用模式](#开始使用)）。通过 MCP 默认凭证登录 不支持 raw API 调用。
+> **前置条件**：必须提供一对完整的自有应用 Client ID/Client Secret，可来自本次 flags、环境变量或成功登录后保存的 app config（见[自建应用模式](#开始使用)）。仅通过 MCP 默认凭证登录不支持 Raw API 调用。
+
+Client ID/Client Secret 必须来自同一完整凭证对，优先级为：完整 `--client-id/--client-secret` > 完整 `DWS_CLIENT_ID/DWS_CLIENT_SECRET` > 完整 app config。任一来源只提供一项都会明确失败，不会与其他来源拼接。直接用于 `dws api` 的 flags/env 仅对本次调用生效，不持久化 AppSecret；成功执行 `dws auth login` 时使用的 flags/env 则会按实际使用的完整 pair 持久化，供 OAuth 刷新和后续 Raw API 使用。获取到的 App Token 会按 `app-token:<clientID>` 缓存；隐藏 `--token` 仅临时使用调用方提供的 App Token，不持久化、不自动刷新。
+
+Client Secret 统一使用 Keychain 槽位 `appsecret:<clientID>`，与 OAuth User Token、App Token 完全隔离。历史明文 app config 和 `client-secret:<clientID>` 会自动迁移；新旧槽位值不一致时 fail closed，要求重新登录，不猜测正确值。
 
 ```bash
 # 登录（仅首次）
 dws auth login --client-id <APP_KEY> --client-secret <APP_SECRET>
+
+# 或使用一对环境变量，完整 env pair 会整体覆盖 app config
+export DWS_CLIENT_ID=<APP_KEY>
+export DWS_CLIENT_SECRET=<APP_SECRET>
 
 # === api.dingtalk.com ===
 
@@ -490,9 +606,16 @@ dws api POST https://oapi.dingtalk.com/topapi/v2/user/get \
   --data '{"userid":"<USER_ID>"}'
 
 # === 通用功能 ===
-dws api GET /v1.0/microApp/allApps --page-all   # 自动翻页
-dws api GET /v1.0/microApp/allApps --dry-run     # 预览请求
-dws api GET /v1.0/microApp/allApps --jq '.agentId'  # jq 过滤
+dws api GET /v1.0/microApp/allApps --dry-run             # 预览请求
+dws api GET /v1.0/microApp/allApps --jq '.appList | length'  # jq 过滤
+
+# 从文件读取 JSON body（--params 也支持 @file；也可用 - 从 stdin 读取）
+dws api POST https://oapi.dingtalk.com/topapi/v2/department/listsubid \
+  --data @department-request.json --dry-run
+
+# 单文件流式 multipart 上传；--data 顶层字段转为文本 form field；先 dry-run 核对
+dws api POST https://oapi.dingtalk.com/media/upload \
+  --data '{"type":"image"}' --file media=./demo.png --dry-run
 ```
 
 | 特性 | 说明 |
@@ -501,6 +624,10 @@ dws api GET /v1.0/microApp/allApps --jq '.agentId'  # jq 过滤
 | Token 自动管理 | 首次调用自动获取应用级 accessToken，有效期内缓存，过期自动刷新 |
 | 域名白名单 | 仅允许 `api.dingtalk.com` 和 `oapi.dingtalk.com`，防止 Token 泄露 |
 | 自动分页 | `--page-all` 自动遍历所有分页。`--page-limit` 控制翻页上限（默认 10，设为 0 不限制，硬上限 500 防止死循环） |
+| 安全传输 | 仅允许 HTTPS/443 和同源 HTTPS 重定向；JSON/错误响应有限读取，二进制流式原子下载 |
+| Agent 发现 | 现有产品命令未覆盖时，内置 misc/mono Skill 指导 Agent 从 `https://open.dingtalk.com/llms.txt` 分层定位官方接口；Raw `api` 本身不进入 Agent Schema |
+
+`dws api` 只自动使用企业内部应用的 App Token，不读取 OAuth User Token，也不提供 `--as user` / `--user`。优先使用已有 DWS 产品命令；只有未封装的企业内部应用服务端 OpenAPI 才使用 Raw 逃生舱。写、删、撤销等操作须在 dry-run 核对并确认后执行。
 
 </details>
 
@@ -539,7 +666,7 @@ dws aitable record query --base-id BASE_ID --tabel-id TABLE_ID       # --tabel-i
 ```bash
 # 内置 jq 表达式
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --jq '.invocation.params'
-dws schema "dev app create" --jq '.tool.required'
+dws schema "dev app create" --jq '.parameters'
 
 # 只返回指定字段
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --fields invocation,response
@@ -548,12 +675,13 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --fields invocati
 </details>
 
 <details>
-<summary><strong>Schema 自省</strong> — 静态端点模式下的 helper-only schema</summary>
+<summary><strong>Schema 自省</strong> — Agent 命令发现与执行契约</summary>
 
 ```bash
-dws schema                                              # 静态端点模式提示
-dws schema "dev app create"                             # 查看 helper-only schema
-dws schema "dev app create" --jq '.tool.required'        # 查看必填字段
+dws schema aitable --compact                            # 发现产品命令
+dws schema "aitable record query" --compact             # 查看 Agent leaf 契约
+dws schema "aitable record query" --jq '[.parameters | to_entries[] | select(.value.required)]' # 定向查看必填字段
+dws schema --all                                        # CI/审计/基线的全量导出
 ```
 
 </details>
@@ -600,7 +728,7 @@ dws dev connect --channel auto --robot-client-id <id> --robot-client-secret <sec
 
 | 服务 | 命令 | 能力 |
 |------|------|------|
-| 通讯录 | `contact` | 按姓名 / 手机号 / 工号查人，部门、角色标签、花名册与离职 |
+| 通讯录 | `contact` | 按姓名 / 手机号 / 工号查人，部门、角色标签、花名册与离职；创建企业、企业账号及邀请员工 |
 | 群聊 | `chat`（`im`）| 发送 / 回复 / 搜索消息，群与成员管理，机器人与 Webhook 发消息，表情反应，撤回 |
 | 日历 | `calendar` | 日程 CRUD、参与者、会议室、闲忙与时间建议 |
 | 待办 | `todo` | 创建 / 列表 / 修改 / 完成待办及评论 |
@@ -618,7 +746,7 @@ dws dev connect --channel auto --robot-client-id <id> --robot-client-secret <sec
 | 开发者文档 | `devdoc` | 搜索开放平台文档并排查 API 错误 |
 | AI 搜问 | `aisearch` | 企业人员搜索：按姓名 / 部门 / 角色 / 职责 / 上下级 / 手机号 / 工号 |
 | 直播 | `live` | 查看我的直播列表 |
-| Raw API | `api` | 直接调用任意钉钉 OpenAPI，自动管理应用级 Token |
+| Raw API | `api` | 直接调用支持 App Token 的钉钉服务端 OpenAPI，自动管理应用级 Token |
 
 > 完整命令清单（带描述与使用场景）：[`docs/command-index.md`](./docs/command-index.md)。运行 `dws --help` 查看顶层命令树，或 `dws <service> --help` 查看任一服务的子命令。
 
@@ -628,7 +756,7 @@ dws dev connect --channel auto --robot-client-id <id> --robot-client-secret <sec
 <summary>即将推出</summary>
 
 - `conference`（视频会议）
-- 多 skill 模式（实验中）— 每产品一个独立 skill，位于 `skills/multi/`，通过 `dws skill setup --mode multi` 启用
+- 多 skill 模式（默认）— 每产品一个独立 skill，位于 `skills/multi/`，安装与升级默认启用；`dws skill setup --mode mono` 交互确认后可切回单 skill
 
 </details>
 
@@ -679,6 +807,7 @@ dws dev connect --channel auto --robot-client-id <id> --robot-client-secret <sec
 
 ## 参考与文档
 
+- [国际版（`.io`）使用手册](./docs/international-region-guide.zh-CN.md) — 国际版登录、国内/国际 profile 切换、隔离验证与排障
 - [命令索引](./docs/command-index.md) — 全部运行时命令，带描述与使用场景
 - [参考手册](./docs/reference.md) — 环境变量、退出码、输出格式、Shell 补全
 - [架构设计](./docs/architecture.md) — 静态端点管道、命令面、Transport 层

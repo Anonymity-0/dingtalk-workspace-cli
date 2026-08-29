@@ -127,17 +127,6 @@ func TestPersonalSourceFetchTicketConnectsAndACKs(t *testing.T) {
 		if ev.EventType != "user_im_message_receive_at" || ev.EventID != "evt-1" {
 			t.Fatalf("event = %#v", ev)
 		}
-		out := logs.String()
-		for _, want := range []string{"personal source received dataframe", "user_im_message_receive_at", "evt-1", "sub-1", "sourceId", "message", "<redacted>"} {
-			if !strings.Contains(out, want) {
-				t.Fatalf("debug log missing %q: %s", want, out)
-			}
-		}
-		for _, leaked := range []string{"header-secret-token", "data-secret-token", "data-secret", "data-ticket", "Bearer data-auth"} {
-			if strings.Contains(out, leaked) {
-				t.Fatalf("debug log leaked %q: %s", leaked, out)
-			}
-		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for event")
 	}
@@ -157,6 +146,21 @@ func TestPersonalSourceFetchTicketConnectsAndACKs(t *testing.T) {
 	case <-done:
 	case <-time.After(2 * time.Second):
 		t.Fatal("source did not stop after cancel")
+	}
+
+	// Start can log a reconnect after emitting the event and before observing
+	// cancellation. Read the shared log buffer only after the goroutine exits so
+	// the assertion remains race-free under `go test -race`.
+	out := logs.String()
+	for _, want := range []string{"personal source received dataframe", "user_im_message_receive_at", "evt-1", "sub-1", "sourceId", "message", "<redacted>"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("debug log missing %q: %s", want, out)
+		}
+	}
+	for _, leaked := range []string{"header-secret-token", "data-secret-token", "data-secret", "data-ticket", "Bearer data-auth"} {
+		if strings.Contains(out, leaked) {
+			t.Fatalf("debug log leaked %q: %s", leaked, out)
+		}
 	}
 }
 
@@ -608,6 +612,128 @@ func TestPersonalSourceParsedHeadersPassNormalBusFilter(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for filtered event")
+	}
+}
+
+func TestPersonalSourceActionEventPassesNormalBusFilter(t *testing.T) {
+	const (
+		eventKey    = "user_im_message_reaction_group"
+		subscribeID = "sub-reaction-group"
+	)
+	src := personalSourceForRawEventTests()
+	raw := src.rawEventFromDataFrame(&payload.DataFrame{
+		Headers: payload.DataFrameHeader{
+			"EVENT_TYPE": eventKey,
+			"SUB_ID":     subscribeID,
+		},
+		Data: `{"eventKey":"user_im_message_reaction_group","subId":"sub-reaction-group","payload":{}}`,
+	})
+	h := bus.NewHub(10)
+	consumer, err := h.Register(transport.Hello{
+		EventTypes:  []string{eventKey},
+		SubscribeID: subscribeID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h.Deliver(raw)
+
+	select {
+	case frame := <-consumer.SendCh:
+		eventFrame, ok := frame.(transport.Event)
+		if !ok {
+			t.Fatalf("frame = %T, want transport.Event", frame)
+		}
+		if eventFrame.EventType != eventKey || eventFrame.SubscribeID != subscribeID {
+			t.Fatalf("event = %#v", eventFrame)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for action event")
+	}
+}
+
+func TestPersonalSourceSenderEventPassesNormalBusFilter(t *testing.T) {
+	const (
+		eventKey    = "user_im_message_receive_user"
+		subscribeID = "sub-receive-user"
+	)
+	src := personalSourceForRawEventTests()
+	raw := src.rawEventFromDataFrame(&payload.DataFrame{
+		Headers: payload.DataFrameHeader{
+			"EVENT_TYPE": eventKey,
+			"SUB_ID":     subscribeID,
+		},
+		Data: `{"eventKey":"user_im_message_receive_user","subId":"sub-receive-user","payload":{}}`,
+	})
+	h := bus.NewHub(10)
+	consumer, err := h.Register(transport.Hello{
+		EventTypes:  []string{eventKey},
+		SubscribeID: subscribeID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h.Deliver(raw)
+
+	select {
+	case frame := <-consumer.SendCh:
+		eventFrame, ok := frame.(transport.Event)
+		if !ok {
+			t.Fatalf("frame = %T, want transport.Event", frame)
+		}
+		if eventFrame.EventType != eventKey || eventFrame.SubscribeID != subscribeID {
+			t.Fatalf("event = %#v", eventFrame)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for sender event")
+	}
+}
+
+func TestPersonalSourceNewIMEventsPassNormalBusFilter(t *testing.T) {
+	for _, eventKey := range []string{
+		"user_im_message_receive_o2o_all",
+		"user_im_message_receive_group_all",
+		"user_im_group_updated",
+		"user_im_group_member_added",
+		"user_im_group_member_exited",
+		"user_im_group_disbanded",
+	} {
+		t.Run(eventKey, func(t *testing.T) {
+			subscribeID := "sub-" + eventKey
+			src := personalSourceForRawEventTests()
+			raw := src.rawEventFromDataFrame(&payload.DataFrame{
+				Headers: payload.DataFrameHeader{
+					"EVENT_TYPE": eventKey,
+					"SUB_ID":     subscribeID,
+				},
+				Data: fmt.Sprintf(`{"eventKey":%q,"subId":%q,"payload":{"body":{"content":"test"}}}`, eventKey, subscribeID),
+			})
+			h := bus.NewHub(10)
+			consumer, err := h.Register(transport.Hello{
+				EventTypes:  []string{eventKey},
+				SubscribeID: subscribeID,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			h.Deliver(raw)
+
+			select {
+			case frame := <-consumer.SendCh:
+				eventFrame, ok := frame.(transport.Event)
+				if !ok {
+					t.Fatalf("frame = %T, want transport.Event", frame)
+				}
+				if eventFrame.EventType != eventKey || eventFrame.SubscribeID != subscribeID {
+					t.Fatalf("event = %#v", eventFrame)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("timed out waiting for filtered event")
+			}
+		})
 	}
 }
 

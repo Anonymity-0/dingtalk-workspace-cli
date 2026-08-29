@@ -17,6 +17,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -78,6 +79,9 @@ func skipOnWindows(t *testing.T, reason string) {
 // $TMPDIR (/var/folders/.../T/...) which can easily exceed that.
 func shortTempDir(t *testing.T) string {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		return t.TempDir()
+	}
 	dir, err := os.MkdirTemp("/tmp", "dws-bus-")
 	if err != nil {
 		t.Fatalf("mktemp: %v", err)
@@ -134,6 +138,67 @@ func TestDaemon_RunStartsAndShutsDownCleanly(t *testing.T) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("Run did not return after ctx cancel")
+	}
+}
+
+func TestCrossPlatformCoverageDaemonIPCStopShutsDownCleanly(t *testing.T) {
+	workDir := shortTempDir(t)
+	identityHash := dwsevent.IdentityHash(workDir)
+	endpoint := dwsevent.IPCEndpoint(workDir, "open", dwsevent.SourceKindAppStream, identityHash)
+	runDone := make(chan error, 1)
+	go func() {
+		runDone <- Run(context.Background(), Config{
+			WorkDir:      workDir,
+			IPCEndpoint:  endpoint,
+			ClientID:     "ding_ipc_stop_test",
+			Edition:      "open",
+			SourceKind:   dwsevent.SourceKindAppStream,
+			IdentityHash: identityHash,
+			Source:       &fakeSource{},
+		})
+	}()
+
+	var conn net.Conn
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		var err error
+		conn, err = transport.Dial(endpoint)
+		if err == nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if conn == nil {
+		t.Fatal("bus IPC endpoint did not become ready")
+	}
+	w := transport.NewWriter(conn)
+	r := transport.NewReader(conn)
+	if err := w.WriteJSON(transport.Hello{
+		Type:        transport.FrameTypeHello,
+		ConsumerPID: os.Getpid(),
+		Role:        transport.HelloRoleStop,
+	}); err != nil {
+		t.Fatalf("write stop hello: %v", err)
+	}
+	var bye transport.Bye
+	if err := r.ReadJSON(&bye); err != nil {
+		t.Fatalf("read stop response: %v", err)
+	}
+	_ = conn.Close()
+	if bye.Type != transport.FrameTypeBye || bye.Reason != "stop_request" {
+		t.Fatalf("stop response = %#v", bye)
+	}
+
+	select {
+	case err := <-runDone:
+		if err != nil {
+			t.Fatalf("Run returned after IPC stop: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("Run did not return after IPC stop")
+	}
+	if pid := ReadHolderPID(filepath.Join(workDir, LockFileName)); pid != 0 {
+		t.Fatalf("bus lock retained pid %d after IPC stop", pid)
 	}
 }
 
@@ -213,6 +278,121 @@ func TestDaemon_ConsumerReceivesEvents(t *testing.T) {
 
 	cancel()
 	<-runDone
+}
+
+func TestDaemon_ConsumerStopClosesOnlyMatchingSubscription(t *testing.T) {
+	skipOnWindows(t, "uses Unix socket dial")
+	workDir := shortTempDir(t)
+	sockPath := filepath.Join(workDir, "bus.sock")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	runDone := make(chan error, 1)
+	go func() {
+		runDone <- Run(ctx, Config{
+			WorkDir:     workDir,
+			IPCEndpoint: sockPath,
+			ClientID:    "ding_test",
+			Edition:     "open",
+			Source:      &fakeSource{},
+		})
+	}()
+	defer func() { cancel(); <-runDone }()
+	waitForFile(t, sockPath, 2*time.Second)
+
+	connect := func(subscribeID string) (net.Conn, *transport.Reader) {
+		t.Helper()
+		conn, err := transport.Dial(sockPath)
+		if err != nil {
+			t.Fatalf("dial consumer: %v", err)
+		}
+		w := transport.NewWriter(conn)
+		r := transport.NewReader(conn)
+		if err := w.WriteJSON(transport.Hello{
+			Type:        transport.FrameTypeHello,
+			ConsumerPID: os.Getpid(),
+			SubscribeID: subscribeID,
+		}); err != nil {
+			t.Fatalf("write hello: %v", err)
+		}
+		var ack transport.HelloAck
+		if err := r.ReadJSON(&ack); err != nil || ack.Type != transport.FrameTypeHelloAck {
+			t.Fatalf("read hello ack: %#v, %v", ack, err)
+		}
+		return conn, r
+	}
+	aConn, aReader := connect("sub-a")
+	defer aConn.Close()
+	bConn, _ := connect("sub-b")
+	defer bConn.Close()
+
+	ctl, err := transport.Dial(sockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctlW := transport.NewWriter(ctl)
+	ctlR := transport.NewReader(ctl)
+	if err := ctlW.WriteJSON(transport.Hello{
+		Type: transport.FrameTypeHello,
+		Role: transport.HelloRoleConsumerStop,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := ctlW.WriteJSON(transport.ConsumerStopReq{
+		Type:         transport.FrameTypeConsumerStopReq,
+		SubscribeIDs: []string{"sub-a", "missing"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var resp transport.ConsumerStopResp
+	if err := ctlR.ReadJSON(&resp); err != nil {
+		t.Fatal(err)
+	}
+	_ = ctl.Close()
+	if len(resp.Stopped) != 1 || resp.Stopped[0] != "sub-a" || len(resp.NotFound) != 1 || resp.NotFound[0] != "missing" {
+		t.Fatalf("consumer stop response = %#v", resp)
+	}
+
+	var bye transport.Bye
+	if err := aReader.ReadJSON(&bye); err != nil {
+		t.Fatalf("read targeted bye: %v", err)
+	}
+	if bye.Type != transport.FrameTypeBye || bye.Reason != transport.ByeReasonSubscriptionStopped {
+		t.Fatalf("targeted bye = %#v", bye)
+	}
+
+	deadline := time.Now().Add(time.Second)
+	for {
+		status := queryDaemonStatus(t, sockPath)
+		if len(status.Consumers) == 1 && status.Consumers[0].SubscribeID == "sub-b" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("consumers after targeted stop = %#v", status.Consumers)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func queryDaemonStatus(t *testing.T, endpoint string) transport.StatusResp {
+	t.Helper()
+	conn, err := transport.Dial(endpoint)
+	if err != nil {
+		t.Fatalf("dial status: %v", err)
+	}
+	defer conn.Close()
+	w := transport.NewWriter(conn)
+	r := transport.NewReader(conn)
+	if err := w.WriteJSON(transport.Hello{Type: transport.FrameTypeHello, Role: transport.HelloRoleStatus}); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.WriteJSON(transport.StatusReq{Type: transport.FrameTypeStatusReq}); err != nil {
+		t.Fatal(err)
+	}
+	var status transport.StatusResp
+	if err := r.ReadJSON(&status); err != nil {
+		t.Fatal(err)
+	}
+	return status
 }
 
 func TestDaemon_LockBusyOnSecondRun(t *testing.T) {
@@ -313,6 +493,11 @@ func TestDaemon_ConsumerEOFAutoUnregisters(t *testing.T) {
 	sockPath := filepath.Join(workDir, "bus.sock")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	readyReader, readyWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer readyReader.Close()
 
 	go Run(ctx, Config{
 		WorkDir:     workDir,
@@ -320,8 +505,15 @@ func TestDaemon_ConsumerEOFAutoUnregisters(t *testing.T) {
 		ClientID:    "ding_test",
 		Edition:     "open",
 		Source:      &fakeSource{},
+		ReadyPipe:   readyWriter,
 	})
-	waitForFile(t, sockPath, 2*time.Second)
+	ready := make([]byte, 1)
+	if err := readyReader.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := readyReader.Read(ready); err != nil || n != 1 || ready[0] != 'R' {
+		t.Fatalf("ready signal = %q (n=%d), err=%v", ready, n, err)
+	}
 
 	conn, err := transport.Dial(sockPath)
 	if err != nil {

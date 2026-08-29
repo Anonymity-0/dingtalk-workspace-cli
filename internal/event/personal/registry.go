@@ -23,10 +23,32 @@ import (
 )
 
 const (
-	EventMention    = "user_im_message_receive_at"
-	EventSingleChat = "user_im_message_receive_o2o"
-	EventInChat     = "user_im_message_receive_group"
-	EventFromUser   = "user_im_message_receive_user"
+	EventMention                      = "user_im_message_receive_at"
+	EventSingleChat                   = "user_im_message_receive_o2o"
+	EventInChat                       = "user_im_message_receive_group"
+	EventFromUser                     = "user_im_message_receive_user"
+	EventAllSingleChat                = "user_im_message_receive_o2o_all"
+	EventAllGroupChat                 = "user_im_message_receive_group_all"
+	EventReadO2O                      = "user_im_message_read_o2o"
+	EventReadGroup                    = "user_im_message_read_group"
+	EventRecallO2O                    = "user_im_message_recall_o2o"
+	EventRecallGroup                  = "user_im_message_recall_group"
+	EventReactionO2O                  = "user_im_message_reaction_o2o"
+	EventReactionGroup                = "user_im_message_reaction_group"
+	EventGroupUpdated                 = "user_im_group_updated"
+	EventGroupMemberAdded             = "user_im_group_member_added"
+	EventGroupMemberExited            = "user_im_group_member_exited"
+	EventGroupDisbanded               = "user_im_group_disbanded"
+	EventOAApprovalTaskCreated        = "user_oa_approval_task_created"
+	EventOAApprovalTaskFinished       = "user_oa_approval_task_finished"
+	EventOAApprovalTaskRedirected     = "user_oa_approval_task_redirected"
+	EventOAApprovalInstanceStarted    = "user_oa_approval_instance_started"
+	EventOAApprovalInstanceCC         = "user_oa_approval_instance_cc"
+	EventOAApprovalInstanceTerminated = "user_oa_approval_instance_terminated"
+	EventOAApprovalInstanceFinished   = "user_oa_approval_instance_finished"
+	EventTodoTaskCreated              = "user_todo_task_create"
+	EventTodoTaskUpdated              = "user_todo_task_update"
+	EventTodoTaskDeleted              = "user_todo_task_delete"
 )
 
 const (
@@ -35,32 +57,41 @@ const (
 )
 
 type Definition struct {
-	EventKey       string         `json:"event_key"`
-	DisplayName    string         `json:"display_name"`
-	Description    string         `json:"description"`
-	Category       string         `json:"category"`
-	RuleType       string         `json:"rule_type"`
-	Status         string         `json:"status"`
-	RequiredParams []string       `json:"required_params"`
-	Auth           map[string]any `json:"auth,omitempty"`
-	Public         bool           `json:"-"`
+	EventKey       string                `json:"event_key"`
+	DisplayName    string                `json:"display_name"`
+	Description    string                `json:"description"`
+	Category       string                `json:"category"`
+	RuleType       string                `json:"rule_type"`
+	Status         string                `json:"status"`
+	RequiredParams []string              `json:"required_params"`
+	Constraints    *ParameterConstraints `json:"constraints,omitempty"`
+	Auth           map[string]any        `json:"auth,omitempty"`
+	Public         bool                  `json:"-"`
+}
+
+type ParameterConstraints struct {
+	RequireOneOf      [][]string `json:"require_one_of,omitempty"`
+	MutuallyExclusive [][]string `json:"mutually_exclusive,omitempty"`
 }
 
 type SchemaDocument struct {
-	EventKey       string         `json:"event_key"`
-	DisplayName    string         `json:"display_name"`
-	Description    string         `json:"description"`
-	Category       string         `json:"category"`
-	RuleType       string         `json:"rule_type"`
-	RequiredParams []string       `json:"required_params"`
-	JQRootPath     string         `json:"jq_root_path"`
-	Schema         map[string]any `json:"schema"`
+	EventKey       string                `json:"event_key"`
+	DisplayName    string                `json:"display_name"`
+	Description    string                `json:"description"`
+	Category       string                `json:"category"`
+	RuleType       string                `json:"rule_type"`
+	RequiredParams []string              `json:"required_params"`
+	Constraints    *ParameterConstraints `json:"constraints,omitempty"`
+	JQRootPath     string                `json:"jq_root_path"`
+	Schema         map[string]any        `json:"schema"`
 }
 
 type RuleOptions struct {
-	RuleType string
-	UserID   string
-	GroupID  string
+	RuleType       string
+	UserID         string
+	OpenDingTalkID string
+	GroupID        string
+	RoleTypes      []string
 }
 
 type SchemaPendingError struct {
@@ -90,7 +121,8 @@ var definitions = []Definition{
 		Category:       "im",
 		RuleType:       "singleChat",
 		Status:         StatusEnabled,
-		RequiredParams: []string{"user"},
+		RequiredParams: nil,
+		Constraints:    targetUIDConstraints(),
 		Auth:           map[string]any{"identity": "user"},
 		Public:         true,
 	},
@@ -108,25 +140,281 @@ var definitions = []Definition{
 	{
 		EventKey:       EventFromUser,
 		DisplayName:    "指定发送人消息",
-		Description:    "当前用户收到的特别关注用户的消息",
+		Description:    "当前用户收到的指定用户发送的消息",
 		Category:       "im",
 		RuleType:       "sender",
 		Status:         StatusEnabled,
-		RequiredParams: []string{"user"},
+		RequiredParams: nil,
+		Constraints:    targetUIDConstraints(),
 		Auth:           map[string]any{"identity": "user"},
-		Public:         false,
+		Public:         true,
+	},
+	{
+		EventKey:       EventAllSingleChat,
+		DisplayName:    "全部单聊消息",
+		Description:    "当前用户收到的所有单聊消息",
+		Category:       "im",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventAllGroupChat,
+		DisplayName:    "全部群消息",
+		Description:    "当前用户收到的所有群聊消息",
+		Category:       "im",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventReadO2O,
+		DisplayName:    "指定单聊消息已读",
+		Description:    "当前用户在指定单聊中发送的消息被对方已读",
+		Category:       "im",
+		RuleType:       "singleChat",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Constraints:    targetUIDConstraints(),
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventReadGroup,
+		DisplayName:    "指定群消息已读",
+		Description:    "当前用户在指定群聊中发送的消息被已读",
+		Category:       "im",
+		RuleType:       "group",
+		Status:         StatusEnabled,
+		RequiredParams: []string{"group"},
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventRecallO2O,
+		DisplayName:    "指定单聊消息撤回",
+		Description:    "指定单聊中的消息被撤回",
+		Category:       "im",
+		RuleType:       "singleChat",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Constraints:    targetUIDConstraints(),
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventRecallGroup,
+		DisplayName:    "指定群消息撤回",
+		Description:    "指定群聊中的消息被撤回",
+		Category:       "im",
+		RuleType:       "group",
+		Status:         StatusEnabled,
+		RequiredParams: []string{"group"},
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventReactionO2O,
+		DisplayName:    "指定单聊消息表情回应",
+		Description:    "指定单聊中的消息收到表情回应（贴表情）",
+		Category:       "im",
+		RuleType:       "singleChat",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Constraints:    targetUIDConstraints(),
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventReactionGroup,
+		DisplayName:    "指定群消息表情回应",
+		Description:    "指定群聊中的消息收到表情回应（贴表情）",
+		Category:       "im",
+		RuleType:       "group",
+		Status:         StatusEnabled,
+		RequiredParams: []string{"group"},
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventGroupUpdated,
+		DisplayName:    "群标题变更",
+		Description:    "指定群聊的标题发生变更",
+		Category:       "im",
+		RuleType:       "group",
+		Status:         StatusEnabled,
+		RequiredParams: []string{"group"},
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventGroupMemberAdded,
+		DisplayName:    "群成员加入",
+		Description:    "指定群聊有成员加入",
+		Category:       "im",
+		RuleType:       "group",
+		Status:         StatusEnabled,
+		RequiredParams: []string{"group"},
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventGroupMemberExited,
+		DisplayName:    "群成员退出",
+		Description:    "指定群聊有成员退出",
+		Category:       "im",
+		RuleType:       "group",
+		Status:         StatusEnabled,
+		RequiredParams: []string{"group"},
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventGroupDisbanded,
+		DisplayName:    "群解散",
+		Description:    "指定群聊被解散",
+		Category:       "im",
+		RuleType:       "group",
+		Status:         StatusEnabled,
+		RequiredParams: []string{"group"},
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventOAApprovalTaskCreated,
+		DisplayName:    "审批任务创建",
+		Description:    "审批任务创建，发送给审批人",
+		Category:       "oa",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventOAApprovalTaskFinished,
+		DisplayName:    "审批任务完成",
+		Description:    "审批任务已完成",
+		Category:       "oa",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventOAApprovalTaskRedirected,
+		DisplayName:    "审批人任务转交",
+		Description:    "审批任务已转交",
+		Category:       "oa",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventOAApprovalInstanceStarted,
+		DisplayName:    "发起审批单",
+		Description:    "审批实例已发起",
+		Category:       "oa",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventOAApprovalInstanceCC,
+		DisplayName:    "审批单抄送",
+		Description:    "审批实例到达抄送节点，发送给被抄送人",
+		Category:       "oa",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventOAApprovalInstanceTerminated,
+		DisplayName:    "审批单终止",
+		Description:    "审批实例已终止",
+		Category:       "oa",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventOAApprovalInstanceFinished,
+		DisplayName:    "审批单完成",
+		Description:    "审批实例完成，发送给审批单发起人",
+		Category:       "oa",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventTodoTaskCreated,
+		DisplayName:    "待办创建",
+		Description:    "当前用户作为创建者、执行者或参与者的待办被创建",
+		Category:       "todo",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventTodoTaskUpdated,
+		DisplayName:    "待办更新",
+		Description:    "当前用户作为创建者、执行者或参与者的待办被更新",
+		Category:       "todo",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventTodoTaskDeleted,
+		DisplayName:    "待办删除",
+		Description:    "当前用户作为创建者、执行者或参与者的待办被删除",
+		Category:       "todo",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
 	},
 }
 
+func targetUIDConstraints() *ParameterConstraints {
+	return &ParameterConstraints{
+		RequireOneOf:      [][]string{{"user", "open-dingtalk-id"}},
+		MutuallyExclusive: [][]string{{"user", "open-dingtalk-id"}},
+	}
+}
+
 func Definitions() []Definition {
-	out := append([]Definition(nil), definitions...)
+	out := make([]Definition, 0, len(definitions))
+	for _, def := range definitions {
+		out = append(out, cloneDefinition(def))
+	}
 	return out
 }
 
 func Lookup(eventKey string) (Definition, bool) {
 	for _, def := range definitions {
 		if def.EventKey == eventKey {
-			return def, true
+			return cloneDefinition(def), true
 		}
 	}
 	return Definition{}, false
@@ -157,14 +445,24 @@ func Catalog(category string, enabledOnly, includePending bool) []Definition {
 		if !includePending && def.Status == StatusPending {
 			continue
 		}
-		out = append(out, def)
+		out = append(out, cloneDefinition(def))
 	}
 	return out
 }
 
 func BuildSchemaDocument(def Definition) SchemaDocument {
+	return BuildSchemaDocumentForMode(def, false)
+}
+
+func BuildSchemaDocumentForMode(def Definition, flatten bool) SchemaDocument {
 	requiredParams := make([]string, 0, len(def.RequiredParams))
 	requiredParams = append(requiredParams, def.RequiredParams...)
+	jqRootPath := ".data | fromjson"
+	schema := transportEnvelopeSchema(def.EventKey)
+	if flatten {
+		jqRootPath = "."
+		schema = outputSchema(def.EventKey)
+	}
 	return SchemaDocument{
 		EventKey:       def.EventKey,
 		DisplayName:    def.DisplayName,
@@ -172,9 +470,44 @@ func BuildSchemaDocument(def Definition) SchemaDocument {
 		Category:       def.Category,
 		RuleType:       def.RuleType,
 		RequiredParams: requiredParams,
-		JQRootPath:     ".data | fromjson",
-		Schema:         personalMessageSchema(def.EventKey),
+		Constraints:    cloneParameterConstraints(def.Constraints),
+		JQRootPath:     jqRootPath,
+		Schema:         schema,
 	}
+}
+
+func cloneDefinition(def Definition) Definition {
+	def.RequiredParams = append([]string(nil), def.RequiredParams...)
+	def.Constraints = cloneParameterConstraints(def.Constraints)
+	if def.Auth != nil {
+		def.Auth = cloneMap(def.Auth)
+	}
+	return def
+}
+
+func cloneParameterConstraints(in *ParameterConstraints) *ParameterConstraints {
+	if in == nil {
+		return nil
+	}
+	cloneGroups := func(groups [][]string) [][]string {
+		out := make([][]string, len(groups))
+		for i, group := range groups {
+			out[i] = append([]string(nil), group...)
+		}
+		return out
+	}
+	return &ParameterConstraints{
+		RequireOneOf:      cloneGroups(in.RequireOneOf),
+		MutuallyExclusive: cloneGroups(in.MutuallyExclusive),
+	}
+}
+
+func cloneMap(in map[string]any) map[string]any {
+	out := make(map[string]any, len(in))
+	for key, value := range in {
+		out[key] = value
+	}
+	return out
 }
 
 func BuildRuleParam(eventKey string, opts RuleOptions) (ruleType string, ruleParam map[string]any, err error) {
@@ -189,44 +522,52 @@ func BuildRuleParam(eventKey string, opts RuleOptions) (ruleType string, rulePar
 		return "", nil, &SchemaPendingError{EventKey: eventKey}
 	}
 	userID := strings.TrimSpace(opts.UserID)
+	openDingTalkID := strings.TrimSpace(opts.OpenDingTalkID)
 	groupID := strings.TrimSpace(opts.GroupID)
-	switch def.RuleType {
-	case "at":
+	if def.Category == "todo" {
 		if userID != "" {
-			return "", nil, fmt.Errorf("--user is only supported for %s", EventSingleChat)
+			return "", nil, fmt.Errorf("--user is not supported for %s; use --role-types", eventKey)
+		}
+		if openDingTalkID != "" {
+			return "", nil, fmt.Errorf("--open-dingtalk-id is not supported for %s; use --role-types", eventKey)
 		}
 		if groupID != "" {
-			return "", nil, fmt.Errorf("--group is only supported for %s", EventInChat)
+			return "", nil, fmt.Errorf("--group is not supported for %s; use --role-types", eventKey)
+		}
+		roleTypes, roleErr := normalizeTodoRoleTypes(opts.RoleTypes)
+		if roleErr != nil {
+			return "", nil, fmt.Errorf("%s: %w", eventKey, roleErr)
+		}
+		return def.RuleType, map[string]any{"roleTypes": roleTypes}, nil
+	}
+	if len(opts.RoleTypes) > 0 {
+		return "", nil, fmt.Errorf("--role-types is not supported for %s", eventKey)
+	}
+	switch def.RuleType {
+	case "at", "all":
+		if userID != "" {
+			return "", nil, fmt.Errorf("--user is not supported for %s", eventKey)
+		}
+		if openDingTalkID != "" {
+			return "", nil, fmt.Errorf("--open-dingtalk-id is not supported for %s", eventKey)
+		}
+		if groupID != "" {
+			return "", nil, fmt.Errorf("--group is not supported for %s", eventKey)
 		}
 		return def.RuleType, map[string]any{}, nil
 	case "singleChat":
-		if groupID != "" {
-			return "", nil, fmt.Errorf("--group is only supported for %s", EventInChat)
-		}
-		if userID == "" {
-			return "", nil, fmt.Errorf("--user is required")
-		}
-		return def.RuleType, map[string]any{
-			"targetUid":     userID,
-			"targetUidType": "staffId",
-		}, nil
+		return buildTargetUIDRuleParam(def.RuleType, eventKey, userID, openDingTalkID, groupID)
 	case "sender":
-		if groupID != "" {
-			return "", nil, fmt.Errorf("--group is only supported for %s", EventInChat)
-		}
-		if userID == "" {
-			return "", nil, fmt.Errorf("--user is required")
-		}
-		return def.RuleType, map[string]any{
-			"targetUid":     userID,
-			"targetUidType": "staffId",
-		}, nil
+		return buildTargetUIDRuleParam(def.RuleType, eventKey, userID, openDingTalkID, groupID)
 	case "group":
 		if userID != "" {
-			return "", nil, fmt.Errorf("--user is only supported for %s", EventSingleChat)
+			return "", nil, fmt.Errorf("--user is not supported for %s; use --group", eventKey)
+		}
+		if openDingTalkID != "" {
+			return "", nil, fmt.Errorf("--open-dingtalk-id is not supported for %s; use --group", eventKey)
 		}
 		if groupID == "" {
-			return "", nil, fmt.Errorf("--group is required")
+			return "", nil, fmt.Errorf("--group is required for %s", eventKey)
 		}
 		return def.RuleType, map[string]any{
 			"openConversationId": groupID,
@@ -234,6 +575,59 @@ func BuildRuleParam(eventKey string, opts RuleOptions) (ruleType string, rulePar
 	default:
 		return "", nil, &SchemaPendingError{EventKey: eventKey}
 	}
+}
+
+func normalizeTodoRoleTypes(values []string) ([]string, error) {
+	selected := make(map[string]bool, 3)
+	for _, value := range values {
+		for _, roleType := range strings.Split(value, ",") {
+			roleType = strings.TrimSpace(roleType)
+			if roleType == "" {
+				continue
+			}
+			switch roleType {
+			case "creator", "executor", "participant":
+			default:
+				return nil, fmt.Errorf("--role-types contains unsupported role %q; allowed values: creator, executor, participant", roleType)
+			}
+			if selected[roleType] {
+				return nil, fmt.Errorf("--role-types contains duplicate role %q", roleType)
+			}
+			selected[roleType] = true
+		}
+	}
+	if len(selected) == 0 {
+		return []string{"creator", "executor", "participant"}, nil
+	}
+	roles := make([]string, 0, len(selected))
+	for _, roleType := range []string{"creator", "executor", "participant"} {
+		if selected[roleType] {
+			roles = append(roles, roleType)
+		}
+	}
+	return roles, nil
+}
+
+func buildTargetUIDRuleParam(ruleType, eventKey, userID, openDingTalkID, groupID string) (string, map[string]any, error) {
+	if groupID != "" {
+		return "", nil, fmt.Errorf("--group is not supported for %s; use --user or --open-dingtalk-id", eventKey)
+	}
+	if userID != "" && openDingTalkID != "" {
+		return "", nil, fmt.Errorf("--user and --open-dingtalk-id are mutually exclusive for %s", eventKey)
+	}
+	if userID == "" && openDingTalkID == "" {
+		return "", nil, fmt.Errorf("one of --user or --open-dingtalk-id is required for %s", eventKey)
+	}
+	if openDingTalkID != "" {
+		return ruleType, map[string]any{
+			"targetUid":     openDingTalkID,
+			"targetUidType": "openDingtalkId",
+		}, nil
+	}
+	return ruleType, map[string]any{
+		"targetUid":     userID,
+		"targetUidType": "staffId",
+	}, nil
 }
 
 func BuildFilter(filterJSON string, queryCSV string) (any, string, error) {
@@ -337,62 +731,20 @@ func normalizeFilterAliases(v any) any {
 	}
 }
 
-func personalMessageSchema(eventKey string) map[string]any {
-	return map[string]any{
-		"type": "object",
-		"properties": map[string]any{
-			"type": map[string]any{
-				"type":        "string",
-				"description": "事件类型，固定为当前 event_key",
-				"enum":        []string{eventKey},
-			},
-			"event_id": map[string]any{
-				"type":        "string",
-				"description": "事件 ID，可用于去重",
-			},
-			"timestamp": map[string]any{
-				"type":        "integer",
-				"description": "事件发生时间戳，对应 occurredAtMs",
-				"format":      "timestamp_ms",
-			},
-			"subscribe_id": map[string]any{
-				"type":        "string",
-				"description": "订阅 ID，对应 subId",
-			},
-			"message_id": map[string]any{
-				"type":        "string",
-				"description": "开放消息 ID，对应 payload.body.openMessageId",
-				"format":      "open_message_id",
-			},
-			"conversation_id": map[string]any{
-				"type":        "string",
-				"description": "会话 ID，对应 payload.body.openConversationId",
-				"format":      "open_conversation_id",
-			},
-			"sender": map[string]any{
-				"type":        "string",
-				"description": "发送人展示名，对应 payload.body.sender",
-			},
-			"sender_open_dingtalk_id": map[string]any{
-				"type":        "string",
-				"description": "发送人开放 ID，对应 payload.body.senderOpenDingTalkId",
-				"format":      "open_dingtalk_id",
-			},
-			"content": map[string]any{
-				"type":        "string",
-				"description": "消息正文，对应 payload.body.content",
-			},
-			"create_time": map[string]any{
-				"type":        "string",
-				"description": "消息创建时间，对应 payload.body.createTime",
-			},
-			"event_time": map[string]any{
-				"type":        "integer",
-				"description": "消息事件时间戳，对应 payload.event_time",
-				"format":      "timestamp_ms",
-			},
-		},
+func isMessageReceiveEvent(eventKey string) bool {
+	switch eventKey {
+	case EventMention, EventSingleChat, EventInChat, EventFromUser, EventAllSingleChat, EventAllGroupChat:
+		return true
+	default:
+		return false
 	}
+}
+
+// SupportsMessageFilter reports whether --query/--filter-json describe a
+// stable message payload for this event. Action and group lifecycle events do
+// not expose the same filter fields.
+func SupportsMessageFilter(eventKey string) bool {
+	return isMessageReceiveEvent(eventKey)
 }
 
 func IsSchemaPending(err error) bool {

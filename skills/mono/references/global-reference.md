@@ -22,6 +22,19 @@ dws auth reset
 
 登录后自动管理 token 刷新，日常使用无需重复登录。
 
+### 多账号 profile
+
+```bash
+dws profile list --format json
+dws profile switch <corpId:userId>
+dws --profile <corpId:userId> contact user get-self --format json
+```
+
+- 同一组织可保存多个账号，身份由 `corpId + userId` 唯一确定。
+- 选择器支持 ID 或唯一名称组合；自动化使用 `profile list` 返回的 `profile=corpId:userId`。
+- 多账号组织没有 `isOrgCurrent=true` 时，只传 corpId/corpName 会报错，必须指定账号。
+- `profile list` 读取真实身份 Token 状态但不刷新。`auth status` 会尝试刷新；刷新失败时返回未认证和原始失败原因。
+
 | Token | 有效期 | 说明 |
 |-------|--------|------|
 | Access Token | 2 小时 | 调用 API 的凭证，过期自动刷新 |
@@ -46,24 +59,6 @@ dws auth login --device
 ```
 refresh_token 单设备独占，远程刷新后源设备凭证失效。
 
-## Recovery
-
-当 runtime/MCP 命令失败且 stderr 额外输出 `RECOVERY_EVENT_ID=<event_id>` 时，说明 CLI 已经持久化了失败快照，可进入 recovery 闭环：
-
-```bash
-dws recovery plan --event-id <event_id> --format json
-dws recovery execute --event-id <event_id> --format json
-dws recovery finalize --event-id <event_id> --outcome recovered|failed|handoff --execution-file execution.json --format json
-```
-
-- `plan` / `execute` 也支持 `--last`，但 `--last` 与 `--event-id` 互斥
-- recovery 文件保存在 `DWS_CONFIG_DIR/recovery/`
-- CLI 会自动清理 30 天前的 recovery 文件和事件记录
-- recovery 自己发起的文档检索与只读 probe 不会再创建新的 recovery 事件
-
-更多闭环要求见 [recovery-guide.md](./recovery-guide.md)。
-
-
 ## 全局标志
 
 | 标志 | 短名 | 说明 | 默认 |
@@ -79,6 +74,7 @@ dws recovery finalize --event-id <event_id> --outcome recovered|failed|handoff -
 | `--mock` | | Mock 数据 (开发用) | false |
 | `--client-id` | | 覆盖 OAuth Client ID | 无 |
 | `--client-secret` | | 覆盖 OAuth Client Secret | 无 |
+| `--profile` | | 单次指定组织或账号；支持 corpId/corpName 与 userId/userName 组合，推荐稳定的 corpId:userId | 当前账号 |
 
 ## 输出格式
 

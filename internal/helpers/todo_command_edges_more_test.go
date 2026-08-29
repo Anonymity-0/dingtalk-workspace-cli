@@ -1,0 +1,344 @@
+package helpers
+
+import (
+	"context"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+)
+
+func executeTodoEdge(t *testing.T, caller *scriptedToolCaller, args ...string) error {
+	t.Helper()
+	previous := deps
+	previousArgs := os.Args
+	os.Args = append([]string{"dws", "todo"}, os.Args[1:]...)
+	InitDeps(caller)
+	deps.Out.w = io.Discard
+	deps.Out.errW = io.Discard
+	defer func() {
+		deps = previous
+		os.Args = previousArgs
+	}()
+
+	cmd := newTodoCommand()
+	if cmd.PersistentFlags().Lookup("yes") == nil {
+		cmd.PersistentFlags().Bool("yes", false, "confirm execution")
+	}
+	if cmd.PersistentFlags().Lookup("dry-run") == nil {
+		cmd.PersistentFlags().Bool("dry-run", false, "preview without executing")
+	}
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetIn(os.Stdin)
+	cmd.SetArgs(args)
+	return cmd.Execute()
+}
+
+func TestCrossPlatformCoverageTodoCreateAndListCommandEdges(t *testing.T) {
+	validDate := "2026-03-10T18:00:00+08:00"
+	errorCases := [][]string{
+		{"task", "create", "--title", "x", "--executors", "u", "--remind-at", validDate},
+		{"task", "create", "--title", "x", "--executors", "u", "--due", "bad"},
+		{"task", "create", "--title", "x", "--executors", "u", "--priority", "bad"},
+		{"task", "create-sub", "--title", "x", "--executors", "u", "--parent-id", "abc"},
+		{"task", "create-sub", "--title", "x", "--executors", "u", "--parent-id", "1", "--remind-at", validDate},
+		{"task", "create-sub", "--title", "x", "--executors", "u", "--parent-id", "1", "--due", "bad"},
+		{"task", "create-sub", "--title", "x", "--executors", "u", "--parent-id", "1", "--priority", "bad"},
+		{"task", "list", "--role-types", "invalid"},
+		{"task", "list", "--plan-finish-date-start", "bad"},
+		{"task", "list", "--plan-finish-date-end", "bad"},
+	}
+	for _, args := range errorCases {
+		if err := executeTodoEdge(t, &scriptedToolCaller{}, args...); err == nil {
+			t.Fatalf("expected error for %v", args)
+		}
+	}
+
+	validCases := [][]string{
+		{"task", "create", "--title", "x", "--executors", "u1,u2", "--due", validDate, "--priority", "40", "--recurrence", "daily"},
+		{"task", "create", "--subject", "x", "--executors", "u", "--priority", "20"},
+		{"task", "create-sub", "--content", "x", "--executors", "u", "--parent-id", "1", "--due", validDate, "--priority", "40", "--recurrence", "daily"},
+		{"task", "list", "--size", "bad"},
+		{"task", "list", "--status", "true", "--priority", "40,bad", "--role-types", "creator,executor", "--plan-finish-date-start", validDate, "--plan-finish-date-end", validDate},
+	}
+	for _, args := range validCases {
+		if err := executeTodoEdge(t, &scriptedToolCaller{}, args...); err != nil {
+			t.Fatalf("execute %v: %v", args, err)
+		}
+	}
+	if err := executeTodoEdge(t, &scriptedToolCaller{dry: true}, "task", "list", "--size", "21"); err != nil {
+		t.Fatalf("dry auto-page: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageTodoRejectsEmptyExecutorCSVAndNonNumericPriorityBeforeCall(t *testing.T) {
+	tests := []struct {
+		name   string
+		reason string
+		args   []string
+	}{
+		{name: "create empty executors", reason: "invalid_executors", args: []string{"task", "create", "--title", "x", "--executors", ",,,"}},
+		{name: "create-sub empty executors", reason: "invalid_executors", args: []string{"task", "create-sub", "--parent-id", "1", "--title", "x", "--executors", " , , "}},
+		{name: "add empty executors", reason: "invalid_executors", args: []string{"task", "add-executor", "--task-id", "1", "--executors", ",,,"}},
+		{name: "remove empty executors", reason: "invalid_executors", args: []string{"task", "remove-executor", "--task-id", "1", "--executors", ",,,"}},
+		{name: "create nonnumeric priority", reason: "invalid_priority", args: []string{"task", "create", "--title", "x", "--executors", "u", "--priority", "normal"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			err := executeTodoEdge(t, caller, test.args...)
+			var typed *apperrors.Error
+			if !errors.As(err, &typed) || typed.Reason != test.reason {
+				t.Fatalf("error = %T %v, want reason %q", err, err, test.reason)
+			}
+			if typed.ExecutionStarted == nil || *typed.ExecutionStarted {
+				t.Fatalf("execution_started = %v, want false", typed.ExecutionStarted)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("invalid input made %d MCP call(s)", caller.calls)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageTodoCreateAcceptsNumericPriority(t *testing.T) {
+	for _, priority := range []string{"20", "25"} {
+		t.Run(priority, func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			if err := executeTodoEdge(t, caller, "task", "create", "--title", "x", "--executors", "u", "--priority", priority); err != nil {
+				t.Fatalf("create priority %s: %v", priority, err)
+			}
+			if caller.calls != 1 || caller.tool != "create_personal_todo" {
+				t.Fatalf("calls = %d tool = %q", caller.calls, caller.tool)
+			}
+			request, ok := caller.args["PersonalTodoCreateVO"].(map[string]any)
+			if !ok || request["priority"] != mustTodoAtoi(t, priority) {
+				t.Fatalf("request = %#v, want priority %s", caller.args, priority)
+			}
+		})
+	}
+}
+
+func mustTodoAtoi(t *testing.T, value string) int {
+	t.Helper()
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		t.Fatalf("parse %q: %v", value, err)
+	}
+	return parsed
+}
+
+func TestCrossPlatformCoverageTodoSimpleCommandValidationAndSuccessEdges(t *testing.T) {
+	errorCases := [][]string{
+		{"task", "create"},
+		{"task", "create", "--title", "x"},
+		{"task", "create-sub"},
+		{"task", "create-sub", "--title", "x"},
+		{"task", "list-sub"},
+		{"task", "update"},
+		{"task", "done"},
+		{"task", "get"},
+		{"task", "delete"},
+		{"task", "add-executor"},
+		{"task", "remove-executor"},
+		{"task", "add-participant"},
+		{"task", "remove-participant"},
+		{"task", "add-reminder"},
+		{"task", "reset-reminder"},
+		{"task", "add-attachment"},
+		{"task", "list-attachment"},
+		{"task", "remove-attachment"},
+		{"comment", "add"},
+		{"comment", "list"},
+		{"comment", "delete"},
+	}
+	for _, args := range errorCases {
+		if err := executeTodoEdge(t, &scriptedToolCaller{}, args...); err == nil {
+			t.Fatalf("expected validation error for %v", args)
+		}
+	}
+
+	validCases := []struct {
+		args  []string
+		steps []scriptedToolStep
+	}{
+		{args: []string{"task", "list-sub", "--task-id", "1"}},
+		{
+			args: []string{"task", "done", "--task-id", "1", "--status", "true"},
+			steps: []scriptedToolStep{
+				{text: `{"result":{"todoDetailModel":{"taskId":"1"}}}`},
+				{text: `{}`},
+			},
+		},
+		{args: []string{"task", "add-executor", "--task-id", "1", "--executors", "u1,u2"}},
+		{args: []string{"task", "remove-executor", "--task-id", "1", "--executors", "u1,u2"}},
+		{args: []string{"task", "add-participant", "--task-id", "1", "--participants", "u1,u2"}},
+		{args: []string{"task", "remove-participant", "--task-id", "1", "--participants", "u1,u2"}},
+		{
+			args: []string{"task", "list-attachment", "--task-id", "1"},
+			steps: []scriptedToolStep{
+				{text: `{"result":{"todoDetailModel":{"taskId":"1"}}}`},
+				{text: `{}`},
+			},
+		},
+		{args: []string{"comment", "add", "--task-id", "1", "--content", "hello"}},
+		{args: []string{"comment", "list", "--task-id", "1"}},
+	}
+	for _, tc := range validCases {
+		if err := executeTodoEdge(t, &scriptedToolCaller{steps: tc.steps}, tc.args...); err != nil {
+			t.Fatalf("execute %v: %v", tc.args, err)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageTodoUpdateReminderAndDetailEdges(t *testing.T) {
+	validDate := "2026-03-10T18:00:00+08:00"
+	errorCases := [][]string{
+		{"task", "update", "--task-id", "1", "--remind-at", validDate},
+		{"task", "update", "--task-id", "1", "--due", "bad"},
+		{"task", "update", "--task-id", "1", "--priority", "bad"},
+		{"task", "add-reminder", "--task-id", "1", "--base-time", "customTime", "--reminder-time-stamp", "bad"},
+		{"task", "reset-reminder", "--task-id", "1", "--reminder-rules", `[{"baseTime":"customTime","reminderTimeStamp":"bad"}]`},
+		{"task", "reset-reminder", "--task-id", "1", "--reminder-rules", `not-json`},
+		{"task", "reset-reminder", "--task-id", "1", "--reminder-rules", `[1,{"baseTime":"dueTime"},{"baseTime":"customTime","reminderTimeStamp":"` + validDate + `"}]`},
+	}
+	for _, args := range errorCases {
+		if err := executeTodoEdge(t, &scriptedToolCaller{}, args...); err == nil {
+			t.Fatalf("expected error for %v", args)
+		}
+	}
+	validCases := [][]string{
+		{"task", "update", "--task-id", "1", "--title", "new", "--due", validDate, "--priority", "40", "--done", "true"},
+		{"task", "add-reminder", "--task-id", "1", "--base-time", "dueTime", "--due-date-offset", "-10"},
+		{"task", "add-reminder", "--task-id", "1", "--base-time", "customTime", "--reminder-time-stamp", validDate},
+	}
+	for _, args := range validCases {
+		if err := executeTodoEdge(t, &scriptedToolCaller{}, args...); err != nil {
+			t.Fatalf("execute %v: %v", args, err)
+		}
+	}
+
+	details := []scriptedToolStep{
+		{text: ""},
+		{text: "not-json"},
+		{text: `{"result":{"todoDetailModel":{"detailUrl":{"appUrl":"https://app.example/a b","pcUrl":"https://pc.example/a b"}}}}`},
+	}
+	for _, step := range details {
+		if err := executeTodoEdge(t, &scriptedToolCaller{steps: []scriptedToolStep{step}}, "task", "get", "--task-id", "1"); err != nil {
+			t.Fatalf("detail %q: %v", step.text, err)
+		}
+	}
+	boom := errors.New("boom")
+	if err := executeTodoEdge(t, &scriptedToolCaller{steps: []scriptedToolStep{{err: boom}}}, "task", "get", "--task-id", "1"); err == nil {
+		t.Fatal("detail tool error returned nil")
+	}
+}
+
+func TestCrossPlatformCoverageTodoAttachmentCommandEdges(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "attachment.txt")
+	if err := os.WriteFile(file, []byte("data"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := executeTodoEdge(t, &scriptedToolCaller{dry: true}, "task", "add-attachment", "--task-id", "1", "--file-path", file); err != nil {
+		t.Fatalf("dry attachment: %v", err)
+	}
+	if err := executeTodoEdge(t, &scriptedToolCaller{}, "task", "add-attachment", "--task-id", "1", "--file-path", file+".missing"); err == nil {
+		t.Fatal("missing attachment returned nil")
+	}
+
+	originalPut := httpPutFile
+	defer func() { httpPutFile = originalPut }()
+	httpPutFile = func(context.Context, string, map[string]string, string, int64) error { return nil }
+	credential := `{"resourceUrl":"https://upload.invalid","uploadKey":"key"}`
+	for _, tc := range []struct {
+		name  string
+		steps []scriptedToolStep
+		ok    bool
+	}{
+		{"upload-error", []scriptedToolStep{{err: errors.New("upload")}}, false},
+		{"commit-parse-error", []scriptedToolStep{{text: credential}, {text: `{}`}}, false},
+		{"success", []scriptedToolStep{{text: credential}, {text: `{"dentryId":1,"spaceId":2}`}, {text: `{}`}}, true},
+	} {
+		err := executeTodoEdge(t, &scriptedToolCaller{steps: tc.steps}, "task", "add-attachment", "--task-id", "1", "--file-path", file)
+		if tc.ok && err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if !tc.ok && err == nil {
+			t.Fatalf("%s returned nil", tc.name)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageTodoDeleteCancellationAndConfirmationEdges(t *testing.T) {
+	originalArgs, originalStdin := os.Args, os.Stdin
+	defer func() {
+		os.Args = originalArgs
+		os.Stdin = originalStdin
+	}()
+
+	os.Args = []string{"dws"}
+	for _, args := range [][]string{
+		{"task", "delete", "--task-id", "1"},
+		// remove-attachment is schema-excluded and still uses confirmDelete (nil cancel).
+		{"task", "remove-attachment", "--task-id", "1", "--attachment-id", "2"},
+		{"comment", "delete", "--task-id", "1", "--comment-id", "2"},
+	} {
+		readEnd, writeEnd, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := writeEnd.WriteString("no\n"); err != nil {
+			t.Fatal(err)
+		}
+		_ = writeEnd.Close()
+		os.Stdin = readEnd
+		err = executeTodoEdge(t, &scriptedToolCaller{}, args...)
+		_ = readEnd.Close()
+		switch args[1] {
+		case "remove-attachment":
+			if err != nil {
+				t.Fatalf("cancel %v: %v", args, err)
+			}
+		default:
+			// Contract ConfirmSafety returns a typed cancel error (not silent nil).
+			if err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
+				t.Fatalf("cancel %v: error = %v, want 用户取消了操作", args, err)
+			}
+		}
+	}
+
+	os.Args = []string{"dws", "--yes"}
+	for _, args := range [][]string{
+		{"task", "delete", "--task-id", "1", "--yes"},
+		{"task", "remove-attachment", "--task-id", "1", "--attachment-id", "2", "--yes"},
+		{"comment", "delete", "--task-id", "1", "--comment-id", "2", "--yes"},
+	} {
+		if err := executeTodoEdge(t, &scriptedToolCaller{}, args...); err != nil {
+			t.Fatalf("confirm %v: %v", args, err)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageTodoMD5AndEmptyListEdges(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "file.txt")
+	if err := os.WriteFile(file, []byte("data"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	original := todoFileMD5Hex
+	todoFileMD5Hex = func(string) (string, error) { return "", errors.New("md5") }
+	defer func() { todoFileMD5Hex = original }()
+	if _, err := buildTodoLocalFileMeta(file, "", ""); err == nil {
+		t.Fatal("md5 error returned nil")
+	}
+	if got := parseStringList(", ,"); got != nil {
+		t.Fatalf("empty list=%v", got)
+	}
+}

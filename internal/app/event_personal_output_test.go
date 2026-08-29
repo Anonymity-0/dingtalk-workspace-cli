@@ -18,7 +18,9 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
+	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/personal"
 	"github.com/spf13/cobra"
 )
@@ -43,8 +45,24 @@ func TestPersonalEventListHidesSchemaIDs(t *testing.T) {
 			}
 			got := out.String()
 			assertPersonalOutputHidesSchemaIDs(t, got)
-			if strings.Contains(got, personal.EventFromUser) {
-				t.Fatalf("list output exposed hidden event %s: %s", personal.EventFromUser, got)
+			for _, eventKey := range []string{
+				personal.EventFromUser,
+				personal.EventAllSingleChat,
+				personal.EventAllGroupChat,
+				personal.EventReadO2O,
+				personal.EventReadGroup,
+				personal.EventRecallO2O,
+				personal.EventRecallGroup,
+				personal.EventReactionO2O,
+				personal.EventReactionGroup,
+				personal.EventGroupUpdated,
+				personal.EventGroupMemberAdded,
+				personal.EventGroupMemberExited,
+				personal.EventGroupDisbanded,
+			} {
+				if !strings.Contains(got, eventKey) {
+					t.Fatalf("list output missing %s: %s", eventKey, got)
+				}
 			}
 		})
 	}
@@ -64,8 +82,8 @@ func TestEventListDefaultsToUser(t *testing.T) {
 	if !strings.Contains(got, personal.EventSingleChat) || !strings.Contains(got, "EVENT_KEY") {
 		t.Fatalf("list output = %s, want personal event catalog", got)
 	}
-	if strings.Contains(got, personal.EventFromUser) {
-		t.Fatalf("list output exposed hidden event %s: %s", personal.EventFromUser, got)
+	if !strings.Contains(got, personal.EventFromUser) {
+		t.Fatalf("list output missing public event %s: %s", personal.EventFromUser, got)
 	}
 	if strings.Contains(got, "CLIENT_ID") || strings.Contains(got, "ClientSecret") {
 		t.Fatalf("list default appears to use legacy application output: %s", got)
@@ -176,11 +194,50 @@ func TestPersonalEventSchemaHidesSchemaIDs(t *testing.T) {
 	}
 }
 
-func TestPersonalEventSchemaUsesSingleJSONSchema(t *testing.T) {
+func TestPersonalEventSchemaDefaultsToTransportEnvelope(t *testing.T) {
+	cmd := newEventSchemaCommand()
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{personal.EventSingleChat})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+		t.Fatalf("schema output is not JSON: %v\n%s", err, out.String())
+	}
+	if doc["jq_root_path"] != ".data | fromjson" {
+		t.Fatalf("jq_root_path = %#v, want .data | fromjson", doc["jq_root_path"])
+	}
+	schema, ok := doc["schema"].(map[string]any)
+	if !ok {
+		t.Fatalf("schema = %#v, want object", doc["schema"])
+	}
+	props, ok := schema["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("schema.properties = %#v, want object", schema["properties"])
+	}
+	for _, field := range []string{"type", "seq", "event_type", "data", "headers", "subscribe_id"} {
+		if _, ok := props[field]; !ok {
+			t.Fatalf("default envelope schema missing %q: %#v", field, props)
+		}
+	}
+	for _, field := range []string{"content", "sender", "conversation_id", "timestamp"} {
+		if _, ok := props[field]; ok {
+			t.Fatalf("default envelope schema unexpectedly contains flat field %q", field)
+		}
+	}
+}
+
+func TestPersonalEventFlattenedSchemaUsesSingleJSONSchema(t *testing.T) {
 	for _, eventKey := range []string{
 		personal.EventMention,
 		personal.EventSingleChat,
 		personal.EventInChat,
+		personal.EventAllSingleChat,
+		personal.EventAllGroupChat,
 	} {
 		t.Run(eventKey, func(t *testing.T) {
 			cmd := newEventSchemaCommand()
@@ -188,7 +245,7 @@ func TestPersonalEventSchemaUsesSingleJSONSchema(t *testing.T) {
 			cmd.SilenceErrors = true
 			var out bytes.Buffer
 			cmd.SetOut(&out)
-			cmd.SetArgs([]string{eventKey})
+			cmd.SetArgs([]string{eventKey, "--flatten"})
 			if err := cmd.Execute(); err != nil {
 				t.Fatalf("Execute() error = %v", err)
 			}
@@ -216,6 +273,8 @@ func TestPersonalEventSchemaUsesSingleJSONSchema(t *testing.T) {
 				"message_id",
 				"create_time",
 				"event_time",
+				"quoted_message",
+				"forward_messages",
 			} {
 				if !strings.Contains(got, want) {
 					t.Fatalf("schema output for %s missing %q: %s", eventKey, want, got)
@@ -246,8 +305,8 @@ func TestPersonalEventSchemaUsesSingleJSONSchema(t *testing.T) {
 					t.Fatalf("schema output for %s leaked %q: %s", eventKey, leaked, got)
 				}
 			}
-			if doc["jq_root_path"] != ".data | fromjson" {
-				t.Fatalf("jq_root_path = %#v, want .data | fromjson", doc["jq_root_path"])
+			if doc["jq_root_path"] != "." {
+				t.Fatalf("jq_root_path = %#v, want .", doc["jq_root_path"])
 			}
 			schema, ok := doc["schema"].(map[string]any)
 			if !ok {
@@ -260,7 +319,178 @@ func TestPersonalEventSchemaUsesSingleJSONSchema(t *testing.T) {
 			if _, ok := props["content"].(map[string]any); !ok {
 				t.Fatalf("schema.properties.content = %#v, want object", props["content"])
 			}
+			quoted, ok := props["quoted_message"].(map[string]any)
+			if !ok || quoted["type"] != "object" {
+				t.Fatalf("schema.properties.quoted_message = %#v, want object", props["quoted_message"])
+			}
+			forward, ok := props["forward_messages"].(map[string]any)
+			if !ok || forward["type"] != "array" {
+				t.Fatalf("schema.properties.forward_messages = %#v, want array", props["forward_messages"])
+			}
 		})
+	}
+}
+
+func TestPersonalGroupLifecycleEventSchemaUsesConservativePayload(t *testing.T) {
+	for _, eventKey := range []string{personal.EventGroupUpdated, personal.EventGroupDisbanded} {
+		t.Run(eventKey, func(t *testing.T) {
+			cmd := newEventSchemaCommand()
+			cmd.SilenceUsage = true
+			cmd.SilenceErrors = true
+			var out bytes.Buffer
+			cmd.SetOut(&out)
+			cmd.SetArgs([]string{eventKey, "--flatten"})
+			if err := cmd.Execute(); err != nil {
+				t.Fatal(err)
+			}
+			var doc map[string]any
+			if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+				t.Fatalf("schema output is not JSON: %v\n%s", err, out.String())
+			}
+			if doc["event_key"] != eventKey || doc["rule_type"] != "group" || doc["jq_root_path"] != "." {
+				t.Fatalf("schema metadata = %#v", doc)
+			}
+			required, ok := doc["required_params"].([]any)
+			if !ok || len(required) != 1 || required[0] != "group" {
+				t.Fatalf("required_params = %#v, want [group]", doc["required_params"])
+			}
+			schema := doc["schema"].(map[string]any)
+			properties := schema["properties"].(map[string]any)
+			if len(properties) != 5 {
+				t.Fatalf("schema.properties = %#v, want five conservative fields", properties)
+			}
+			payload, ok := properties["payload"].(map[string]any)
+			if !ok || payload["type"] != "object" || payload["additionalProperties"] != true {
+				t.Fatalf("schema.properties.payload = %#v", properties["payload"])
+			}
+		})
+	}
+}
+
+func TestPersonalGroupMemberEventSchemaMatchesFlatOutput(t *testing.T) {
+	wantProperties := []string{
+		"type", "event_id", "timestamp", "subscribe_id", "conversation_id",
+		"operator", "operator_open_dingtalk_id", "members", "event_time",
+	}
+	for _, eventKey := range []string{personal.EventGroupMemberAdded, personal.EventGroupMemberExited} {
+		t.Run(eventKey, func(t *testing.T) {
+			cmd := newEventSchemaCommand()
+			cmd.SilenceUsage = true
+			cmd.SilenceErrors = true
+			var out bytes.Buffer
+			cmd.SetOut(&out)
+			cmd.SetArgs([]string{eventKey, "--flatten"})
+			if err := cmd.Execute(); err != nil {
+				t.Fatal(err)
+			}
+			var doc map[string]any
+			if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+				t.Fatalf("schema output is not JSON: %v\n%s", err, out.String())
+			}
+			if doc["event_key"] != eventKey || doc["rule_type"] != "group" || doc["jq_root_path"] != "." {
+				t.Fatalf("schema metadata = %#v", doc)
+			}
+			properties := doc["schema"].(map[string]any)["properties"].(map[string]any)
+			if len(properties) != len(wantProperties) {
+				t.Fatalf("schema.properties = %#v, want exactly %d flat fields", properties, len(wantProperties))
+			}
+			for _, field := range wantProperties {
+				if _, ok := properties[field].(map[string]any); !ok {
+					t.Fatalf("schema missing %q: %#v", field, properties)
+				}
+			}
+			members := properties["members"].(map[string]any)
+			items, ok := members["items"].(map[string]any)
+			if !ok || members["type"] != "array" || items["type"] != "object" {
+				t.Fatalf("members schema = %#v", members)
+			}
+			memberProperties, ok := items["properties"].(map[string]any)
+			if !ok {
+				t.Fatalf("members.items.properties = %#v", items["properties"])
+			}
+			for _, field := range []string{"nick", "open_dingtalk_id"} {
+				if _, ok := memberProperties[field].(map[string]any); !ok {
+					t.Fatalf("member schema missing %q: %#v", field, memberProperties)
+				}
+			}
+			if _, ok := properties["payload"]; ok {
+				t.Fatalf("group member schema exposed generic payload: %#v", properties)
+			}
+		})
+	}
+}
+
+func TestPersonalActionEventSchemaMatchesFlatOutput(t *testing.T) {
+	tests := []struct {
+		eventKeys  []string
+		properties []string
+	}{
+		{
+			eventKeys: []string{personal.EventReadO2O, personal.EventReadGroup},
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "message_id",
+				"conversation_id", "reader", "reader_open_dingtalk_id", "sender",
+				"sender_open_dingtalk_id", "read_time", "event_time",
+			},
+		},
+		{
+			eventKeys: []string{personal.EventRecallO2O, personal.EventRecallGroup},
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "message_id",
+				"conversation_id", "recaller", "recaller_open_dingtalk_id", "sender",
+				"sender_open_dingtalk_id", "recall_time", "event_time",
+			},
+		},
+		{
+			eventKeys: []string{personal.EventReactionO2O, personal.EventReactionGroup},
+			properties: []string{
+				"type", "event_id", "timestamp", "subscribe_id", "message_id",
+				"conversation_id", "operator", "operator_open_dingtalk_id", "reaction_name",
+				"reaction_text", "operation_type", "operation_time", "sender",
+				"sender_open_dingtalk_id", "event_time",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		for _, eventKey := range tt.eventKeys {
+			t.Run(eventKey, func(t *testing.T) {
+				cmd := newEventSchemaCommand()
+				cmd.SilenceUsage = true
+				cmd.SilenceErrors = true
+				var out bytes.Buffer
+				cmd.SetOut(&out)
+				cmd.SetArgs([]string{eventKey, "--flatten"})
+				if err := cmd.Execute(); err != nil {
+					t.Fatal(err)
+				}
+				var doc map[string]any
+				if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+					t.Fatalf("schema output is not JSON: %v\n%s", err, out.String())
+				}
+				if doc["event_key"] != eventKey || doc["jq_root_path"] != "." {
+					t.Fatalf("schema metadata = %#v", doc)
+				}
+				schema, ok := doc["schema"].(map[string]any)
+				if !ok {
+					t.Fatalf("schema = %#v", doc["schema"])
+				}
+				properties, ok := schema["properties"].(map[string]any)
+				if !ok || len(properties) != len(tt.properties) {
+					t.Fatalf("schema.properties = %#v, want exactly %d flat fields", schema["properties"], len(tt.properties))
+				}
+				for _, field := range tt.properties {
+					if _, ok := properties[field]; !ok {
+						t.Fatalf("schema missing %q: %#v", field, properties)
+					}
+				}
+				for _, internal := range []string{"payload", "uid", "corpid", "clientId", "filterSubId", "bizid"} {
+					if _, ok := properties[internal]; ok {
+						t.Fatalf("schema exposed internal property %q", internal)
+					}
+				}
+			})
+		}
 	}
 }
 
@@ -281,39 +511,217 @@ func TestEventSchemaDefaultsToUser(t *testing.T) {
 	if doc["event_key"] != personal.EventSingleChat {
 		t.Fatalf("event_key = %#v, want %s", doc["event_key"], personal.EventSingleChat)
 	}
+	if doc["jq_root_path"] != ".data | fromjson" {
+		t.Fatalf("jq_root_path = %#v, want default envelope path", doc["jq_root_path"])
+	}
 }
 
-func TestPersonalEventFromUserIsNotPubliclyAvailable(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		cmd  *cobra.Command
-		args []string
+func TestPersonalEventFromUserIsPubliclyAvailable(t *testing.T) {
+	if err := ensurePublicPersonalEvent(personal.EventFromUser); err != nil {
+		t.Fatalf("ensurePublicPersonalEvent() error = %v", err)
+	}
+
+	schemaCmd := newEventSchemaCommand()
+	schemaCmd.SilenceUsage = true
+	schemaCmd.SilenceErrors = true
+	var schemaOut bytes.Buffer
+	schemaCmd.SetOut(&schemaOut)
+	schemaCmd.SetArgs([]string{personal.EventFromUser})
+	if err := schemaCmd.Execute(); err != nil {
+		t.Fatalf("schema Execute() error = %v", err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(schemaOut.Bytes(), &doc); err != nil {
+		t.Fatalf("schema output is not JSON: %v\n%s", err, schemaOut.String())
+	}
+	if doc["event_key"] != personal.EventFromUser || doc["rule_type"] != "sender" {
+		t.Fatalf("schema document = %#v", doc)
+	}
+
+	configDir := setupPersonalIdentityToken(t, &authpkg.TokenData{
+		AccessToken:  "access-1",
+		RefreshToken: "refresh-1",
+		ExpiresAt:    time.Now().Add(time.Hour),
+		RefreshExpAt: time.Now().Add(24 * time.Hour),
+		CorpID:       "corp-1",
+		UserID:       "user-1",
+		ClientID:     "client-1",
+	})
+	t.Setenv("DWS_CONFIG_DIR", configDir)
+
+	consumeCmd := newEventConsumeCommand()
+	consumeCmd.SilenceUsage = true
+	consumeCmd.SilenceErrors = true
+	consumeCmd.SetArgs([]string{personal.EventFromUser, "--user", "test-user-001", "--dry-run"})
+	if err := consumeCmd.Execute(); err != nil {
+		t.Fatalf("consume dry-run Execute() error = %v", err)
+	}
+	openIDConsumeCmd := newEventConsumeCommand()
+	openIDConsumeCmd.SilenceUsage = true
+	openIDConsumeCmd.SilenceErrors = true
+	openIDConsumeCmd.SetArgs([]string{personal.EventFromUser, "--open-dingtalk-id", "open-user-1", "--dry-run"})
+	if err := openIDConsumeCmd.Execute(); err != nil {
+		t.Fatalf("consume openDingtalkId dry-run Execute() error = %v", err)
+	}
+
+	conflictingTargetCmd := newEventConsumeCommand()
+	conflictingTargetCmd.SilenceUsage = true
+	conflictingTargetCmd.SilenceErrors = true
+	conflictingTargetCmd.SetArgs([]string{personal.EventFromUser, "--user", "test-user-001", "--open-dingtalk-id", "open-user-1", "--dry-run"})
+	err := conflictingTargetCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "--user and --open-dingtalk-id are mutually exclusive for "+personal.EventFromUser) {
+		t.Fatalf("conflicting target identity error = %v", err)
+	}
+
+	groupOpenIDCmd := newEventConsumeCommand()
+	groupOpenIDCmd.SilenceUsage = true
+	groupOpenIDCmd.SilenceErrors = true
+	groupOpenIDCmd.SetArgs([]string{personal.EventInChat, "--group", "cid-1", "--open-dingtalk-id", "open-user-1", "--dry-run"})
+	err = groupOpenIDCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "--open-dingtalk-id is not supported for "+personal.EventInChat+"; use --group") {
+		t.Fatalf("group openDingtalkId error = %v", err)
+	}
+
+	missingUserCmd := newEventConsumeCommand()
+	missingUserCmd.SilenceUsage = true
+	missingUserCmd.SilenceErrors = true
+	missingUserCmd.SetArgs([]string{personal.EventFromUser})
+	err = missingUserCmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "one of --user or --open-dingtalk-id is required for "+personal.EventFromUser) {
+		t.Fatalf("missing target identity error = %v", err)
+	}
+}
+
+func TestPersonalNewIMEventsDryRunAndValidation(t *testing.T) {
+	configDir := setupPersonalIdentityToken(t, &authpkg.TokenData{
+		AccessToken:  "access-1",
+		RefreshToken: "refresh-1",
+		ExpiresAt:    time.Now().Add(time.Hour),
+		RefreshExpAt: time.Now().Add(24 * time.Hour),
+		CorpID:       "corp-1",
+		UserID:       "user-1",
+		ClientID:     "client-1",
+	})
+	t.Setenv("DWS_CONFIG_DIR", configDir)
+
+	for _, test := range []struct {
+		eventKey string
+		args     []string
 	}{
-		{
-			name: "schema",
-			cmd:  newEventSchemaCommand(),
-			args: []string{personal.EventFromUser},
-		},
-		{
-			name: "consume",
-			cmd:  newEventConsumeCommand(),
-			args: []string{personal.EventFromUser, "--user", "507971", "--dry-run"},
-		},
-		{
-			name: "status",
-			cmd:  newEventStatusCommand(),
-			args: []string{"--event", personal.EventFromUser},
-		},
+		{eventKey: personal.EventAllSingleChat},
+		{eventKey: personal.EventAllGroupChat},
+		{eventKey: personal.EventGroupUpdated, args: []string{"--group", "cid-test-group"}},
+		{eventKey: personal.EventGroupMemberAdded, args: []string{"--group", "cid-test-group"}},
+		{eventKey: personal.EventGroupMemberExited, args: []string{"--group", "cid-test-group"}},
+		{eventKey: personal.EventGroupDisbanded, args: []string{"--group", "cid-test-group"}},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			tc.cmd.SilenceUsage = true
-			tc.cmd.SilenceErrors = true
-			tc.cmd.SetArgs(tc.args)
-			err := tc.cmd.Execute()
-			if err == nil || !strings.Contains(err.Error(), "event "+personal.EventFromUser+" is not publicly available yet") {
-				t.Fatalf("Execute() error = %v, want not publicly available", err)
+		t.Run(test.eventKey, func(t *testing.T) {
+			if err := ensurePublicPersonalEvent(test.eventKey); err != nil {
+				t.Fatalf("ensurePublicPersonalEvent() error = %v", err)
+			}
+			cmd := newEventConsumeCommand()
+			cmd.SilenceUsage = true
+			cmd.SilenceErrors = true
+			cmd.SetArgs(append([]string{test.eventKey}, append(test.args, "--dry-run")...))
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("dry-run Execute() error = %v", err)
 			}
 		})
+	}
+
+	for _, eventKey := range []string{personal.EventAllSingleChat, personal.EventAllGroupChat} {
+		cmd := newEventConsumeCommand()
+		cmd.SilenceUsage = true
+		cmd.SilenceErrors = true
+		cmd.SetArgs([]string{eventKey, "--user", "test-user-001", "--dry-run"})
+		if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "--user is not supported for "+eventKey) {
+			t.Fatalf("%s scoped user error = %v", eventKey, err)
+		}
+	}
+
+	for _, eventKey := range []string{personal.EventGroupUpdated, personal.EventGroupMemberAdded, personal.EventGroupMemberExited, personal.EventGroupDisbanded} {
+		cmd := newEventConsumeCommand()
+		cmd.SilenceUsage = true
+		cmd.SilenceErrors = true
+		cmd.SetArgs([]string{eventKey, "--dry-run"})
+		if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "--group is required for "+eventKey) {
+			t.Fatalf("%s missing group error = %v", eventKey, err)
+		}
+	}
+}
+
+func TestEventConsumeCobraSchemaIncludesOpenDingTalkID(t *testing.T) {
+	root := NewRootCommand()
+	root.SilenceUsage = true
+	root.SilenceErrors = true
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetArgs([]string{"schema", "event consume"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("schema event consume Execute() error = %v", err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+		t.Fatalf("schema output is not JSON: %v\n%s", err, out.String())
+	}
+	params, ok := doc["parameters"].(map[string]any)
+	if !ok {
+		t.Fatalf("schema parameters = %#v", doc["parameters"])
+	}
+	if _, ok := params["open-dingtalk-id"]; !ok {
+		t.Fatalf("schema parameters missing open-dingtalk-id: %#v", params)
+	}
+	if _, ok := params["odid"]; ok {
+		t.Fatalf("schema parameters unexpectedly include odid alias: %#v", params)
+	}
+	if _, ok := params["flatten"]; !ok {
+		t.Fatalf("schema parameters missing flatten: %#v", params)
+	}
+	for _, name := range []string{"user", "open-dingtalk-id", "group"} {
+		param, ok := params[name].(map[string]any)
+		if !ok {
+			t.Fatalf("schema parameter %s = %#v", name, params[name])
+		}
+		if got, exists := param["required_when"]; exists {
+			t.Fatalf("schema parameter %s unexpectedly declares required_when = %#v", name, got)
+		}
+	}
+	constraints, ok := doc["constraints"].(map[string]any)
+	if !ok {
+		t.Fatalf("schema constraints = %#v", doc["constraints"])
+	}
+	assertJSONConstraintGroup := func(field string, want []string) {
+		t.Helper()
+		groups, ok := constraints[field].([]any)
+		if !ok {
+			t.Fatalf("schema constraint %s = %#v", field, constraints[field])
+		}
+		for _, rawGroup := range groups {
+			group, ok := rawGroup.([]any)
+			if !ok || len(group) != len(want) {
+				continue
+			}
+			matched := true
+			for i := range want {
+				if group[i] != want[i] {
+					matched = false
+					break
+				}
+			}
+			if matched {
+				return
+			}
+		}
+		t.Fatalf("schema constraint %s = %#v, missing %#v", field, groups, want)
+	}
+	assertJSONConstraintGroup("require_one_of", []string{"event_key", "subscribe-id"})
+	positionals, ok := doc["positionals"].([]any)
+	if !ok || len(positionals) != 1 {
+		t.Fatalf("schema positionals = %#v", doc["positionals"])
+	}
+	eventKey, ok := positionals[0].(map[string]any)
+	if !ok || eventKey["name"] != "event_key" || eventKey["variadic"] != true {
+		t.Fatalf("event_key positional = %#v, want variadic", positionals[0])
 	}
 }
 

@@ -15,11 +15,10 @@ package app
 
 import "sync"
 
-// PluginAuth holds authentication credentials for a plugin-owned
-// streamable-http MCP server. Each server is keyed by its canonical
-// product ID (CLI.ID) so that different servers can use independent
-// tokens without interfering with each other or with the default
-// DingTalk OAuth token.
+// PluginAuth marks ownership of a plugin-owned streamable-http MCP server and
+// holds its optional authentication credentials. Every accepted HTTP plugin,
+// including an anonymous one, has a non-nil record keyed by canonical product
+// ID (CLI.ID) so execution never falls back to built-in DingTalk OAuth.
 type PluginAuth struct {
 	// Token is the Bearer token extracted from the plugin's
 	// "Authorization" header (e.g. a third-party API key).
@@ -39,18 +38,25 @@ var (
 	pluginAuthRegistry = make(map[string]*PluginAuth)
 )
 
-// RegisterPluginAuth stores authentication credentials for a plugin
-// server keyed by its canonical product ID. The runner looks up these
-// credentials at execution time to inject the correct Bearer token
-// instead of the default DingTalk OAuth token.
+// RegisterPluginAuth stores ownership and optional authentication credentials
+// for a plugin server keyed by its canonical product ID.
 func RegisterPluginAuth(productID string, auth *PluginAuth) {
 	pluginAuthMu.Lock()
 	defer pluginAuthMu.Unlock()
 	pluginAuthRegistry[productID] = auth
 }
 
-// LookupPluginAuth returns the authentication credentials registered
-// for the given product ID, or nil if none exists.
+// ClearPluginAuth removes the ownership and credential record for a plugin
+// product.
+func ClearPluginAuth(productID string) {
+	pluginAuthMu.Lock()
+	defer pluginAuthMu.Unlock()
+	delete(pluginAuthRegistry, productID)
+}
+
+// LookupPluginAuth returns plugin ownership and optional authentication
+// credentials for the product ID. The bool denotes ownership, not whether a
+// Bearer token is present.
 func LookupPluginAuth(productID string) (*PluginAuth, bool) {
 	pluginAuthMu.RLock()
 	defer pluginAuthMu.RUnlock()

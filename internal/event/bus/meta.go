@@ -25,7 +25,9 @@ import (
 )
 
 // MetaFileName is the on-disk name of the bus metadata file. It lives
-// alongside bus.lock and bus.sock inside the bus working directory.
+// alongside bus.lock inside the bus working directory. Unix bus sockets live
+// in a private per-user runtime directory so shared config filesystems do not
+// need socket support.
 const MetaFileName = "bus.meta"
 
 // Meta is the JSON document written once at bus startup. Its primary
@@ -57,6 +59,13 @@ type Meta struct {
 // readers (older readers tolerate unknown fields via encoding/json).
 const CurrentBusVersion = "v1"
 
+var (
+	metaMarshalIndent = json.MarshalIndent
+	metaWriteFile     = os.WriteFile
+	metaRename        = os.Rename
+	metaRemove        = os.Remove
+)
+
 // WriteMeta atomically writes m to <dir>/bus.meta. Atomic via tmp-file +
 // rename. Directory permissions are not changed; caller must mkdir the
 // containing directory beforehand with pkg/config.DirPerm.
@@ -70,17 +79,17 @@ func WriteMeta(dir string, m Meta) error {
 	if m.StartedAt.IsZero() {
 		m.StartedAt = time.Now().UTC()
 	}
-	b, err := json.MarshalIndent(m, "", "  ")
+	b, err := metaMarshalIndent(m, "", "  ")
 	if err != nil {
 		return fmt.Errorf("bus: marshal meta: %w", err)
 	}
 	final := filepath.Join(dir, MetaFileName)
 	tmp := final + ".tmp"
-	if err := os.WriteFile(tmp, b, config.FilePerm); err != nil {
+	if err := metaWriteFile(tmp, b, config.FilePerm); err != nil {
 		return fmt.Errorf("bus: write tmp meta: %w", err)
 	}
-	if err := os.Rename(tmp, final); err != nil {
-		_ = os.Remove(tmp)
+	if err := metaRename(tmp, final); err != nil {
+		_ = metaRemove(tmp)
 		return fmt.Errorf("bus: rename meta: %w", err)
 	}
 	return nil
