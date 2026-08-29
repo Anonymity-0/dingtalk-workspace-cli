@@ -259,6 +259,15 @@ func TestMailContactBatchDeleteRequiresConfirmationAndExactConfirmedIDs(t *testi
 	if len(caller.calls) != 1 || !reflect.DeepEqual(caller.calls[0], want) {
 		t.Fatalf("tool calls = %#v, want exactly %#v", caller.calls, want)
 	}
+
+	dryRunCaller := &guardedMutationCaller{dryRun: true}
+	err = executeGuardedMailMutationCommand(t, dryRunCaller, append(append([]string(nil), baseArgs...), "--dry-run")...)
+	if err != nil {
+		t.Fatalf("contact deletion dry-run without --yes returned error: %v", err)
+	}
+	if len(dryRunCaller.calls) != 0 {
+		t.Fatalf("dry-run tool calls = %#v, want none", dryRunCaller.calls)
+	}
 }
 
 func TestChatDismissGroupRequiresConfirmationBeforeToolCall(t *testing.T) {

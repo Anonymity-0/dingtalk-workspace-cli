@@ -3281,7 +3281,7 @@ user 对象字段：
 			if err := validateRequiredFlags(cmd, "email", "contact-ids"); err != nil {
 				return err
 			}
-			if !commandBoolFlag(cmd, "yes") {
+			if !commandBoolFlag(cmd, "yes") && !deps.Caller.DryRun() {
 				return apperrors.NewValidation(
 					"批量删除邮件联系人需要用户明确确认；获得确认后加 --yes 执行",
 					apperrors.WithReason("confirmation_required"),
