@@ -13,17 +13,15 @@ metadata:
 
 > **前置：执行 `dws` 前必须完整读取 [`dingtalk-shared`](../dingtalk-shared/SKILL.md)。**Shared references 仅按需加载。
 
-本 Skill 只负责未来个人 IM/OA/VoIP/Todo 实时事件；发送和历史消息走 `dingtalk-chat`，审批查询与处理走 `dingtalk-misc` 的 OA，待办查询与操作走 `dingtalk-todo`，开放平台应用事件配置走其 DevApp。子 reference 按需加载。
+本 Skill 只负责未来个人 IM/OA/VoIP/Todo 事件；发送和历史消息走 `dingtalk-chat`，审批处理走 `dingtalk-misc`，待办操作走 `dingtalk-todo`。
 
-实时监听必须使用事件长连接，不写轮询脚本，不用历史消息、审批列表、通话记录或待办列表查询模拟事件。高频 IM 意图优先交给 `dws event +listen-im`；它在 CLI 内解析自然目标、选择 EventKey，并复用现有订阅与 bus 生命周期。OA、VoIP 与 Todo 事件使用显式 `dws event consume`。
+实时监听使用长连接，不用历史消息、审批列表、通话记录或待办列表轮询。IM 优先使用 `dws event +listen-im`；OA、VoIP 与 Todo 使用 `dws event consume`。
 
 <!-- dws-intent: event.listen.im -->消息、reaction、已读和撤回的默认监听入口是 `dws event +listen-im`；
 只有群生命周期、Filter DSL、原始 envelope 或底层订阅控制才使用
 `event consume` fallback。
 
 <!-- dws-intent: event.listen.oa -->OA 审批任务与审批实例的实时变化使用 `dws event consume`；查询或操作已有审批走 `dws oa`，不要用轮询模拟事件。
-
-VoIP 通话邀请使用 `dws event consume`；不要用通话记录轮询模拟实时事件。
 
 <!-- dws-intent: event.listen.todo -->待办创建、更新或删除的实时变化使用 `dws event consume`；查询或操作已有待办走 `dws todo`，不要用轮询模拟事件。
 
