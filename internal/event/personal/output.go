@@ -337,6 +337,8 @@ type personalEventData struct {
 	Payload      json.RawMessage `json:"payload"`
 }
 
+var marshalPersonalTransportData = json.Marshal
+
 // ProjectTransportOutput preserves the transport envelope used by the default
 // non-flatten output mode while removing sensitive VoIP invitation fields.
 // Callers that explicitly opt into raw debugging bypass this projector.
@@ -368,7 +370,7 @@ func ProjectTransportOutput(ev transport.Event) (any, error) {
 		}, fmt.Errorf("redact personal VoIP payload for safe transport output: %w", err)
 	}
 	data.Payload = sanitizedPayload
-	encoded, err := json.Marshal(data)
+	encoded, err := marshalPersonalTransportData(data)
 	if err != nil {
 		return baseEventOutput{
 			Type:        firstNonEmptyOutput(ev.EventType, data.EventKey),

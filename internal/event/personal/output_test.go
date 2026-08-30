@@ -15,12 +15,14 @@ package personal
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/transport"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func personalMessageData(eventKey string) string {
@@ -231,6 +233,160 @@ func personalVoIPData() string {
 			}
 		}
 	}`
+}
+
+func TestCrossPlatformCoverageProjectTransportOutput(t *testing.T) {
+	voip := transport.Event{
+		Type:          transport.FrameTypeEvent,
+		EventID:       "outer-event",
+		EventBornTime: 1780630479000,
+		EventType:     EventVoIPCallReceiveInvite,
+		SubscribeID:   "outer-sub",
+		Data: `{
+			"eventId":"inner-event",
+			"eventKey":"user_voip_call_receive_invite",
+			"occurredAtMs":1780630479124,
+			"subId":"inner-sub",
+			"payload":{
+				"room-code":"root-secret",
+				"body":{
+					"callId":"call-1",
+					"roomCode":"body-secret",
+					"items":[{"room_code":"nested-secret","keep":true},"text",7]
+				}
+			}
+		}`,
+	}
+
+	projected, err := ProjectTransportOutput(voip)
+	if err != nil {
+		t.Fatalf("ProjectTransportOutput(VoIP) error = %v", err)
+	}
+	safe, ok := projected.(transport.Event)
+	if !ok {
+		t.Fatalf("ProjectTransportOutput(VoIP) type = %T, want transport.Event", projected)
+	}
+	if safe.Type != voip.Type || safe.EventID != voip.EventID || safe.EventBornTime != voip.EventBornTime || safe.SubscribeID != voip.SubscribeID {
+		t.Fatalf("ProjectTransportOutput(VoIP) envelope = %#v, want transport identity from %#v", safe, voip)
+	}
+	if strings.Contains(strings.ToLower(safe.Data), "roomcode") || strings.Contains(safe.Data, "room_code") || strings.Contains(safe.Data, "room-code") || strings.Contains(safe.Data, "secret") {
+		t.Fatalf("ProjectTransportOutput(VoIP) leaked a room code: %s", safe.Data)
+	}
+	if !strings.Contains(safe.Data, `"callId":"call-1"`) || !strings.Contains(safe.Data, `"keep":true`) {
+		t.Fatalf("ProjectTransportOutput(VoIP) dropped non-sensitive payload: %s", safe.Data)
+	}
+
+	dataKeyOnly := voip
+	dataKeyOnly.EventType = ""
+	if _, err := ProjectTransportOutput(dataKeyOnly); err != nil {
+		t.Fatalf("ProjectTransportOutput(data event key VoIP) error = %v", err)
+	}
+
+	nonVoIP := transport.Event{EventType: EventSingleChat, Data: personalMessageData(EventSingleChat)}
+	gotNonVoIP, err := ProjectTransportOutput(nonVoIP)
+	if err != nil || !reflect.DeepEqual(gotNonVoIP, nonVoIP) {
+		t.Fatalf("ProjectTransportOutput(non-VoIP) = (%#v, %v), want unchanged event", gotNonVoIP, err)
+	}
+	malformedNonVoIP := transport.Event{EventType: EventSingleChat, Data: "not-json"}
+	gotMalformedNonVoIP, err := ProjectTransportOutput(malformedNonVoIP)
+	if err != nil || !reflect.DeepEqual(gotMalformedNonVoIP, malformedNonVoIP) {
+		t.Fatalf("ProjectTransportOutput(malformed non-VoIP) = (%#v, %v), want unchanged event", gotMalformedNonVoIP, err)
+	}
+
+	malformedVoIP := transport.Event{
+		EventType:     EventVoIPCallReceiveInvite,
+		EventID:       "outer-event",
+		EventBornTime: 17,
+		SubscribeID:   "outer-sub",
+		Data:          "not-json",
+	}
+	gotMalformedVoIP, err := ProjectTransportOutput(malformedVoIP)
+	if err == nil || !strings.Contains(err.Error(), "safe transport output") {
+		t.Fatalf("ProjectTransportOutput(malformed VoIP) error = %v", err)
+	}
+	if want := (baseEventOutput{Type: EventVoIPCallReceiveInvite, EventID: "outer-event", Timestamp: 17, SubscribeID: "outer-sub"}); !reflect.DeepEqual(gotMalformedVoIP, want) {
+		t.Fatalf("ProjectTransportOutput(malformed VoIP) = %#v, want %#v", gotMalformedVoIP, want)
+	}
+
+	missingPayload := transport.Event{
+		EventID:       "outer-event",
+		EventBornTime: 17,
+		SubscribeID:   "outer-sub",
+		Data:          `{"eventId":"inner-event","eventKey":"user_voip_call_receive_invite","subId":"inner-sub"}`,
+	}
+	gotMissingPayload, err := ProjectTransportOutput(missingPayload)
+	if err == nil || !strings.Contains(err.Error(), "redact personal VoIP payload") {
+		t.Fatalf("ProjectTransportOutput(VoIP missing payload) error = %v", err)
+	}
+	if want := (baseEventOutput{Type: EventVoIPCallReceiveInvite, EventID: "inner-event", Timestamp: 17, SubscribeID: "outer-sub"}); !reflect.DeepEqual(gotMissingPayload, want) {
+		t.Fatalf("ProjectTransportOutput(VoIP missing payload) = %#v, want %#v", gotMissingPayload, want)
+	}
+
+	if got := firstNonZeroOutput(0, 42, 7); got != 42 {
+		t.Fatalf("firstNonZeroOutput(0, 42, 7) = %d, want 42", got)
+	}
+	if got := firstNonZeroOutput(0, 0); got != 0 {
+		t.Fatalf("firstNonZeroOutput(0, 0) = %d, want 0", got)
+	}
+}
+
+func TestCrossPlatformCoverageProjectTransportOutputMarshalFailure(t *testing.T) {
+	testseam.Swap(t, &marshalPersonalTransportData, func(any) ([]byte, error) {
+		return nil, errors.New("marshal failed")
+	})
+
+	ev := transport.Event{
+		EventBornTime: 19,
+		Data:          `{"eventKey":"user_voip_call_receive_invite","payload":{"body":{"callId":"call-1"}}}`,
+	}
+	projected, err := ProjectTransportOutput(ev)
+	if err == nil || !strings.Contains(err.Error(), "encode redacted personal VoIP transport data") {
+		t.Fatalf("ProjectTransportOutput(marshal failure) error = %v", err)
+	}
+	if want := (baseEventOutput{Type: EventVoIPCallReceiveInvite, Timestamp: 19}); !reflect.DeepEqual(projected, want) {
+		t.Fatalf("ProjectTransportOutput(marshal failure) = %#v, want %#v", projected, want)
+	}
+}
+
+func TestCrossPlatformCoverageRedactVoIPRoomCode(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{name: "empty", input: "", wantErr: true},
+		{name: "null", input: "null", wantErr: true},
+		{name: "invalid object", input: `{"field":`, wantErr: true},
+		{name: "object containing null", input: `{"field":null}`, wantErr: true},
+		{name: "invalid array", input: `[`, wantErr: true},
+		{name: "array containing null", input: `[null]`, wantErr: true},
+		{name: "invalid primitive", input: `tru`, wantErr: true},
+		{name: "primitive", input: `"text"`},
+		{name: "object", input: `{"roomCode":"secret","keep":{"room_code":"nested","value":true}}`},
+		{name: "array", input: `[{"room-code":"secret","value":1},"keep"]`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := redactVoIPRoomCode(json.RawMessage(tt.input))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("redactVoIPRoomCode(%q) error = nil", tt.input)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("redactVoIPRoomCode(%q) error = %v", tt.input, err)
+			}
+			if !json.Valid(got) {
+				t.Fatalf("redactVoIPRoomCode(%q) returned invalid JSON: %s", tt.input, got)
+			}
+			lower := strings.ToLower(string(got))
+			if strings.Contains(lower, "roomcode") || strings.Contains(lower, "room_code") || strings.Contains(lower, "room-code") || strings.Contains(lower, "secret") || strings.Contains(lower, "nested") {
+				t.Fatalf("redactVoIPRoomCode(%q) leaked a room code: %s", tt.input, got)
+			}
+		})
+	}
 }
 
 func TestCrossPlatformCoverageProjectOutputMessageEvents(t *testing.T) {
