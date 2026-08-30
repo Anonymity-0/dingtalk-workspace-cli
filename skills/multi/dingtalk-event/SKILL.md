@@ -23,7 +23,7 @@ metadata:
 
 <!-- dws-intent: event.listen.oa -->OA 审批任务与审批实例的实时变化使用 `dws event consume`；查询或操作已有审批走 `dws oa`，不要用轮询模拟事件。
 
-<!-- dws-intent: event.listen.voip -->VoIP 通话邀请使用 `dws event consume`；不要用通话记录轮询模拟实时事件。
+VoIP 通话邀请使用 `dws event consume`；不要用通话记录轮询模拟实时事件。
 
 <!-- dws-intent: event.listen.todo -->待办创建、更新或删除的实时变化使用 `dws event consume`；查询或操作已有待办走 `dws todo`，不要用轮询模拟事件。
 
