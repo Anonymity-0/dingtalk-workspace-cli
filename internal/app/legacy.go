@@ -42,6 +42,11 @@ const runtimeDefaultCorpID = helpers.RuntimeDefaultCorpID
 // may run more than once within a process (e.g. across test cases).
 var corpIDRuntimeDefaultOnce sync.Once
 
+// resolveProfileMetadata is the indirection for ResolveProfileMetadataReadOnly
+// used by resolveCorpIDRuntimeDefault. Tests swap it to inject specific
+// ProfileMetadata without touching the filesystem.
+var resolveProfileMetadata = authpkg.ResolveProfileMetadataReadOnly
+
 // mountLegacyPublicCommands builds the product + shortcut command tree without
 // mutating process-global MCP deps or dynamic server endpoints. Used by the
 // Schema source root (declaration-only) path so assembly cannot clobber a live
@@ -99,7 +104,7 @@ func ensureCorpIDRuntimeDefault() {
 // missing, invalid, or unreadable auth data returns ("", false) so callers
 // gracefully fall back (the legacy permission format then omits targetMembers).
 func resolveCorpIDRuntimeDefault(_ context.Context) (string, bool) {
-	profile, err := authpkg.ResolveProfileMetadataReadOnly(defaultConfigDir(), authpkg.RuntimeProfile())
+	profile, err := resolveProfileMetadata(defaultConfigDir(), authpkg.RuntimeProfile())
 	if err != nil || profile == nil {
 		return "", false
 	}

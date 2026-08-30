@@ -532,6 +532,14 @@ func TestCrossPlatformCoverageUploadDryRunDelegationAllowed(t *testing.T) {
 			wantNode:    "f1",
 			wantPreview: "上传文件到钉钉文档",
 		},
+		{
+			name:        "drive upload with --mime-type still probes drive.get_upload_info",
+			product:     newDriveCommand,
+			args:        []string{"drive", "upload", "--file", file, "--folder", "f1", "--mime-type", "application/pdf", "--principal-user-id", "u1"},
+			toolKey:     "drive.get_upload_info",
+			wantNode:    "f1",
+			wantPreview: "dry_run",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -571,6 +579,12 @@ func TestCrossPlatformCoverageUploadDryRunDelegationDenied(t *testing.T) {
 			product:     newDocCommand,
 			args:        []string{"doc", "upload", "--file", file, "--folder", "f1", "--principal-user-id", "u1"},
 			wantPreview: "上传文件到钉钉文档",
+		},
+		{
+			name:        "drive upload --workspace denied",
+			product:     newDriveCommand,
+			args:        []string{"drive", "upload", "--file", file, "--workspace", "w1", "--folder", "f1", "--principal-user-id", "u1"},
+			wantPreview: "上传文件到文档空间",
 		},
 	}
 	for _, tc := range cases {

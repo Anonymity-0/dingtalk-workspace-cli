@@ -1324,6 +1324,19 @@ func TestCrossPlatformCoverageDelegationOptionsCreateActionParam(t *testing.T) {
 			args:    map[string]any{},
 			wantNil: true,
 		},
+		{
+			name:    "create_file typed without name yields nil",
+			toolKey: "drive.create_file",
+			args:    map[string]any{"type": "axls"},
+			wantNil: true,
+		},
+		{
+			name:     "create_file without type keeps bare name (no extension rebuild)",
+			toolKey:  "drive.create_file",
+			args:     map[string]any{"name": "raw"},
+			wantName: "raw",
+			wantDir:  false,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1362,6 +1375,15 @@ func TestCrossPlatformCoverageDelegationOptionsCreateActionParam(t *testing.T) {
 			}
 		})
 	}
+
+	// buildDelegationOptions only dispatches the five create_* tool names to
+	// buildCreateActionParam, so its default return nil (unmatched toolName) is
+	// unreachable through dispatch; exercise it directly.
+	t.Run("unmatched toolName yields nil (direct)", func(t *testing.T) {
+		if p := buildCreateActionParam("not_a_create_tool", map[string]any{"name": "x"}); p != nil {
+			t.Fatalf("buildCreateActionParam(unmatched) = %#v, want nil", p)
+		}
+	})
 }
 
 func TestCrossPlatformCoverageDelegationOptionsUploadAndImport(t *testing.T) {
@@ -1381,6 +1403,14 @@ func TestCrossPlatformCoverageDelegationOptionsUploadAndImport(t *testing.T) {
 			wantKey:  "uploadActionParam",
 			wantFile: "a.pdf",
 			wantSize: int64(1024),
+		},
+		{
+			name:     "drive get_upload_info fileSize as int normalizes to int64",
+			toolKey:  "drive.get_upload_info",
+			args:     map[string]any{"fileName": "int.pdf", "fileSize": int(2048)},
+			wantKey:  "uploadActionParam",
+			wantFile: "int.pdf",
+			wantSize: int64(2048),
 		},
 		{
 			name:     "drive commit_upload without size omits fileSize",
@@ -1592,6 +1622,34 @@ func TestCrossPlatformCoverageDelegationOptionsPermissionFormats(t *testing.T) {
 		}, "")
 		if opts != nil {
 			t.Fatalf("options = %#v, want nil when corpID empty", opts)
+		}
+	})
+
+	t.Run("legacy userIds skip empty ids", func(t *testing.T) {
+		opts := buildDelegationOptions("doc.add_permission", map[string]any{
+			"userIds": []string{"", "u1"},
+		}, "corp-current")
+		members := permissionMembers(t, opts)
+		if len(members) != 1 || members[0]["id"] != "u1" {
+			t.Fatalf("members = %#v, want single member id=u1 (empty id skipped)", members)
+		}
+	})
+
+	t.Run("legacy userIds all empty yields nil options", func(t *testing.T) {
+		opts := buildDelegationOptions("doc.add_permission", map[string]any{
+			"userIds": []string{"", ""},
+		}, "corp-current")
+		if opts != nil {
+			t.Fatalf("options = %#v, want nil when all userIds empty", opts)
+		}
+	})
+
+	t.Run("neither members nor userIds yields nil options", func(t *testing.T) {
+		opts := buildDelegationOptions("doc.add_permission", map[string]any{
+			"roleId": "editor",
+		}, "corp-current")
+		if opts != nil {
+			t.Fatalf("options = %#v, want nil when no members/userIds", opts)
 		}
 	})
 }
