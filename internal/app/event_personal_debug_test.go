@@ -15,7 +15,9 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -170,6 +172,78 @@ func TestEventConsumeFlattenRejectsRawModesBeforeIdentityResolution(t *testing.T
 				t.Fatalf("output-mode validation ran after identity resolution: %v", err)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoveragePersonalVoIPReusedSubscriptionRawRequiresDebugOptIn(t *testing.T) {
+	oldIdentity := personalResolveEventIdentity
+	oldGet := personalGetSubscription
+	oldUpsert := personalUpsertRunState
+	oldConsume := personalConsumeRun
+	t.Cleanup(func() {
+		personalResolveEventIdentity = oldIdentity
+		personalGetSubscription = oldGet
+		personalUpsertRunState = oldUpsert
+		personalConsumeRun = oldConsume
+	})
+	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+
+	personalResolveEventIdentity = func(context.Context, string, string) (personal.Identity, error) {
+		return personal.Identity{
+			AccessToken:  "token",
+			LocalSubject: "subject",
+			ClientID:     "client",
+			SourceID:     "open",
+		}, nil
+	}
+	personalGetSubscription = func(_ *personal.Client, _ context.Context, subscribeID string) (*personal.Subscription, error) {
+		return &personal.Subscription{
+			SubscribeID: subscribeID,
+			EventKey:    personal.EventVoIPCallReceiveInvite,
+			RuleType:    "all",
+		}, nil
+	}
+	personalUpsertRunState = func(string, personal.RunState) error { return nil }
+	var consumeDryRuns []bool
+	personalConsumeRun = func(_ context.Context, cfg consume.Config) error {
+		consumeDryRuns = append(consumeDryRuns, cfg.DryRun)
+		if cfg.EventKey != personal.EventVoIPCallReceiveInvite || cfg.Format != consume.FormatRaw {
+			t.Fatalf("resolved reused VoIP consume config = %#v", cfg)
+		}
+		return nil
+	}
+
+	for _, dryRun := range []bool{true, false} {
+		mode := "live"
+		if dryRun {
+			mode = "dry-run"
+		}
+		t.Run(mode, func(t *testing.T) {
+			baseArgs := []string{"--subscribe-id", "voip-sub", "--format", "raw"}
+			if dryRun {
+				baseArgs = append(baseArgs, "--dry-run")
+			}
+
+			cmd := newEventConsumeCommand()
+			cmd.SilenceUsage = true
+			cmd.SilenceErrors = true
+			cmd.SetArgs(baseArgs)
+			err := cmd.Execute()
+			if err == nil || !strings.Contains(err.Error(), "--format raw for VoIP events requires explicit --debug-raw-events") {
+				t.Fatalf("reused VoIP raw without debug error = %v", err)
+			}
+
+			cmd = newEventConsumeCommand()
+			cmd.SilenceUsage = true
+			cmd.SilenceErrors = true
+			cmd.SetArgs(append(append([]string(nil), baseArgs...), "--debug-raw-events"))
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("reused VoIP raw with explicit debug error = %v", err)
+			}
+		})
+	}
+	if !reflect.DeepEqual(consumeDryRuns, []bool{true, false}) {
+		t.Fatalf("reused VoIP consume dry-run sequence = %#v, want [true false]", consumeDryRuns)
 	}
 }
 

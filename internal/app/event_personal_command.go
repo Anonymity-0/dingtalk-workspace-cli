@@ -339,6 +339,9 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 			if err != nil {
 				return fmt.Errorf("event consume --as user: %w", err)
 			}
+			if err := validatePersonalEventOutputMode([]string{eventKey}, opts.Flatten, opts.DebugRawEvents, normalised); err != nil {
+				return fmt.Errorf("event consume --as user: %w", personalSubscriptionValidationError(err))
+			}
 			opts.EventKey = eventKey
 		}
 		cfg := consume.Config{
@@ -468,6 +471,9 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 			nil,
 		)
 		return fmt.Errorf("event consume --as user: %w", err)
+	}
+	if err := validatePersonalEventOutputMode([]string{eventKey}, opts.Flatten, opts.DebugRawEvents, normalised); err != nil {
+		return fmt.Errorf("event consume --as user: %w", personalSubscriptionValidationError(err))
 	}
 	selfCreated := strings.TrimSpace(opts.SubscribeID) == ""
 	ownsSubscription := selfCreated || opts.Ephemeral
