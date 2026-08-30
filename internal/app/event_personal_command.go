@@ -296,7 +296,7 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 	if fellback && !opts.Common.Quiet {
 		fmt.Fprintf(c.ErrOrStderr(), "WARN: --format %q has no meaning for event stream; using ndjson\n", rawFormat)
 	}
-	if err := validatePersonalEventOutputMode(opts.Flatten, opts.DebugRawEvents, normalised); err != nil {
+	if err := validatePersonalEventOutputMode([]string{opts.EventKey}, opts.Flatten, opts.DebugRawEvents, normalised); err != nil {
 		return fmt.Errorf("event consume --as user: %w", personalSubscriptionValidationError(err))
 	}
 	projector := personalEventProjector(opts.DebugRawEvents, opts.Flatten)
@@ -558,7 +558,7 @@ func runPersonalEventConsumeMany(c *cobra.Command, opts personalConsumeOptions) 
 	if fellback && !opts.Common.Quiet {
 		fmt.Fprintf(c.ErrOrStderr(), "WARN: --format %q has no meaning for event stream; using ndjson\n", rawFormat)
 	}
-	if err := validatePersonalEventOutputMode(opts.Flatten, opts.DebugRawEvents, normalised); err != nil {
+	if err := validatePersonalEventOutputMode(opts.EventKeys, opts.Flatten, opts.DebugRawEvents, normalised); err != nil {
 		return fmt.Errorf("event consume --as user: %w", personalSubscriptionValidationError(err))
 	}
 	projector := personalEventProjector(false, opts.Flatten)
@@ -853,18 +853,22 @@ func personalEventProjector(debugRawEvents, flatten bool) consume.Projector {
 	if flatten {
 		return personal.ProjectOutput
 	}
-	return nil
+	return personal.ProjectTransportOutput
 }
 
-func validatePersonalEventOutputMode(flatten, debugRawEvents bool, format consume.Format) error {
-	if !flatten {
-		return nil
-	}
-	if debugRawEvents {
+func validatePersonalEventOutputMode(eventKeys []string, flatten, debugRawEvents bool, format consume.Format) error {
+	if flatten && debugRawEvents {
 		return fmt.Errorf("--flatten and --debug-raw-events are mutually exclusive")
 	}
-	if format == consume.FormatRaw {
+	if flatten && format == consume.FormatRaw {
 		return fmt.Errorf("--flatten and --format raw are mutually exclusive")
+	}
+	if format == consume.FormatRaw && !debugRawEvents {
+		for _, eventKey := range eventKeys {
+			if strings.TrimSpace(eventKey) == personal.EventVoIPCallReceiveInvite {
+				return fmt.Errorf("--format raw for VoIP events requires explicit --debug-raw-events")
+			}
+		}
 	}
 	return nil
 }

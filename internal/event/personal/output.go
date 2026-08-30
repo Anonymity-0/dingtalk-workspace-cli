@@ -271,6 +271,107 @@ type personalEventData struct {
 	Payload      json.RawMessage `json:"payload"`
 }
 
+// ProjectTransportOutput preserves the transport envelope used by the default
+// non-flatten output mode while removing sensitive VoIP invitation fields.
+// Callers that explicitly opt into raw debugging bypass this projector.
+func ProjectTransportOutput(ev transport.Event) (any, error) {
+	data, err := decodePersonalEventData(ev.Data)
+	if err != nil {
+		if isVoIPEvent(ev.EventType) {
+			return baseEventOutput{
+				Type:        ev.EventType,
+				EventID:     ev.EventID,
+				Timestamp:   ev.EventBornTime,
+				SubscribeID: ev.SubscribeID,
+			}, fmt.Errorf("decode personal event data for safe transport output: %w", err)
+		}
+		return ev, nil
+	}
+
+	if !isVoIPEvent(ev.EventType) && !isVoIPEvent(data.EventKey) {
+		return ev, nil
+	}
+
+	sanitizedPayload, err := redactVoIPRoomCode(data.Payload)
+	if err != nil {
+		return baseEventOutput{
+			Type:        firstNonEmptyOutput(ev.EventType, data.EventKey),
+			EventID:     firstNonEmptyOutput(data.EventID, ev.EventID),
+			Timestamp:   firstNonZeroOutput(data.OccurredAtMS, ev.EventBornTime),
+			SubscribeID: firstNonEmptyOutput(ev.SubscribeID, data.SubID),
+		}, fmt.Errorf("redact personal VoIP payload for safe transport output: %w", err)
+	}
+	data.Payload = sanitizedPayload
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		return baseEventOutput{
+			Type:        firstNonEmptyOutput(ev.EventType, data.EventKey),
+			EventID:     firstNonEmptyOutput(data.EventID, ev.EventID),
+			Timestamp:   firstNonZeroOutput(data.OccurredAtMS, ev.EventBornTime),
+			SubscribeID: firstNonEmptyOutput(ev.SubscribeID, data.SubID),
+		}, fmt.Errorf("encode redacted personal VoIP transport data: %w", err)
+	}
+
+	safe := ev
+	safe.Data = string(encoded)
+	return safe, nil
+}
+
+func redactVoIPRoomCode(raw json.RawMessage) (json.RawMessage, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return nil, fmt.Errorf("payload is missing")
+	}
+
+	switch trimmed[0] {
+	case '{':
+		var object map[string]json.RawMessage
+		if err := json.Unmarshal(trimmed, &object); err != nil {
+			return nil, err
+		}
+		for key, value := range object {
+			normalized := strings.NewReplacer("_", "", "-", "").Replace(strings.ToLower(key))
+			if normalized == "roomcode" {
+				delete(object, key)
+				continue
+			}
+			redacted, err := redactVoIPRoomCode(value)
+			if err != nil {
+				return nil, err
+			}
+			object[key] = redacted
+		}
+		return json.Marshal(object)
+	case '[':
+		var values []json.RawMessage
+		if err := json.Unmarshal(trimmed, &values); err != nil {
+			return nil, err
+		}
+		for i, value := range values {
+			redacted, err := redactVoIPRoomCode(value)
+			if err != nil {
+				return nil, err
+			}
+			values[i] = redacted
+		}
+		return json.Marshal(values)
+	default:
+		if !json.Valid(trimmed) {
+			return nil, fmt.Errorf("invalid JSON value")
+		}
+		return append(json.RawMessage(nil), trimmed...), nil
+	}
+}
+
+func firstNonZeroOutput(values ...int64) int64 {
+	for _, value := range values {
+		if value != 0 {
+			return value
+		}
+	}
+	return 0
+}
+
 type personalMessagePayload struct {
 	EventTime int64 `json:"event_time"`
 	Body      struct {

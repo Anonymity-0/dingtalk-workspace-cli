@@ -14,6 +14,8 @@
 package app
 
 import (
+	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -54,8 +56,8 @@ func TestApplyPersonalConsumeFiltersDefault(t *testing.T) {
 }
 
 func TestPersonalEventProjectorSelectsExplicitModes(t *testing.T) {
-	if personalEventProjector(false, false) != nil {
-		t.Fatal("default personal consume should preserve transport envelope")
+	if personalEventProjector(false, false) == nil {
+		t.Fatal("default personal consume safe transport projector = nil")
 	}
 	if personalEventProjector(false, true) == nil {
 		t.Fatal("flatten personal consume projector = nil")
@@ -78,6 +80,60 @@ func TestPersonalEventProjectorSelectsExplicitModes(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoveragePersonalVoIPDefaultOutputRedactsRoomCode(t *testing.T) {
+	ev := transport.Event{
+		EventID:       "transport-event-1",
+		EventBornTime: 1787903566711,
+		EventType:     personal.EventVoIPCallReceiveInvite,
+		SubscribeID:   "sub-1",
+		Data:          `{"eventId":"business-event-1","eventKey":"user_voip_call_receive_invite","occurredAtMs":1787903566579,"subId":"sub-1","payload":{"bizid":"VOIP-1","body":{"callId":"call-1","roomCode":"7286913750"}}}`,
+	}
+	formatter, err := consume.NewFormatter(consume.FormatNDJSON,
+		consume.WithProjector(personalEventProjector(false, false)),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := formatter.Render(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(rendered, []byte("7286913750")) || bytes.Contains(rendered, []byte("roomCode")) {
+		t.Fatalf("default VoIP output leaked room code: %s", rendered)
+	}
+	var envelope transport.Event
+	if err := json.Unmarshal(bytes.TrimSpace(rendered), &envelope); err != nil {
+		t.Fatalf("default VoIP output no longer preserves transport envelope: %v\n%s", err, rendered)
+	}
+	if envelope.EventID != ev.EventID || envelope.EventType != ev.EventType || envelope.SubscribeID != ev.SubscribeID {
+		t.Fatalf("default VoIP transport identity changed: %#v", envelope)
+	}
+	if !strings.Contains(envelope.Data, `"callId":"call-1"`) {
+		t.Fatalf("default VoIP output dropped non-sensitive payload: %s", envelope.Data)
+	}
+}
+
+func TestCrossPlatformCoveragePersonalVoIPDebugRawOutputRequiresExplicitOptIn(t *testing.T) {
+	ev := transport.Event{
+		EventID:   "transport-event-1",
+		EventType: personal.EventVoIPCallReceiveInvite,
+		Data:      `{"payload":{"body":{"roomCode":"7286913750"}}}`,
+	}
+	formatter, err := consume.NewFormatter(consume.FormatNDJSON,
+		consume.WithProjector(personalEventProjector(true, false)),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := formatter.Render(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(rendered, []byte("7286913750")) || !bytes.Contains(rendered, []byte("roomCode")) {
+		t.Fatalf("explicit debug raw output did not preserve original payload: %s", rendered)
+	}
+}
+
 func TestEventConsumeFlattenRejectsRawModesBeforeIdentityResolution(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -93,6 +149,11 @@ func TestEventConsumeFlattenRejectsRawModesBeforeIdentityResolution(t *testing.T
 			name: "raw debug",
 			args: []string{personal.EventMention, "--flatten", "--debug-raw-events"},
 			want: "--flatten and --debug-raw-events are mutually exclusive",
+		},
+		{
+			name: "VoIP raw format without explicit debug opt-in",
+			args: []string{personal.EventVoIPCallReceiveInvite, "--format", "raw"},
+			want: "--format raw for VoIP events requires explicit --debug-raw-events",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -114,9 +175,12 @@ func TestEventConsumeFlattenRejectsRawModesBeforeIdentityResolution(t *testing.T
 
 func TestValidatePersonalEventOutputModeAllowsFlattenStructuredFormats(t *testing.T) {
 	for _, format := range []consume.Format{consume.FormatNDJSON, consume.FormatJSON, consume.FormatPretty, consume.FormatCompact} {
-		if err := validatePersonalEventOutputMode(true, false, format); err != nil {
-			t.Fatalf("validatePersonalEventOutputMode(true, false, %q) error = %v", format, err)
+		if err := validatePersonalEventOutputMode([]string{personal.EventVoIPCallReceiveInvite}, true, false, format); err != nil {
+			t.Fatalf("validatePersonalEventOutputMode(VoIP, true, false, %q) error = %v", format, err)
 		}
+	}
+	if err := validatePersonalEventOutputMode([]string{personal.EventVoIPCallReceiveInvite}, false, true, consume.FormatRaw); err != nil {
+		t.Fatalf("explicit VoIP raw debug mode error = %v", err)
 	}
 }
 

@@ -61,7 +61,8 @@ dws event consume user_voip_call_receive_invite --flatten -f ndjson
 - `--flatten` 默认不输出敏感入会码 `room_code`，避免终端记录、`tee` 文件或 Agent 上下文意外泄露。
 - `create_time` 与 `event_time` 都是毫秒时间戳；前者是通话邀请创建时间，后者是业务事件时间。
 - payload 缺失、body 缺失、`bizid` 为空或无法解析时，consume 会在 stderr 输出 warning，并只把不含业务 payload 的基础事件字段写到 stdout，避免敏感值从异常回退路径泄露。
-- 不传 `--flatten` 时保持兼容 transport envelope，完整业务 payload 位于 `.data | fromjson`；仅在确需入会时读取原始 `roomCode`，不要持久化或传播该值。
+- 不传 `--flatten` 时仍保持 transport envelope，但 DWS 会从 `.data` 中移除敏感 `roomCode`。只有服务端联调确需检查原始 payload 时，才显式添加 `--debug-raw-events`；不要持久化或传播入会码。
+- VoIP 事件的 `-f raw` 同样必须和 `--debug-raw-events` 一起使用，避免绕过默认脱敏。
 
 ## Boundary
 
