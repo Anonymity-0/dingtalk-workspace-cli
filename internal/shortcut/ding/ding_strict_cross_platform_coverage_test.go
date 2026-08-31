@@ -8,12 +8,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -446,6 +448,25 @@ func TestCrossPlatformCoverageDINGRecallIDValidationBoundary(t *testing.T) {
 		if err := validateDingRecallID(id); err != nil {
 			t.Fatalf("opaque recall ID %q was rejected: %v", id, err)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageDINGRecallExecuteRejectsBlankID(t *testing.T) {
+	// Validate rejects these through Cobra; Execute also defends direct callers.
+	for _, id := range []string{"", " \t\n"} {
+		t.Run(fmt.Sprintf("id=%q", id), func(t *testing.T) {
+			caller := &dingCoverageCaller{}
+			helpers.InitDepsForTest(t, caller)
+			cmd := corecmd.New(shortcut.FromShortcut(RecallPersonal))
+			if err := cmd.Flags().Set("id", id); err != nil {
+				t.Fatal(err)
+			}
+			err := RecallPersonal.Execute(shortcut.RuntimeContextForTest(cmd, RecallPersonal))
+			var failure *apperrors.Error
+			if !errors.As(err, &failure) || failure.Category != apperrors.CategoryValidation || len(caller.history) != 0 {
+				t.Fatalf("blank ID reached execution: err=%v calls=%v", err, caller.history)
+			}
+		})
 	}
 }
 

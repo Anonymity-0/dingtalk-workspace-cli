@@ -21,6 +21,9 @@ var dingRemindTypeMap = map[string]int{"app": 1, "sms": 2, "call": 3}
 
 var dingPersonalRemindTypeMap = map[string]string{"app": "APP", "sms": "SMS", "call": "PHONE"}
 
+// Kept injectable so receipt encoding failures can be tested without a write.
+var dingReceiptMarshal = json.Marshal
+
 func resolveDingRobotCode(explicit string) (string, error) {
 	robotCode := strings.TrimSpace(explicit)
 	if robotCode == "" {
@@ -117,7 +120,7 @@ func enrichDingConversionReceipt(text, conversationID, sourceMessageID string) (
 		"openDingId":   openDingID,
 	}
 	envelope["result"] = result
-	encoded, err := json.Marshal(envelope)
+	encoded, err := dingReceiptMarshal(envelope)
 	if err != nil {
 		return "", apperrors.NewInternal(fmt.Sprintf("编码消息转 DING 回执失败: %v", err))
 	}

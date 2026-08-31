@@ -63,6 +63,23 @@ func TestCrossPlatformCoverageResolveDingRobotCodeUsesExplicitOrConfiguredValue(
 	}
 }
 
+func TestCrossPlatformCoverageDingRobotCommandsStopWithoutCredentials(t *testing.T) {
+	t.Setenv("DINGTALK_DING_ROBOT_CODE", "")
+	for _, args := range [][]string{
+		{"message", "send", "--users", "user1", "--content", "reminder"},
+		{"message", "recall", "--id", "opaque-ding-id"},
+	} {
+		t.Run(args[1], func(t *testing.T) {
+			caller := &imReadResultCaller{}
+			got, err := executeIMReadCommand(t, caller, []string{"dws", "ding"}, newDingCommand, args...)
+			var failure *apperrors.Error
+			if !errors.As(err, &failure) || failure.Reason != "robot_credentials_missing" || !failure.RetryableSet || failure.Retryable || got != "" || len(caller.calls) != 0 {
+				t.Fatalf("missing robot credentials crossed RPC boundary: output=%q err=%#v calls=%v", got, err, caller.calls)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageDingRecallTargetTreatsIDsAsOpaque(t *testing.T) {
 	for _, id := range []string{"msgOpaque+/==", "cidOpaque-123", "MSG", "cid", "78E3B7A70B89407BF371EF7DE295CFAB", "ding-fixture"} {
 		if err := validateDingRecallTarget(id); err != nil {
