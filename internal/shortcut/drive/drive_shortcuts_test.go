@@ -723,15 +723,39 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 	if err := os.WriteFile("input.bin", []byte("actual-drive-bytes"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	testseam.Swap(t, &uploadDriveFile, func(context.Context, helpers.DriveUploadRequest) (map[string]any, error) {
+	var uploadRequest helpers.DriveUploadRequest
+	testseam.Swap(t, &uploadDriveFile, func(_ context.Context, got helpers.DriveUploadRequest) (map[string]any, error) {
+		uploadRequest = got
 		return map[string]any{"success": true, "result": map[string]any{"fileId": "uploaded-1"}}, nil
 	})
 	uploadCaller := &driveCoverageCaller{responses: map[string][]string{
 		"get_file_info": {`{"success":true,"result":{"fileId":"uploaded-1","name":"input.bin","fileSize":18}}`},
 	}}
-	if err := runDriveCoverage(t, Upload, uploadCaller, "--file", "input.bin", "--yes"); err != nil {
+	if err := runDriveCoverage(t, Upload, uploadCaller, "--file", "input.bin", "--space-id", "drive-1", "--mime-type", "application/octet-stream", "--yes"); err != nil {
 		t.Fatal(err)
 	}
+	if uploadRequest.SpaceID != "drive-1" || uploadRequest.MIMEType != "application/octet-stream" {
+		t.Fatalf("drive upload request = %#v, want explicit space and MIME type", uploadRequest)
+	}
+
+	t.Run("drive dry run reports explicit mime type", func(t *testing.T) {
+		caller := &driveCoverageCaller{responses: map[string][]string{}}
+		var stdout strings.Builder
+		if err := runDriveCoverageTo(t, Upload, caller, &stdout, "--file", "input.bin", "--mime-type", "application/octet-stream", "--dry-run"); err != nil {
+			t.Fatal(err)
+		}
+		var preview map[string]any
+		if err := json.Unmarshal([]byte(stdout.String()), &preview); err != nil {
+			t.Fatalf("decode drive dry-run output %q: %v", stdout.String(), err)
+		}
+		data, ok := preview["data"].(map[string]any)
+		if !ok || preview["ok"] != true || preview["outcome"] != "success" || data["mimeType"] != "application/octet-stream" || data["executed"] != false {
+			t.Fatalf("drive dry-run output = %#v, want a successful non-executing envelope with explicit MIME type", preview)
+		}
+		if len(caller.history) != 0 {
+			t.Fatalf("drive dry-run reached MCP: %v", caller.history)
+		}
+	})
 	if _, _, err := resolveDriveUploadInput("../escape.bin"); err == nil {
 		t.Fatal("upload path escape was accepted")
 	}
@@ -760,6 +784,9 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 				var typed *apperrors.Error
 				if !errors.As(err, &typed) || typed.ExecutionStarted == nil || !*typed.ExecutionStarted || typed.Retryable {
 					t.Fatalf("upload mismatch metadata = %#v", err)
+				}
+				if typed.Operation != "drive/commit_upload" || typed.FailureStage != "readback_verification" {
+					t.Fatalf("drive upload mismatch operation/stage = %q/%q", typed.Operation, typed.FailureStage)
 				}
 				if typed.Details["nodeId"] != "uploaded-4" || typed.Details["requestedName"] != "input.bin" {
 					t.Fatalf("upload mismatch details = %#v", typed.Details)
@@ -800,6 +827,187 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 	}}
 	if err := runDriveCoverage(t, Download, emptyArtifact, "--node", "uploaded-1", "--output", "empty.bin"); err == nil || !strings.Contains(err.Error(), "0 字节") {
 		t.Fatalf("empty artifact error = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveUploadRoutesWorkspaceToDocSpace(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.WriteFile("notes.txt", []byte("workspace-file"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("workspace upload uses doc transaction and readback", func(t *testing.T) {
+		var request helpers.DocSpaceUploadRequest
+		testseam.Swap(t, &uploadDocSpaceFile, func(_ context.Context, got helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			request = got
+			return map[string]any{"dentryUuid": "doc-file-1"}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"success":true,"result":{"nodeId":"doc-file-1","workspaceId":"wiki-1","name":"notes","extension":"txt"}}`},
+		}}
+		if err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes"); err != nil {
+			t.Fatal(err)
+		}
+		if request.WorkspaceID != "wiki-1" || request.FileName != "notes.txt" || request.FileSize != 14 {
+			t.Fatalf("doc-space request = %#v", request)
+		}
+		if strings.Join(caller.history, ",") != "get_document_info" {
+			t.Fatalf("readback history = %v, want doc/get_document_info only", caller.history)
+		}
+	})
+
+	t.Run("workspace name mismatch preserves committed write evidence", func(t *testing.T) {
+		uploadCalls := 0
+		testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			uploadCalls++
+			return map[string]any{"dentryUuid": "doc-file-mismatch"}, nil
+		})
+		testseam.Swap(t, &uploadDriveFile, func(context.Context, helpers.DriveUploadRequest) (map[string]any, error) {
+			t.Fatal("workspace upload must not use the Drive transaction")
+			return nil, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"nodeId":"doc-file-mismatch","workspaceId":"wiki-1","name":"wrong","extension":"txt"}`},
+		}}
+		err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes")
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) {
+			t.Fatalf("workspace name mismatch must return a structured error: %v", err)
+		}
+		if typed.Operation != "doc/commit_uploaded_file" || typed.Reason != "readback_mismatch" || typed.FailureStage != "readback_verification" {
+			t.Fatalf("workspace mismatch error identity = %#v", typed)
+		}
+		if typed.ExecutionStarted == nil || !*typed.ExecutionStarted || typed.Retryable {
+			t.Fatalf("workspace mismatch must record committed, non-retryable execution: %#v", typed)
+		}
+		if typed.Details["status"] != "partial_success" || typed.Details["complete"] != false || typed.Details["retrySafe"] != false || typed.Details["nodeId"] != "doc-file-mismatch" || typed.Details["requestedName"] != "notes.txt" || typed.Details["actualName"] != "wrong" {
+			t.Fatalf("workspace mismatch lost repair evidence: %#v", typed.Details)
+		}
+		resource, ok := typed.Details["resource"].(map[string]any)
+		if !ok || resource["workspaceId"] != "wiki-1" || resource["extension"] != "txt" || !strings.Contains(typed.Hint, "禁止盲目重试") {
+			t.Fatalf("workspace mismatch lost readback or retry guidance: %#v", typed)
+		}
+		if uploadCalls != 1 || strings.Join(caller.history, ",") != "get_document_info" {
+			t.Fatalf("workspace mismatch repeated a write or used the wrong readback: uploads=%d history=%v", uploadCalls, caller.history)
+		}
+	})
+
+	t.Run("workspace upload rejects a returned size mismatch", func(t *testing.T) {
+		testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			return map[string]any{"success": true, "nodeId": "doc-file-size"}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"nodeId":"doc-file-size","workspaceId":"wiki-1","name":"notes","extension":"txt","fileSize":13}`},
+		}}
+		err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes")
+		if err == nil || !strings.Contains(err.Error(), "与本地文件大小 14 不一致") {
+			t.Fatalf("workspace size mismatch error = %v", err)
+		}
+	})
+
+	t.Run("custom doc-space name inherits local extension", func(t *testing.T) {
+		var request helpers.DocSpaceUploadRequest
+		testseam.Swap(t, &uploadDocSpaceFile, func(_ context.Context, got helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			request = got
+			return map[string]any{"result": map[string]any{"nodeId": "doc-file-2"}}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"nodeId":"doc-file-2","workspaceId":"wiki-1","name":"renamed.txt","fileSize":14}`},
+		}}
+		if err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--file-name", "renamed", "--workspace", "wiki-1", "--yes"); err != nil {
+			t.Fatal(err)
+		}
+		if request.FileName != "renamed.txt" {
+			t.Fatalf("doc-space file name = %q, want extension-preserving name", request.FileName)
+		}
+	})
+
+	t.Run("workspace dry run reports doc operation and target", func(t *testing.T) {
+		caller := &driveCoverageCaller{responses: map[string][]string{}}
+		if err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--folder", "folder-1", "--dry-run", "--yes"); err != nil {
+			t.Fatal(err)
+		}
+		if len(caller.history) != 0 {
+			t.Fatalf("workspace dry-run reached MCP: %v", caller.history)
+		}
+	})
+
+	t.Run("workspace rejects mime type before upload", func(t *testing.T) {
+		uploadCalled := false
+		testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			uploadCalled = true
+			return map[string]any{"nodeId": "unexpected"}, nil
+		})
+		for _, args := range [][]string{
+			{"--file", "notes.txt", "--workspace", "wiki-1", "--mime-type", "text/plain", "--yes"},
+			{"--file", "notes.txt", "--workspace", "wiki-1", "--mime-type", "text/plain", "--dry-run"},
+		} {
+			uploadCalled = false
+			caller := &driveCoverageCaller{responses: map[string][]string{}}
+			err := runDriveCoverage(t, Upload, caller, args...)
+			if err == nil || !strings.Contains(err.Error(), "--workspace") || !strings.Contains(err.Error(), "--mime-type") {
+				t.Fatalf("workspace MIME conflict error = %v, want both flag names", err)
+			}
+			if uploadCalled || len(caller.history) != 0 {
+				t.Fatalf("workspace MIME conflict reached upload: helper=%v history=%v", uploadCalled, caller.history)
+			}
+		}
+	})
+
+	t.Run("workspace readback is required", func(t *testing.T) {
+		testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			return map[string]any{"success": true, "nodeId": "doc-file-3"}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"nodeId":"doc-file-3","name":"notes.txt","fileSize":14}`},
+		}}
+		err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes")
+		if err == nil || !strings.Contains(err.Error(), "缺少 workspaceId") {
+			t.Fatalf("missing workspace readback error = %v", err)
+		}
+	})
+
+	t.Run("workspace readback must match requested workspace", func(t *testing.T) {
+		testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			return map[string]any{"success": true, "nodeId": "doc-file-4"}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"nodeId":"doc-file-4","workspaceId":"wiki-other","name":"notes.txt","fileSize":14}`},
+		}}
+		err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes")
+		if err == nil || !strings.Contains(err.Error(), "与请求 \"wiki-1\" 不一致") {
+			t.Fatalf("workspace mismatch error = %v", err)
+		}
+	})
+
+	for _, tc := range []struct {
+		name    string
+		receipt map[string]any
+		want    string
+	}{
+		{name: "workspace upload preserves explicit failure", receipt: map[string]any{"success": false, "message": "rejected"}, want: "rejected"},
+		{name: "workspace upload requires a stable receipt ID", receipt: map[string]any{"result": map[string]any{"name": "notes.txt"}}, want: "没有返回文件 ID"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+				return tc.receipt, nil
+			})
+			caller := &driveCoverageCaller{responses: map[string][]string{}}
+			err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes")
+			if err == nil || !strings.Contains(err.Error(), tc.want) || len(caller.history) != 0 {
+				t.Fatalf("workspace receipt error=%v history=%v, want %q before readback", err, caller.history, tc.want)
+			}
+		})
+	}
+
+	for _, args := range [][]string{
+		{"--file", "notes.txt", "--workspace", "wiki-1", "--space-id", "drive-1", "--yes"},
+		{"--file", "notes.txt", "--workspace", "wiki-1", "--folder", "f1", "--node", "n1", "--yes"},
+	} {
+		caller := &driveCoverageCaller{responses: map[string][]string{}}
+		if err := runDriveCoverage(t, Upload, caller, args...); err == nil || len(caller.history) != 0 {
+			t.Fatalf("conflicting upload args accepted: args=%v err=%v history=%v", args, err, caller.history)
+		}
 	}
 }
 
@@ -1399,6 +1607,17 @@ func TestCrossPlatformCoverageDriveUploadInputAndExecutionEdges(t *testing.T) {
 	if err := runDriveCoverage(t, Upload, dry, "--file", "input.bin", "--file-name", "remote.bin", "--dry-run", "--yes"); err != nil {
 		t.Fatal(err)
 	}
+	t.Run("successful drive upload preserves explicit space id", func(t *testing.T) {
+		testseam.Swap(t, &uploadDriveFile, func(context.Context, helpers.DriveUploadRequest) (map[string]any, error) {
+			return map[string]any{"success": true, "nodeId": "n-space"}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_file_info": {`{"fileId":"n-space","name":"remote.bin","fileSize":5}`},
+		}}
+		if err := runDriveCoverage(t, Upload, caller, "--file", "input.bin", "--file-name", "remote.bin", "--space-id", "space-1", "--yes"); err != nil {
+			t.Fatal(err)
+		}
+	})
 	t.Run("missing committed id", func(t *testing.T) {
 		testseam.Swap(t, &uploadDriveFile, func(context.Context, helpers.DriveUploadRequest) (map[string]any, error) {
 			return map[string]any{"success": true}, nil
