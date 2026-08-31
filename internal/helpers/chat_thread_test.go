@@ -1175,6 +1175,7 @@ func TestCrossPlatformCoverageAtomicThreadQuoteGuardRequiresPositiveChannelForSp
 	for _, test := range []struct {
 		name           string
 		searchResponse string
+		searchError    error
 		wantReason     string
 	}{
 		{
@@ -1192,13 +1193,23 @@ func TestCrossPlatformCoverageAtomicThreadQuoteGuardRequiresPositiveChannelForSp
 			searchResponse: `{"success":true,"result":{"groups":[{"openConversationId":"other","title":"topic group","channel":false}],"hasMore":false}}`,
 			wantReason:     "topic_quote_guard_unavailable",
 		},
+		{
+			name:           "invalid search response",
+			searchResponse: `<html>bad gateway</html>`,
+			wantReason:     "topic_quote_guard_unavailable",
+		},
+		{
+			name:        "search call error",
+			searchError: errors.New("search unavailable"),
+			wantReason:  "topic_quote_guard_unavailable",
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			caller := &chatThreadCaller{responses: map[string]string{
 				"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"message-1","openConversationId":"cid"}]}}`,
 				"chat/get_conversation_info": `{"success":true,"result":{"conversationInfo":{"openConversationId":"cid","title":"topic group","singleChat":false}}}`,
 				"im/search_groups":           test.searchResponse,
-			}}
+			}, errors: map[string]error{"im/search_groups": test.searchError}}
 			err := executeAtomicThreadCommand(t, caller,
 				"message", "reply", "--conversation-id", "cid", "--ref-msg-id", "message-1",
 				"--ref-sender", "DAAAAAAAAAAAiE", "--text", "引用")
@@ -1539,6 +1550,7 @@ func TestCrossPlatformCoverageDetectTopicContainerState(t *testing.T) {
 		{name: "missing conversation id", value: conversationInfoEnvelope(map[string]any{}), want: topicContainerUnknown},
 		{name: "false without conversation id", value: conversationInfoEnvelope(map[string]any{"convThreadEnabled": false}), want: topicContainerUnknown},
 		{name: "different conversation id", value: conversationInfoEnvelope(map[string]any{"openConversationId": "other-group", "convThreadEnabled": false}), want: topicContainerUnknown},
+		{name: "missing title", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1"}), want: topicContainerUnknown},
 		{name: "ordinary sparse response", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "title": "ordinary group", "singleChat": false}), want: topicContainerUnknown},
 		{name: "split across objects", value: conversationInfoEnvelope(map[string]any{"openConversationId": "other-group", "metadata": map[string]any{"openConversationId": "group-1", "convThreadEnabled": false}}), want: topicContainerUnknown},
 		{name: "topic group", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "topicGroup": "1"}), want: topicContainerTopic},
@@ -1570,7 +1582,9 @@ func TestCrossPlatformCoverageDetectTopicChannelState(t *testing.T) {
 		{name: "topic channel", value: searchEnvelope(map[string]any{"openConversationId": "group-1", "title": "group", "channel": true}), want: topicContainerTopic},
 		{name: "missing response object", value: nil, want: topicContainerUnknown},
 		{name: "unsuccessful response", value: map[string]any{"success": false}, want: topicContainerUnknown},
+		{name: "missing result", value: map[string]any{"success": true}, want: topicContainerUnknown},
 		{name: "missing groups", value: map[string]any{"success": true, "result": map[string]any{}}, want: topicContainerUnknown},
+		{name: "invalid group item", value: searchEnvelope("invalid"), want: topicContainerUnknown},
 		{name: "missing channel", value: searchEnvelope(map[string]any{"openConversationId": "group-1", "title": "group"}), want: topicContainerUnknown},
 		{name: "invalid channel", value: searchEnvelope(map[string]any{"openConversationId": "group-1", "title": "group", "channel": "false"}), want: topicContainerUnknown},
 		{name: "different conversation", value: searchEnvelope(map[string]any{"openConversationId": "group-2", "title": "group", "channel": false}), want: topicContainerUnknown},
