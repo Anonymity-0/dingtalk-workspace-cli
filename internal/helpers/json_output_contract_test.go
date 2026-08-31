@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -130,6 +131,48 @@ func TestCrossPlatformCoverageJSONOutputContractForCompletedFileTransfers(t *tes
 		}
 		if _, statErr := os.Stat(savedPath); statErr != nil {
 			t.Fatalf("expected downloaded file at %q: %v", savedPath, statErr)
+		}
+	})
+
+	t.Run("drive download rejects existing target without --overwrite", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: `{"downloadUrl":"https://example.test/latest.txt","fileName":"conflict.txt","fileSize":7}`}}}
+		if _, _, err := executeJSONOutputContractCommand(t, caller, newDriveCommand, "download", "--node", "node-conflict"); err != nil {
+			t.Fatal(err)
+		}
+		_, _, err := executeJSONOutputContractCommand(t, caller, newDriveCommand, "download", "--node", "node-conflict")
+		if err == nil {
+			t.Fatal("expected conflict rejection on second identical download")
+		}
+		var cliErr *CLIError
+		if !errors.As(err, &cliErr) || cliErr.Code != CodeFileAlreadyExists || cliErr.Operation != "drive download" {
+			t.Fatalf("expected INPUT_FILE_ALREADY_EXISTS CLIError for drive download, got %v", err)
+		}
+		_, stderr, err := executeJSONOutputContractCommand(t, caller, newDriveCommand, "download", "--node", "node-conflict", "--overwrite")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(stderr, "将覆盖") {
+			t.Fatalf("expected overwrite warning on stderr, got %q", stderr)
+		}
+	})
+
+	t.Run("drive download-version rejects existing target without --overwrite", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: `{"downloadUrl":"https://example.test/versioned.txt","fileName":"conflict-versioned.txt","fileSize":7}`}}}
+		if _, _, err := executeJSONOutputContractCommand(t, caller, newDriveCommand, "download", "--node", "node-conflict-v", "--version", "4"); err != nil {
+			t.Fatal(err)
+		}
+		_, _, err := executeJSONOutputContractCommand(t, caller, newDriveCommand, "download", "--node", "node-conflict-v", "--version", "4")
+		if err == nil {
+			t.Fatal("expected conflict rejection on second identical versioned download")
+		}
+		var cliErr *CLIError
+		if !errors.As(err, &cliErr) || cliErr.Code != CodeFileAlreadyExists || cliErr.Operation != "drive download-version" {
+			t.Fatalf("expected INPUT_FILE_ALREADY_EXISTS CLIError for drive download-version, got %v", err)
+		}
+		if _, _, err := executeJSONOutputContractCommand(t, caller, newDriveCommand, "download", "--node", "node-conflict-v", "--version", "4", "--overwrite"); err != nil {
+			t.Fatal(err)
 		}
 	})
 

@@ -267,12 +267,13 @@ Flags:
       --node string       文件 ID (dentryUuid) (必填)
       --output string     本地保存路径 (可选，默认当前目录)，可以是文件路径或目录；路径为目录（或未指定）时，文件名优先取返回的 fileName，其次从下载 URL 推断
       --space-id string   文件所属空间 ID (可选)
+      --overwrite         目标文件已存在时允许覆盖 (默认 false 时拒绝并报错)
       --part-size string  分片下载的分片大小，支持 KB/MB/GB 单位，范围 1MB-1GB (默认 16MB)
       --parallel int      分片下载并发数，范围 1-8 (默认 4)
       --no-resume         关闭断点续传，忽略历史下载进度从头下载 (默认开启续传)
 ```
 
-> **注意**：`--output` 可选，不传时保存到当前目录，文件名自动推断；需要确定的输出路径时显式指定。`download-version` 同样支持缺省 `--output`。
+> **注意**：`--output` 可选，不传时保存到当前目录，文件名自动推断；需要确定的输出路径时显式指定。`download-version` 同样支持缺省 `--output`。**目标文件已存在时默认拒绝覆盖并报错**（含缺省当前目录场景）；确认覆盖需显式传 `--overwrite`（`download-version` 同样支持）。断点续传的 `.dwspart` 中间产物不算冲突。
 
 > **大文件分片下载**：
 > - 大文件自动分片并发下载，小文件整流下载，行为对用户透明，无需任何额外操作。
@@ -618,7 +619,7 @@ Flags:
 用户说"文件阅读量/编辑量/评论数/下载数/节点统计" → `stats`
 用户说"给这个 PDF/附件/普通文件评论、回复评论、解决评论、恢复评论、删除评论" → `comment list-v2/create-v2/reply/update/delete/batch-query/list-replies/resolve/restore/react-reply`（仅在用户明确要求旧评论兼容行为时使用 deprecated 的 `list/create`）
 用户说"给文件创建快捷方式/放一个链接到目标文件夹" → `shortcut`
-用户说"下载文件" → `download`，可用 `--output` 指定保存路径（缺省当前目录，文件名自动推断）
+用户说"下载文件" → `download`，可用 `--output` 指定保存路径（缺省当前目录，文件名自动推断）；目标文件已存在时需确认后加 `--overwrite`（默认拒绝覆盖）
 用户说"新建文件夹/创建目录" → `mkdir`（钉盘空间）/ `wiki node create --type folder`（文档空间）
 用户说"上传文件/传文件到钉盘" → `upload`（首选此命令，自动完成三步流程）
 用户说"覆盖/替换钉盘或知识库中的已有文件" → `upload --node <fileId>`（不可逆，先 `--dry-run`，确认后再加 `--yes`）

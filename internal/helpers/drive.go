@@ -744,6 +744,7 @@ func newDriveCommand() *cobra.Command {
 			if outputPath == "" {
 				outputPath = "." // 未指定保存路径时默认当前目录，文件名自动推断
 			}
+			overwrite, _ := cmd.Flags().GetBool("overwrite")
 
 			argsMap := map[string]any{"fileId": fileID}
 			if v, _ := cmd.Flags().GetString("space-id"); v != "" {
@@ -802,6 +803,12 @@ func newDriveCommand() *cobra.Command {
 					filename = inferFilename(resourceURL)
 				}
 				outputPath = filepath.Join(outputPath, filename)
+			}
+
+			// 冲突检测：目标文件已存在时，无 --overwrite 一律拒绝（含缺省 cwd 场景）。
+			// 断点续传的 .dwspart/.dwspart.meta 产物不算冲突——只 stat 最终目标。
+			if err := checkDownloadConflict(outputPath, overwrite, "drive download"); err != nil {
+				return err
 			}
 
 			// Step 2: 分片下载（自动分派 + 401/403 凭证刷新重试）
@@ -882,6 +889,7 @@ func newDriveCommand() *cobra.Command {
 					"在线文档(adoc)要导出为 Word/docx 改用 dws doc export，不要用 download 代替导出",
 					"只要临时下载链接语义且走文档附件块时用 dws doc media download",
 					"需要确定的输出路径时显式传 --output；缺省会落到当前目录",
+					"目标文件已存在且用户未明确允许覆盖时不要直接重跑；默认拒绝，需 --overwrite",
 				},
 				Examples: []string{
 					"dws drive download --node <dentryUuid> --output ./report.pdf --format json",
@@ -896,6 +904,7 @@ func newDriveCommand() *cobra.Command {
 				{Name: "no-resume", Description: "关闭断点续传"},
 				// Wukong compat alias: routes to download-version; not a download_file property.
 				{Name: "version", Description: "下载指定历史版本号（兼容别名，等价 download-version）"},
+				{Name: "overwrite", Description: "目标文件已存在时允许覆盖（默认拒绝并报错）"},
 			},
 		},
 	})
@@ -930,6 +939,7 @@ func newDriveCommand() *cobra.Command {
 			if outputPath == "" {
 				outputPath = "." // 未指定保存路径时默认当前目录，文件名自动推断
 			}
+			overwrite, _ := cmd.Flags().GetBool("overwrite")
 
 			// fail-fast：分片下载参数校验
 			dlOpts, err := driveDownloadOptionsFromFlags(cmd)
@@ -983,6 +993,12 @@ func newDriveCommand() *cobra.Command {
 					filename = inferFilename(resourceURL)
 				}
 				outputPath = filepath.Join(outputPath, filename)
+			}
+
+			// 冲突检测：目标文件已存在时，无 --overwrite 一律拒绝（含缺省 cwd 场景）。
+			// 断点续传的 .dwspart/.dwspart.meta 产物不算冲突——只 stat 最终目标。
+			if err := checkDownloadConflict(outputPath, overwrite, "drive download-version"); err != nil {
+				return err
 			}
 			printJSONSafeInfo(fmt.Sprintf("[2/2] 下载文件到 %s ...", outputPath))
 			dlOpts.knownSize = parseDownloadFileSize(text)
@@ -1067,6 +1083,7 @@ func newDriveCommand() *cobra.Command {
 				{Name: "part-size", Description: "分片下载的分片大小（如 8MB/16MB/1GB）"},
 				{Name: "parallel", Description: "分片下载并发数（1-8）"},
 				{Name: "no-resume", Description: "关闭断点续传"},
+				{Name: "overwrite", Description: "目标文件已存在时允许覆盖（默认拒绝并报错）"},
 			},
 		},
 	})
@@ -1288,6 +1305,7 @@ func newDriveCommand() *cobra.Command {
 	driveDownloadCmd.Flags().String("node", "", "文件 ID (dentryUuid) (必填)")
 	driveDownloadCmd.Flags().String("space-id", "", "文件所属空间 ID (可选)")
 	driveDownloadCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，可选，默认当前目录)")
+	driveDownloadCmd.Flags().Bool("overwrite", false, "目标文件已存在时允许覆盖 (默认 false 时拒绝并报错)")
 	driveDownloadCmd.Flags().Int("version", 0, "下载指定历史版本号（兼容别名，等价 download-version）")
 	driveDownloadCmd.Flags().String("part-size", "16MB", "分片下载的分片大小，如 8MB/16MB/1GB，范围 1MB-1GB (可选)")
 	driveDownloadCmd.Flags().Int("parallel", 4, "分片下载并发数，范围 1-8 (可选)")
@@ -1296,6 +1314,7 @@ func newDriveCommand() *cobra.Command {
 	driveDownloadVersionCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (必填)")
 	driveDownloadVersionCmd.Flags().Int("version", 0, "历史版本号 (必填，正整数，从 drive list --versions 获取)")
 	driveDownloadVersionCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，可选，默认当前目录)")
+	driveDownloadVersionCmd.Flags().Bool("overwrite", false, "目标文件已存在时允许覆盖 (默认 false 时拒绝并报错)")
 	driveDownloadVersionCmd.Flags().String("part-size", "16MB", "分片下载的分片大小，如 8MB/16MB/1GB，范围 1MB-1GB (可选)")
 	driveDownloadVersionCmd.Flags().Int("parallel", 4, "分片下载并发数，范围 1-8 (可选)")
 	driveDownloadVersionCmd.Flags().Bool("no-resume", false, "关闭断点续传 (可选)")
@@ -4359,6 +4378,24 @@ func sanitizeFileName(name string) string {
 
 // extractFileNameFromResponse extracts the fileName field from MCP download_file response JSON.
 // Returns empty string if not found.
+// checkDownloadConflict 在下载引擎启动前检查目标文件是否已存在：默认拒绝
+// 覆盖并返回结构化错误；--overwrite 显式放行（仅 stderr 告警）。断点续传的
+// .dwspart/.dwspart.meta 中间产物不视为冲突——只 stat 最终目标路径。
+func checkDownloadConflict(outputPath string, overwrite bool, operation string) error {
+	if _, statErr := os.Stat(outputPath); statErr == nil {
+		if !overwrite {
+			return &CLIError{
+				Code:       CodeFileAlreadyExists,
+				Message:    fmt.Sprintf("output file already exists: %s", outputPath),
+				Suggestion: "请先确认用户是否允许覆盖该文件，再决定是否添加 --overwrite 参数",
+				Operation:  operation,
+			}
+		}
+		deps.Out.PrintWarning(fmt.Sprintf("目标文件已存在，将覆盖: %s", outputPath))
+	}
+	return nil
+}
+
 func extractFileNameFromResponse(text string) string {
 	var data map[string]any
 	if err := json.Unmarshal([]byte(text), &data); err != nil {
