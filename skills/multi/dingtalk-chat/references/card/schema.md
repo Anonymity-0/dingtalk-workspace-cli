@@ -17,16 +17,21 @@ streaming 不是任意组件 Schema：
 
 A2UI 原子命令规则：
 
-- `send-card --card-engine a2ui` 调用 `im.create_a2ui_card`。
+- `send-card --card-engine a2ui` 调用 `im.create_and_send_a2ui_card`。
 - `update-card --card-engine a2ui` 调用 `im.update_a2ui_card`。
 - `--content` 必须是 JSON 字符串数组，例如 `'["message1","message2"]'`；
-  CLI 解析为 `a2uiMessages`，send-card 额外生成 `fallbackText`，值为数组元素按换行拼接。
-- 群聊目标写入 `target.openConversationId`；单聊目标写入 `target.receiverUid`，由 MCP
-  server 根据现有单聊目标转换或补齐。
-- A2UI `flowStatus` 接受 1–9：1 PROCESSING、2 INPUTTING、3 FINISH、
-  4 EXECUTING、5 ERROR、6 ABORTED、7 TIMEOUT、8 CONFIRMING、9 CONFIRMED。
+  CLI 解析为 `a2uiMessages`，send-card 额外生成 `summary`，值为数组元素按换行拼接
+  （真实 MCP 契约无 `fallbackText` 字段）。
+- 群聊目标写入顶层 `openConversationId`；单聊目标写入顶层 `receiverOpenDingTalkId`
+  （传入 userId 时由 CLI 自动解析转换为 openDingTalkId）。
+- A2UI wire 层 `flowStatus` 为字符串枚举；CLI `--flow-status` 只接受数字 1–9：
+  1 PROCESSING、2 INPUTTING、3 FINISH、4 EXECUTING、5 ERROR、6 ABORTED、
+  7 TIMEOUT、8 CONFIRMING、9 CONFIRMED，由 CLI 映射为枚举字符串发送。
 - A2UI send-card 在 CLI 侧自动生成 `requestId`、`bizCardId`，并固定
   `protocolVersion="1.0"`；创建默认 `flowStatus=1(PROCESSING)`。
+- A2UI update-card 固定附带 `a2uiAnnotations: []`。
+- A2UI 不支持 `--at-open-dingtalk-ids` / `--at-all`（真实 a2ui 契约无 @ 字段，
+  显式传参会直接报错）；@ 仅 `--card-engine streaming` 群聊可用。
 
 参数、required 和 confirmation 读取
 `dws schema --cli-path "chat +messages-send-card" --compact -f json` 或

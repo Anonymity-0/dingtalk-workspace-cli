@@ -2467,11 +2467,11 @@ dws chat message send --conversation-id <openConversationId> --msg-type image --
 
 #### 创建并推送卡片 — 向群聊或单聊发送 streaming/A2UI 卡片消息
 
-群聊传 --group，单聊传 --receiver，二者互斥。群聊创建时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人。
+群聊传 --group，单聊传 --receiver，二者互斥。群聊创建时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人（仅 --card-engine streaming 支持，a2ui 下显式报错）。
 
 **注意：send-card 必须和 update-card 搭配使用。** 创建卡片时无需传入内容，后续通过 update-card 更新内容，最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。
-默认 `--card-engine streaming`，旧链路保持 `im.create_and_send_card` 不变。A2UI 使用 `--card-engine a2ui`，必须传 `--content` JSON 字符串数组，例如 `'["message1","message2"]'`；CLI 会生成 `a2uiMessages`，并用换行拼接为 `fallbackText`。A2UI 创建默认 `flowStatus=1(PROCESSING)`。
-flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；A2UI 更新接受 1-9，额外包含 6=中止(ABORTED)，7=超时(TIMEOUT)，8=确认中(CONFIRMING)，9=已确认(CONFIRMED)。
+默认 `--card-engine streaming`，旧链路保持 `im.create_and_send_card` 不变。A2UI 使用 `--card-engine a2ui`，调用 `im.create_and_send_a2ui_card`，必须传 `--content` JSON 字符串数组，例如 `'["message1","message2"]'`；CLI 会解析为 `a2uiMessages`，并用换行拼接为 `summary`（真实契约无 `fallbackText` 字段），单聊传 userId 时 CLI 自动解析为 openDingTalkId 后发送。A2UI 创建默认 `flowStatus=1(PROCESSING)`。
+flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；A2UI 更新只接受数字 1-9（CLI 映射为枚举字符串发送），额外包含 6=中止(ABORTED)，7=超时(TIMEOUT)，8=确认中(CONFIRMING)，9=已确认(CONFIRMED)。
 ```
 Usage:
   dws chat message send-card [flags]
@@ -2495,8 +2495,8 @@ Flags:
 #### 更新卡片内容 — 更新已发送的 streaming/A2UI 卡片内容
 
 --biz-id 为 send-card 返回的业务 ID，--flow-status 控制流式状态。
-默认 `--card-engine streaming`，旧链路保持 `im.update_streaming_card` 不变。A2UI 使用 `--card-engine a2ui`，`--content` 必须是 JSON 字符串数组并发送为 `a2uiMessages`。
-flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；a2ui 接受 1-9，额外包含 6=中止(ABORTED)，7=超时(TIMEOUT)，8=确认中(CONFIRMING)，9=已确认(CONFIRMED)。
+默认 `--card-engine streaming`，旧链路保持 `im.update_streaming_card` 不变。A2UI 使用 `--card-engine a2ui`，调用 `im.update_a2ui_card`，`--content` 必须是 JSON 字符串数组并发送为 `a2uiMessages`，固定附带 `a2uiAnnotations: []`。
+flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；A2UI 更新只接受数字 1-9（CLI 映射为枚举字符串发送），额外包含 6=中止(ABORTED)，7=超时(TIMEOUT)，8=确认中(CONFIRMING)，9=已确认(CONFIRMED)。
 
 **最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。**
 更新结果不确定时不要再次执行更新；保留返回结果并告知用户。
