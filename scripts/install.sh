@@ -909,6 +909,15 @@ publish_runtime_payload() {
   [ ! -d "$_prp_backup" ] || rm -rf "$_prp_backup"
 }
 
+publish_runtime_payload_if_present() {
+  _prpip_source="$1"
+  if [ ! -d "$_prpip_source" ]; then
+    say "Runtime payload is not included in this archive; continuing with binary-only installation."
+    return 0
+  fi
+  publish_runtime_payload "$_prpip_source"
+}
+
 install_binary_from_source() {
   root="$1"
 
@@ -1601,7 +1610,7 @@ install_binary() {
   fi
 
   payload_source="$(dirname "$found")/.dws-runtime/20260825"
-  publish_runtime_payload "$payload_source"
+  publish_runtime_payload_if_present "$payload_source"
   staged_bin="$INSTALL_DIR/.${INSTALL_NAME}.tmp.$$"
   cp "$found" "$staged_bin"
   chmod +x "$staged_bin"

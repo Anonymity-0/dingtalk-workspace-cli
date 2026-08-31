@@ -1321,6 +1321,16 @@ function Publish-RuntimePayload {
     Remove-Item -LiteralPath $payloadBackup -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+function Publish-RuntimePayloadIfPresent {
+    param([string]$Source)
+
+    if (!(Test-Path -LiteralPath $Source -PathType Container)) {
+        Write-Say "Runtime payload is not included in this archive; continuing with binary-only installation."
+        return
+    }
+    Publish-RuntimePayload -Source $Source
+}
+
 function Install-Binary {
     $arch = Get-Arch
     Resolve-LatestVersion
@@ -1355,7 +1365,7 @@ function Install-Binary {
         }
 
         $payloadSource = Join-Path $binFile.Directory.FullName ".dws-runtime\20260825"
-        Publish-RuntimePayload -Source $payloadSource
+        Publish-RuntimePayloadIfPresent -Source $payloadSource
 
         $destBin = Join-Path $InstallDir "${BinName}.exe"
         $stagedBin = Join-Path $InstallDir ".${BinName}.tmp-$PID.exe"
