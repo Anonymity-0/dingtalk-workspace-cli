@@ -952,7 +952,7 @@ func TestCrossPlatformCoverageAtomicThreadCompatibilityMappings(t *testing.T) {
 func TestCrossPlatformCoverageAtomicThreadQuoteReplyIsRejectedBeforeWrite(t *testing.T) {
 	caller := &chatThreadCaller{responses: map[string]string{
 		"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"root-1","openConversationId":"topic-1","openConvThreadId":"thread-1"}]}}`,
-		"chat/get_conversation_info": `{"result":{"openConversationId":"topic-1","convThreadEnabled":true}}`,
+		"chat/get_conversation_info": `{"success":true,"result":{"conversationInfo":{"openConversationId":"topic-1","convThreadEnabled":true}}}`,
 	}}
 	err := executeAtomicThreadCommand(t, caller,
 		"message", "reply", "--conversation-id", "topic-1", "--ref-msg-id", "root-1",
@@ -969,7 +969,7 @@ func TestCrossPlatformCoverageAtomicThreadQuoteReplyIsRejectedBeforeWrite(t *tes
 func TestCrossPlatformCoverageAtomicThreadBotQuoteReplyIsRejectedBeforeWrite(t *testing.T) {
 	caller := &chatThreadCaller{responses: map[string]string{
 		"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"root-1","openConversationId":"topic-1","openConvThreadId":"thread-1"}]}}`,
-		"chat/get_conversation_info": `{"result":{"openConversationId":"topic-1","convThreadEnabled":true}}`,
+		"chat/get_conversation_info": `{"success":true,"result":{"conversationInfo":{"openConversationId":"topic-1","convThreadEnabled":true}}}`,
 	}}
 	err := executeAtomicThreadCommand(t, caller,
 		"message", "send-by-bot", "--robot-code", "robot-1", "--conversation-id", "topic-1",
@@ -986,7 +986,7 @@ func TestCrossPlatformCoverageAtomicThreadBotQuoteReplyIsRejectedBeforeWrite(t *
 func TestCrossPlatformCoverageAtomicThreadQuoteReplyAllowsOrdinaryGroupThreadMessage(t *testing.T) {
 	caller := &chatThreadCaller{responses: map[string]string{
 		"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"reply-1","openConversationId":"group-1","openConvThreadId":"thread-1"}]}}`,
-		"chat/get_conversation_info": `{"result":{"openConversationId":"group-1","convThreadEnabled":false}}`,
+		"chat/get_conversation_info": `{"success":true,"result":{"conversationInfo":{"openConversationId":"group-1","convThreadEnabled":false}}}`,
 	}}
 	if err := executeAtomicThreadCommand(t, caller,
 		"message", "reply", "--group", "group-1", "--ref-msg-id", "reply-1",
@@ -1102,12 +1102,13 @@ func TestCrossPlatformCoverageAtomicThreadQuoteGuardRejectsConversationFailuresA
 		wantReason string
 	}{
 		{name: "invalid response", response: `<html>bad gateway</html>`, wantReason: "topic_quote_guard_unavailable"},
-		{name: "invalid topic indicator", response: `{"result":{"openConversationId":"topic-1","convThreadEnabled":"unknown"}}`, wantReason: "topic_quote_guard_unavailable"},
-		{name: "false indicator without conversation", response: `{"result":{"convThreadEnabled":false}}`, wantReason: "topic_quote_guard_unavailable"},
-		{name: "false indicator from different conversation", response: `{"result":{"openConversationId":"other-group","convThreadEnabled":false}}`, wantReason: "topic_quote_guard_unavailable"},
-		{name: "matching fields split across objects", response: `{"result":{"openConversationId":"other-group","metadata":{"openConversationId":"topic-1","convThreadEnabled":false}}}`, wantReason: "topic_quote_guard_unavailable"},
-		{name: "different conversation", response: `{"result":{"openConversationId":"other-group"}}`, wantReason: "topic_quote_guard_unavailable"},
-		{name: "topic conversation", response: `{"result":{"openConversationId":"topic-1","convThreadEnabled":true}}`, wantReason: "topic_quote_reply_disabled"},
+		{name: "unsuccessful response", response: `{"success":false,"result":{"conversationInfo":{"openConversationId":"topic-1"}}}`, wantReason: "topic_quote_guard_unavailable"},
+		{name: "invalid topic indicator", response: `{"success":true,"result":{"conversationInfo":{"openConversationId":"topic-1","convThreadEnabled":"unknown"}}}`, wantReason: "topic_quote_guard_unavailable"},
+		{name: "false indicator without conversation", response: `{"success":true,"result":{"conversationInfo":{"convThreadEnabled":false}}}`, wantReason: "topic_quote_guard_unavailable"},
+		{name: "false indicator from different conversation", response: `{"success":true,"result":{"conversationInfo":{"openConversationId":"other-group","convThreadEnabled":false}}}`, wantReason: "topic_quote_guard_unavailable"},
+		{name: "matching fields split across objects", response: `{"success":true,"result":{"conversationInfo":{"openConversationId":"other-group","metadata":{"openConversationId":"topic-1","convThreadEnabled":false}}}}`, wantReason: "topic_quote_guard_unavailable"},
+		{name: "different conversation", response: `{"success":true,"result":{"conversationInfo":{"openConversationId":"other-group"}}}`, wantReason: "topic_quote_guard_unavailable"},
+		{name: "topic conversation", response: `{"success":true,"result":{"conversationInfo":{"openConversationId":"topic-1","convThreadEnabled":true}}}`, wantReason: "topic_quote_reply_disabled"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			caller := &chatThreadCaller{responses: map[string]string{
@@ -1154,7 +1155,7 @@ func TestCrossPlatformCoverageAtomicThreadQuoteGuardAllowsOrdinaryConversationFr
 		t.Run(test.name, func(t *testing.T) {
 			caller := &chatThreadCaller{responses: map[string]string{
 				"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"message-1","openConversationId":"cid"}]}}`,
-				"chat/get_conversation_info": `{"result":{"openConversationId":"cid"}}`,
+				"chat/get_conversation_info": `{"success":true,"result":{"conversationInfo":{"openConversationId":"cid","singleChat":false,"extension":{"newCSpaceIdIM":"space"}}}}`,
 			}}
 			if err := executeAtomicThreadCommand(t, caller, test.args...); err != nil {
 				t.Fatal(err)
@@ -1461,28 +1462,43 @@ func TestCrossPlatformCoverageChatThreadBatchEmotionAndOwnershipFailures(t *test
 }
 
 func TestCrossPlatformCoverageDetectTopicContainerState(t *testing.T) {
+	conversationInfoEnvelope := func(conversationInfo any) map[string]any {
+		return map[string]any{
+			"success": true,
+			"result": map[string]any{
+				"conversationInfo": conversationInfo,
+			},
+		}
+	}
+
 	for _, test := range []struct {
 		name  string
 		value any
 		want  topicContainerState
 	}{
-		{name: "bool true", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "convThreadEnabled": true}}, want: topicContainerTopic},
-		{name: "bool false", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "convThreadEnabled": false}}, want: topicContainerNonTopic},
-		{name: "string true", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "convThreadEnabled": "true"}}, want: topicContainerTopic},
-		{name: "string false", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "convThreadEnabled": "0"}}, want: topicContainerNonTopic},
-		{name: "invalid string", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "convThreadEnabled": "unknown"}}, want: topicContainerUnknown},
-		{name: "invalid type", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "convThreadEnabled": 1}}, want: topicContainerUnknown},
+		{name: "bool true", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "convThreadEnabled": true}), want: topicContainerTopic},
+		{name: "bool false", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "convThreadEnabled": false}), want: topicContainerNonTopic},
+		{name: "string true", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "convThreadEnabled": "true"}), want: topicContainerTopic},
+		{name: "string false", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "convThreadEnabled": "0"}), want: topicContainerNonTopic},
+		{name: "invalid string", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "convThreadEnabled": "unknown"}), want: topicContainerUnknown},
+		{name: "invalid type", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "convThreadEnabled": 1}), want: topicContainerUnknown},
 		{name: "missing response object", value: nil, want: topicContainerUnknown},
-		{name: "missing result object", value: map[string]any{}, want: topicContainerUnknown},
-		{name: "invalid result object", value: map[string]any{"result": []any{}}, want: topicContainerUnknown},
-		{name: "missing conversation id", value: map[string]any{"result": map[string]any{}}, want: topicContainerUnknown},
-		{name: "false without conversation id", value: map[string]any{"result": map[string]any{"convThreadEnabled": false}}, want: topicContainerUnknown},
-		{name: "different conversation id", value: map[string]any{"result": map[string]any{"openConversationId": "other-group", "convThreadEnabled": false}}, want: topicContainerUnknown},
-		{name: "ordinary sparse response", value: map[string]any{"result": map[string]any{"openConversationId": "group-1"}}, want: topicContainerNonTopic},
-		{name: "split across objects", value: map[string]any{"result": map[string]any{"openConversationId": "other-group", "metadata": map[string]any{"openConversationId": "group-1", "convThreadEnabled": false}}}, want: topicContainerUnknown},
-		{name: "topic group", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "topicGroup": "1"}}, want: topicContainerTopic},
-		{name: "is topic group false", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "isTopicGroup": false}}, want: topicContainerNonTopic},
-		{name: "conflicting indicators", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "convThreadEnabled": true, "topicGroup": false}}, want: topicContainerUnknown},
+		{name: "missing success", value: map[string]any{"result": map[string]any{}}, want: topicContainerUnknown},
+		{name: "invalid success", value: map[string]any{"success": "true", "result": map[string]any{}}, want: topicContainerUnknown},
+		{name: "unsuccessful response", value: map[string]any{"success": false, "result": map[string]any{}}, want: topicContainerUnknown},
+		{name: "missing result object", value: map[string]any{"success": true}, want: topicContainerUnknown},
+		{name: "invalid result object", value: map[string]any{"success": true, "result": []any{}}, want: topicContainerUnknown},
+		{name: "missing conversation info", value: map[string]any{"success": true, "result": map[string]any{}}, want: topicContainerUnknown},
+		{name: "invalid conversation info", value: conversationInfoEnvelope([]any{}), want: topicContainerUnknown},
+		{name: "legacy flat result", value: map[string]any{"success": true, "result": map[string]any{"openConversationId": "group-1"}}, want: topicContainerUnknown},
+		{name: "missing conversation id", value: conversationInfoEnvelope(map[string]any{}), want: topicContainerUnknown},
+		{name: "false without conversation id", value: conversationInfoEnvelope(map[string]any{"convThreadEnabled": false}), want: topicContainerUnknown},
+		{name: "different conversation id", value: conversationInfoEnvelope(map[string]any{"openConversationId": "other-group", "convThreadEnabled": false}), want: topicContainerUnknown},
+		{name: "ordinary sparse response", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "singleChat": false}), want: topicContainerNonTopic},
+		{name: "split across objects", value: conversationInfoEnvelope(map[string]any{"openConversationId": "other-group", "metadata": map[string]any{"openConversationId": "group-1", "convThreadEnabled": false}}), want: topicContainerUnknown},
+		{name: "topic group", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "topicGroup": "1"}), want: topicContainerTopic},
+		{name: "is topic group false", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "isTopicGroup": false}), want: topicContainerNonTopic},
+		{name: "conflicting indicators", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "convThreadEnabled": true, "topicGroup": false}), want: topicContainerUnknown},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := detectTopicContainerState(test.value, "group-1"); got != test.want {

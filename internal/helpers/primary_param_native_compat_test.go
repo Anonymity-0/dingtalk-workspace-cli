@@ -46,7 +46,7 @@ func (c *nativePrimaryParamCaller) CallTool(_ context.Context, server, tool stri
 		return textToolResult(fmt.Sprintf(`{"result":{"messages":[{"openMessageId":"mid","openConversationId":%q}]}}`, conversationID)), nil
 	case "get_conversation_info":
 		conversationID, _ := args["openConversationId"].(string)
-		return textToolResult(fmt.Sprintf(`{"result":{"openConversationId":%q,"convThreadEnabled":false}}`, conversationID)), nil
+		return textToolResult(fmt.Sprintf(`{"success":true,"result":{"conversationInfo":{"openConversationId":%q,"convThreadEnabled":false}}}`, conversationID)), nil
 	case "init_conversation_file_upload", "init_todo_file_upload":
 		return textToolResult(`{"resourceUrl":"https://upload.invalid/file","uploadKey":"upload-key"}`), nil
 	case "commit_conversation_file_upload":

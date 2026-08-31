@@ -1152,7 +1152,15 @@ func detectTopicContainerState(value any, openConversationID string) topicContai
 	if !ok {
 		return topicContainerUnknown
 	}
-	conversation, ok := envelope["result"].(map[string]any)
+	success, ok := envelope["success"].(bool)
+	if !ok || !success {
+		return topicContainerUnknown
+	}
+	result, ok := envelope["result"].(map[string]any)
+	if !ok {
+		return topicContainerUnknown
+	}
+	conversation, ok := result["conversationInfo"].(map[string]any)
 	if !ok {
 		return topicContainerUnknown
 	}
@@ -1199,10 +1207,10 @@ func detectTopicContainerState(value any, openConversationID string) topicContai
 	if sawFalse {
 		return topicContainerNonTopic
 	}
-	// get_conversation_info uses a sparse presence contract: topic-circle
-	// conversations publish a topic indicator, while ordinary conversations
-	// omit all three indicators. This absence is meaningful only after the
-	// result object's openConversationId has matched the requested target.
+	// The live get_conversation_info response carries the conversation at
+	// result.conversationInfo and sparsely publishes topic-only indicators.
+	// After that exact object is bound to the requested conversation, absence
+	// of every topic indicator is the ordinary-conversation representation.
 	return topicContainerNonTopic
 }
 
