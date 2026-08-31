@@ -1143,7 +1143,6 @@ type topicContainerState uint8
 
 const (
 	topicContainerUnknown topicContainerState = iota
-	topicContainerUnspecified
 	topicContainerNonTopic
 	topicContainerTopic
 )
@@ -1200,7 +1199,11 @@ func detectTopicContainerState(value any, openConversationID string) topicContai
 	if sawFalse {
 		return topicContainerNonTopic
 	}
-	return topicContainerUnspecified
+	// get_conversation_info uses a sparse presence contract: topic-circle
+	// conversations publish a topic indicator, while ordinary conversations
+	// omit all three indicators. This absence is meaningful only after the
+	// result object's openConversationId has matched the requested target.
+	return topicContainerNonTopic
 }
 
 func topicQuoteGuardUnavailable(operation, message string) error {

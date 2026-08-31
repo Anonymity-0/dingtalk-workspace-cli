@@ -1128,7 +1128,7 @@ func TestCrossPlatformCoverageAtomicThreadQuoteGuardRejectsConversationFailuresA
 	}
 }
 
-func TestCrossPlatformCoverageAtomicThreadQuoteGuardAllowsConversationWithoutTopicIndicator(t *testing.T) {
+func TestCrossPlatformCoverageAtomicThreadQuoteGuardAllowsOrdinaryConversationFromSparseTopicFields(t *testing.T) {
 	for _, test := range []struct {
 		name     string
 		args     []string
@@ -1478,7 +1478,7 @@ func TestCrossPlatformCoverageDetectTopicContainerState(t *testing.T) {
 		{name: "missing conversation id", value: map[string]any{"result": map[string]any{}}, want: topicContainerUnknown},
 		{name: "false without conversation id", value: map[string]any{"result": map[string]any{"convThreadEnabled": false}}, want: topicContainerUnknown},
 		{name: "different conversation id", value: map[string]any{"result": map[string]any{"openConversationId": "other-group", "convThreadEnabled": false}}, want: topicContainerUnknown},
-		{name: "indicator absent", value: map[string]any{"result": map[string]any{"openConversationId": "group-1"}}, want: topicContainerUnspecified},
+		{name: "ordinary sparse response", value: map[string]any{"result": map[string]any{"openConversationId": "group-1"}}, want: topicContainerNonTopic},
 		{name: "split across objects", value: map[string]any{"result": map[string]any{"openConversationId": "other-group", "metadata": map[string]any{"openConversationId": "group-1", "convThreadEnabled": false}}}, want: topicContainerUnknown},
 		{name: "topic group", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "topicGroup": "1"}}, want: topicContainerTopic},
 		{name: "is topic group false", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "isTopicGroup": false}}, want: topicContainerNonTopic},
