@@ -1,6 +1,6 @@
 ---
 name: dingtalk-doc
-description: 钉钉在线文字文档（adoc）的查找创建、读写、文档信息、白板卡片、附件、评论、媒体、导入导出、版本、模板、权限分享；本地文件转在线文档或协作编辑归 dingtalk-doc。原文件/文件夹归 dingtalk-drive，知识库归 dingtalk-wiki，原生 .md/axls 归 dingtalk-misc，able 归 dingtalk-aitable。前缀：dws doc。
+description: 钉钉在线文字文档（adoc）的查找创建、读写、文档信息、白板卡片容器插入删除、附件、评论、媒体、导入导出、版本、模板、权限分享；白板/画布内的 OpenNodes 图形、文本、分组、连线、Vector 和布局读写归 dingtalk-misc 的 Whiteboard。本地文件转在线文档或协作编辑归 dingtalk-doc。原文件/文件夹归 dingtalk-drive，知识库归 dingtalk-wiki，原生 .md/axls 归 dingtalk-misc，able 归 dingtalk-aitable。前缀：dws doc。
 metadata:
   cli_version: ">=0.2.14"
   category: product

@@ -408,6 +408,14 @@ func TestCrossPlatformCoverageDINGCompatibilityWritesRequireConfirmationAndExecu
 	if strings.Join(confirmedRecall.history, ",") != "recall_personal_ding" || confirmedRecall.arguments[0]["openDingId"] != "ding-fixture" {
 		t.Fatalf("confirmed recall calls=%v args=%v", confirmedRecall.history, confirmedRecall.arguments)
 	}
+
+	wrongResourceRecall := &dingCoverageCaller{responses: map[string][]string{}}
+	if err := runDingRoot(t, RecallPersonal, wrongResourceRecall, true, "--id", "msgm9nQxDfZgPcvmF52jSUwAg=="); err == nil {
+		t.Fatal("chat sourceMessageId was accepted as a DING recall target")
+	}
+	if len(wrongResourceRecall.history) != 0 {
+		t.Fatalf("resource type mismatch reached MCP: calls=%v", wrongResourceRecall.history)
+	}
 }
 
 func runDingRoot(t *testing.T, declaration shortcut.Shortcut, caller *dingCoverageCaller, yes bool, args ...string) error {

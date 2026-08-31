@@ -158,9 +158,33 @@ var RecallPersonal = compatibilityDingWrite(
 	[]contract.ParamDecl{{Name: "id", Property: "id"}},
 	"dws ding +recall-personal --id <DING_ID>",
 	func(rt *shortcut.RuntimeContext) error {
+		if err := validateDingRecallID(rt.Str("id")); err != nil {
+			return err
+		}
 		return rt.CallMCP("recall_personal_ding", map[string]any{"openDingId": rt.Str("id")})
 	},
 )
+
+func validateDingRecallID(value string) error {
+	id := strings.TrimSpace(value)
+	lower := strings.ToLower(id)
+	if id == "" {
+		return apperrors.NewValidation("openDingId 不能为空")
+	}
+	if strings.HasPrefix(lower, "msg") || strings.HasPrefix(lower, "cid") {
+		return apperrors.NewValidation(
+			"撤回目标不是 DING 资源：--id 必须是 openDingId，不能是 openMessageId 或 openConversationId",
+			apperrors.WithOperation("ding/validate_recall_target"),
+			apperrors.WithReason("resource_type_mismatch"),
+			apperrors.WithOrigin("client"),
+			apperrors.WithFailureStage("preflight"),
+			apperrors.WithExecutionStarted(false),
+			apperrors.WithRetryable(false),
+			apperrors.WithHint("请从消息转 DING 回执或 DING 列表读取 openDingId；sourceMessageId 只属于聊天消息。"),
+		)
+	}
+	return nil
+}
 
 func compatibilityDingWrite(command, description, intent string, risk shortcut.Risk, destructive bool, flags []shortcut.Flag, params []contract.ParamDecl, example string, execute func(*shortcut.RuntimeContext) error) shortcut.Shortcut {
 	declaration := dingContract(command, description, intent, true, nil, nil, params, example)
@@ -201,5 +225,8 @@ func dingPersonalRemindType(value string) (string, error) {
 }
 
 func init() {
+	RecallPersonal.Validate = func(rt *shortcut.RuntimeContext) error {
+		return validateDingRecallID(rt.Str("id"))
+	}
 	shortcut.Register(List, ReceiverStatus, SendPersonal, SendByMessage, RecallPersonal)
 }
