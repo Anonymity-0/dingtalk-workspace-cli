@@ -123,7 +123,7 @@ func TestCrossPlatformCoverageDownloadSingleStreamTOCTOU(t *testing.T) {
 			return err
 		}
 		// 模拟竞态：检查点已过，发布前目标被另一个进程创建。
-		return os.WriteFile(strings.TrimSuffix(destPath, drivePartFileSuffix), []byte("victim"), 0o644)
+		return os.WriteFile(streamTempDest(destPath), []byte("victim"), 0o644)
 	})
 	defer SetHTTPGetFile(nil)
 
@@ -143,9 +143,7 @@ func TestCrossPlatformCoverageDownloadSingleStreamTOCTOU(t *testing.T) {
 	if string(got) != "victim" {
 		t.Fatalf("并发出现的目标必须未被覆盖, got %q", got)
 	}
-	if _, statErr := os.Stat(dest + drivePartFileSuffix); !os.IsNotExist(statErr) {
-		t.Fatal("整流发布失败后应清理 .dwspart 临时文件")
-	}
+	assertNoStreamTempLeftovers(t, dest)
 }
 
 // 整流路径 TOCTOU + --overwrite：发布时目标已存在但显式允许覆盖 → 成功替换。
@@ -154,7 +152,7 @@ func TestCrossPlatformCoverageDownloadSingleStreamTOCTOUOverwrite(t *testing.T) 
 		if err := os.WriteFile(destPath, []byte("downloaded"), 0o644); err != nil {
 			return err
 		}
-		return os.WriteFile(strings.TrimSuffix(destPath, drivePartFileSuffix), []byte("victim"), 0o644)
+		return os.WriteFile(streamTempDest(destPath), []byte("victim"), 0o644)
 	})
 	defer SetHTTPGetFile(nil)
 
@@ -170,9 +168,7 @@ func TestCrossPlatformCoverageDownloadSingleStreamTOCTOUOverwrite(t *testing.T) 
 	if string(got) != "downloaded" {
 		t.Fatalf("--overwrite 应替换竞态窗口内出现的目标, got %q", got)
 	}
-	if _, statErr := os.Stat(dest + drivePartFileSuffix); !os.IsNotExist(statErr) {
-		t.Fatal("overwrite 发布成功后不应残留 .dwspart 临时文件")
-	}
+	assertNoStreamTempLeftovers(t, dest)
 }
 
 // 分片路径 TOCTOU：logf 在分片开始前被调用（检查点已过），此时注入目标；
@@ -246,13 +242,13 @@ func TestCrossPlatformCoverageRangedPartsTOCTOUOverwrite(t *testing.T) {
 // 原子拒绝，RunE 必须把 sentinel 转成与检查点相同的 INPUT_FILE_ALREADY_EXISTS
 // 结构化错误（两个命令路径各验一次）。
 func TestCrossPlatformCoverageDriveDownloadRunEpublishConflict(t *testing.T) {
-	// stub 写完 .dwspart 后注入最终目标，复现检查后竞态窗口。
+	// stub 写完整流临时文件后注入最终目标，复现检查后竞态窗口。
 	oldGet := httpGetFile
 	httpGetFile = func(_ context.Context, _ string, _ map[string]string, destPath string) error {
 		if err := os.WriteFile(destPath, []byte("downloaded"), 0o644); err != nil {
 			return err
 		}
-		return os.WriteFile(strings.TrimSuffix(destPath, drivePartFileSuffix), []byte("victim"), 0o644)
+		return os.WriteFile(streamTempDest(destPath), []byte("victim"), 0o644)
 	}
 	t.Cleanup(func() { httpGetFile = oldGet })
 

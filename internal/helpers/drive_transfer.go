@@ -5,8 +5,9 @@ package helpers
 //
 // 下载：文件大小 ≥ 2×part-size 时自动分片并发下载（对齐 aws s3 cp /
 // ossutil 惯例），断点续传默认开启（<dest>.dwspart 临时文件 + checkpoint
-// 元信息），服务端不支持 Range 时自动回退整流；401/403（凭证过期）自动
-// 重新调用 MCP 取新凭证后续传。
+// 元信息，跨进程锁互斥），服务端不支持 Range 时自动回退整流；401/403（凭证
+// 过期）自动重新调用 MCP 取新凭证后续传。整流无续传价值，写入目标同目录
+// 独占创建的随机唯一临时文件，并发下载同一目标互不混写。
 // 上传：中心协议（uploadType=httpToCenterWithToken）与 OSS 走同一 PUT
 // 路径（URL 服务端拼好、headers 透传、客户端零追加），401/403 重取凭证
 // 重试一次；服务端超限错误补充可读提示。
@@ -24,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,6 +47,7 @@ const (
 
 	drivePartFileSuffix     = ".dwspart"
 	drivePartMetaSuffix     = ".dwspart.meta"
+	drivePartLockSuffix     = ".dwspart.lock"
 	driveCheckpointVersion  = 1
 	uploadTypeCenterToken   = "httpToCenterWithToken"
 	driveTransferBodyErrCap = 2048 // 错误响应 body 截断长度
@@ -62,6 +65,7 @@ var errCredentialRefreshVersionUnknown = errors.New("凭证刷新后无法验证
 var (
 	driveJsonMarshal  = json.Marshal
 	driveOsRename     = os.Rename
+	driveOsCreate     = os.Create
 	driveFileTruncate = (*os.File).Truncate
 	driveFileSync     = (*os.File).Sync
 	driveFileStat     = (*os.File).Stat
@@ -93,10 +97,32 @@ func drivePublishFile(source, target string, overwrite bool) error {
 	return os.Remove(source)
 }
 
-// downloadViaTemp 整流路径的写-发布骨架：内容先写 <dest>.dwspart，成功后按
-// overwrite 策略原子发布；任何失败都清理临时文件（整流无续传价值）。
+// createDriveStreamTempFile 在目标同目录以 O_EXCL 语义独占创建随机唯一的
+// 整流临时文件，返回已关闭的文件路径（调用方负责清理）。整流产物无续传
+// 价值，不再复用固定 <dest>.dwspart：两个进程并发下载同一目标时，固定名
+// 会被 os.Create 互相截断，最终发布的可能是两个请求的混合内容。权限对齐
+// os.Create 的落盘语义（0644），不随 CreateTemp 默认收紧到 0600。
+func createDriveStreamTempFile(destPath string) (string, error) {
+	f, err := os.CreateTemp(filepath.Dir(destPath), "."+filepath.Base(destPath)+drivePartFileSuffix+".*")
+	if err != nil {
+		return "", err
+	}
+	tmpPath := f.Name()
+	// 关闭刚创建的空文件与调整自身产物权限均无恢复价值，失败时保留
+	// CreateTemp 默认 0600 即可；真实 I/O 问题由后续写入/发布路径暴露。
+	_ = f.Close()
+	_ = os.Chmod(tmpPath, 0o644)
+	return tmpPath, nil
+}
+
+// downloadViaTemp 整流路径的写-发布骨架：内容写入目标同目录独占创建的随机
+// 唯一临时文件（并发下载同一目标互不混写），成功后按 overwrite 策略原子
+// 发布；任何失败都清理临时文件（整流无续传价值）。
 func downloadViaTemp(destPath string, overwrite bool, write func(tmpPath string) error) error {
-	tmpPath := destPath + drivePartFileSuffix
+	tmpPath, err := createDriveStreamTempFile(destPath)
+	if err != nil {
+		return fmt.Errorf("创建下载临时文件失败: %w", err)
+	}
 	if err := write(tmpPath); err != nil {
 		_ = os.Remove(tmpPath)
 		return err
@@ -486,7 +512,7 @@ func parseContentRange(header string) (start, end, total int64, err error) {
 
 func writeStreamToFile(r io.Reader, destPath string, overwrite bool) error {
 	return downloadViaTemp(destPath, overwrite, func(tmpPath string) error {
-		out, err := os.Create(tmpPath)
+		out, err := driveOsCreate(tmpPath)
 		if err != nil {
 			return err
 		}
@@ -591,9 +617,38 @@ func (cp *driveDownloadCheckpoint) save(metaPath string) error {
 // 分片下载引擎
 // ──────────────────────────────────────────────────────────
 
+// acquireDriveDownloadLock 分片下载的跨进程所有权锁：断点续传必须复用固定
+// <dest>.dwspart 与 checkpoint 路径，两个进程并发写同一目标会互相截断/混写。
+// 以 O_CREATE|O_EXCL 锁文件保证同一目标同一时刻只有一个写者：抢不到锁立即
+// 失败并透出持有者诊断；进程被强杀会残留锁文件（不属于续传状态），错误信息
+// 指引确认后删除。返回的 release 在 defer 中调用即可。
+func acquireDriveDownloadLock(destPath string) (release func(), err error) {
+	lockPath := destPath + drivePartLockSuffix
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			holder, _ := os.ReadFile(lockPath)
+			return nil, fmt.Errorf("另一个下载进程正在写入 %s%s（锁文件: %s，持有者: %s）；若确认没有并发下载，请删除锁文件后重试",
+				destPath, drivePartFileSuffix, lockPath, strings.TrimSpace(string(holder)))
+		}
+		return nil, fmt.Errorf("创建下载锁文件失败: %w", err)
+	}
+	host, _ := os.Hostname()
+	_, _ = fmt.Fprintf(f, "pid=%d host=%s started=%s\n", os.Getpid(), host, time.Now().Format(time.RFC3339))
+	_ = f.Close()
+	return func() { _ = os.Remove(lockPath) }, nil
+}
+
 // downloadRangedParts 并发分片下载到 <dest>.dwspart，全部完成后校验总长并
 // 原子重命名为 destPath、清理 checkpoint；中途失败保留分片产物供断点续传。
 func downloadRangedParts(ctx context.Context, creds *driveCredentialState, destPath string, totalSize int64, opts driveDownloadOptions) error {
+	// 跨进程所有权锁：断点续传依赖固定的 .dwspart/.dwspart.meta 路径，必须
+	// 排斥并发写者（含 --no-resume 清理历史断点产物的窗口）。
+	releaseLock, err := acquireDriveDownloadLock(destPath)
+	if err != nil {
+		return err
+	}
+	defer releaseLock()
 	parts := splitDownloadParts(totalSize, opts.partSize)
 	partPath := destPath + drivePartFileSuffix
 	metaPath := destPath + drivePartMetaSuffix

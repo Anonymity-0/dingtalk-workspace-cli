@@ -269,6 +269,22 @@ func TestCrossPlatformCoverageDriveDownloadVersionDirectoryOutput(t *testing.T) 
 
 // ── drive publish set：CR 修复后的密码/有效期参数契约 ──
 
+// download-version 不传 --output：text 模式 dry-run 预览输出"当前目录（自动
+// 推断文件名）"（补齐 changed-code 覆盖缺口；download 命令的对应分支已有
+// 同款断言）。
+func TestCrossPlatformCoverageDriveDownloadVersionDryRunDefaultOutput(t *testing.T) {
+	stdout, _, err := executeJSONOutputContractCommand(t,
+		&scriptedToolCaller{format: "text", dry: true},
+		newDriveCommand,
+		"download-version", "--node", "node-1", "--version", "3", "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout, "当前目录（自动推断文件名）") {
+		t.Fatalf("expected default-output annotation in text preview, got %q", stdout)
+	}
+}
+
 func TestCrossPlatformCoverageDrivePublishSetValidation(t *testing.T) {
 	cases := []struct {
 		name string

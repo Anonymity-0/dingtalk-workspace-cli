@@ -243,7 +243,11 @@ func TestCrossPlatformCoverageJSONOutputContractDryRunIsMachineReadable(t *testi
 }
 
 func TestCrossPlatformCoverageJSONOutputContractReportsMissingLocalArtifact(t *testing.T) {
-	testseam.Swap(t, &httpGetFile, func(context.Context, string, map[string]string, string) error {
+	testseam.Swap(t, &httpGetFile, func(_ context.Context, _ string, _ map[string]string, destPath string) error {
+		// 模拟“下载引擎成功返回但本地产物缺失”：drive download 的临时文件
+		// 由 downloadViaTemp 预创建，移除后原子发布点 fail closed；doc export
+		// 从未写入产物，在读取产物时 fail closed。两个路径都必须失败。
+		_ = os.Remove(destPath)
 		return nil
 	})
 	testseam.Swap(t, &helperAfter, func(time.Duration) <-chan time.Time {
@@ -252,8 +256,8 @@ func TestCrossPlatformCoverageJSONOutputContractReportsMissingLocalArtifact(t *t
 		return ch
 	})
 
-	// wantErr 为空表示任意非空错误（fail-closed）：drive 下载引擎先写 .dwspart
-	// 再原子发布，stub 未写临时文件时在发布点失败；doc export 在读取产物时失败。
+	// wantErr 为空表示任意非空错误（fail-closed）：drive 下载引擎先写临时文件
+	// 再原子发布，stub 移除临时文件时在发布点失败；doc export 在读取产物时失败。
 	tests := []struct {
 		name    string
 		wantErr string
