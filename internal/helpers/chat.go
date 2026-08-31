@@ -3102,10 +3102,16 @@ func newChatCommand() *cobra.Command {
 				specified++
 			}
 			if specified > 1 {
-				return fmt.Errorf("--conversation-id, --user and --open-dingtalk-id are mutually exclusive, specify exactly one")
+				return apperrors.NewValidation(
+					"--conversation-id, --user and --open-dingtalk-id are mutually exclusive, specify exactly one",
+					apperrors.WithReason("mutually_exclusive"),
+				)
 			}
 			if specified == 0 {
-				return fmt.Errorf("--conversation-id, --user or --open-dingtalk-id is required")
+				return apperrors.NewValidation(
+					"--conversation-id, --user or --open-dingtalk-id is required",
+					apperrors.WithReason("require_one_of"),
+				)
 			}
 			if openDingTalkID != "" {
 				if err := targetresolver.ValidateExplicitOpenDingTalkID("--open-dingtalk-id", openDingTalkID); err != nil {
@@ -3333,10 +3339,16 @@ func newChatCommand() *cobra.Command {
 				specified++
 			}
 			if specified > 1 {
-				return fmt.Errorf("--conversation-id, --user and --open-dingtalk-id are mutually exclusive, specify exactly one")
+				return apperrors.NewValidation(
+					"--conversation-id, --user and --open-dingtalk-id are mutually exclusive, specify exactly one",
+					apperrors.WithReason("mutually_exclusive"),
+				)
 			}
 			if specified == 0 {
-				return fmt.Errorf("--conversation-id, --user or --open-dingtalk-id is required")
+				return apperrors.NewValidation(
+					"--conversation-id, --user or --open-dingtalk-id is required",
+					apperrors.WithReason("require_one_of"),
+				)
 			}
 			if openDingTalkID != "" {
 				if err := targetresolver.ValidateExplicitOpenDingTalkID("--open-dingtalk-id", openDingTalkID); err != nil {
@@ -3385,7 +3397,10 @@ func newChatCommand() *cobra.Command {
 				switch msgType {
 				case "image":
 					if mediaId == "" {
-						return fmt.Errorf("--media-id is required for msgType=image")
+						return apperrors.NewValidation(
+							"--media-id is required for msgType=image",
+							apperrors.WithReason("missing_required_flag"),
+						)
 					}
 					contentJSON = fmt.Sprintf(`{"mediaId":"%s"}`, mediaId)
 				case "file", "audio", "video":
@@ -3394,7 +3409,10 @@ func newChatCommand() *cobra.Command {
 					dentryId, _ := cmd.Flags().GetInt64("dentry-id")
 					spaceId, _ := cmd.Flags().GetInt64("space-id")
 					if (dentryId == 0) != (spaceId == 0) {
-						return fmt.Errorf("--dentry-id and --space-id must be specified together")
+						return apperrors.NewValidation(
+							"--dentry-id and --space-id must be specified together",
+							apperrors.WithReason("require_together"),
+						)
 					}
 					if filePath != "" {
 						meta, err := buildConversationLocalFileMeta(filePath, "", "")
@@ -3433,7 +3451,11 @@ func newChatCommand() *cobra.Command {
 							}
 							contentJSON, _ = buildConversationFileContent(dentryId, spaceId, meta)
 						} else if dentryId == 0 || spaceId == 0 {
-							return fmt.Errorf("--file must be a readable local file, or pass legacy --dentry-id and --space-id: %w", err)
+							return apperrors.NewValidation(
+								"--file must be a readable local file, or pass legacy --dentry-id and --space-id: "+err.Error(),
+								apperrors.WithReason("invalid_file"),
+								apperrors.WithCause(err),
+							)
 						}
 					}
 					if contentJSON == "" {
@@ -3441,7 +3463,10 @@ func newChatCommand() *cobra.Command {
 						fileType, _ := cmd.Flags().GetString("file-type")
 						fileSize, _ := cmd.Flags().GetInt64("file-size")
 						if dentryId == 0 || spaceId == 0 || fileName == "" {
-							return fmt.Errorf("readable local --file is required for msgType=file; legacy flags --dentry-id, --space-id, --file-name are still supported")
+							return apperrors.NewValidation(
+								"readable local --file is required for msgType=file; legacy flags --dentry-id, --space-id, --file-name are still supported",
+								apperrors.WithReason("missing_required_flags"),
+							)
 						}
 						contentJSON = fmt.Sprintf(`{"dentryId":%d,"spaceId":%d,"fileName":"%s","fileType":"%s","filePath":"%s","fileSize":%d}`,
 							dentryId, spaceId, fileName, fileType, filePath, fileSize)
@@ -3452,17 +3477,26 @@ func newChatCommand() *cobra.Command {
 					locationName, _ := cmd.Flags().GetString("location-name")
 					mapThumbnailUrl, _ := cmd.Flags().GetString("map-thumbnail-url")
 					if latitude == "" || longitude == "" || locationName == "" || mapThumbnailUrl == "" {
-						return fmt.Errorf("--latitude, --longitude, --location-name, --map-thumbnail-url are all required for msgType=location")
+						return apperrors.NewValidation(
+							"--latitude, --longitude, --location-name, --map-thumbnail-url are all required for msgType=location",
+							apperrors.WithReason("missing_required_flags"),
+						)
 					}
 					contentJSON = fmt.Sprintf(`{"locationName":"%s","longitude":"%s","latitude":"%s","mapThumbnailUrl":"%s"}`, locationName, longitude, latitude, mapThumbnailUrl)
 				case "profile":
 					contactID, _ := cmd.Flags().GetString("contact-id")
 					if contactID == "" {
-						return fmt.Errorf("--contact-id is required for msgType=profile")
+						return apperrors.NewValidation(
+							"--contact-id is required for msgType=profile",
+							apperrors.WithReason("missing_required_flag"),
+						)
 					}
 					contentJSON = fmt.Sprintf(`{"openDingTalkId":"%s"}`, contactID)
 				default:
-					return fmt.Errorf("unsupported --msg-type: %s (supported: image, file, audio, video, location, profile)", msgType)
+					return apperrors.NewValidation(
+						fmt.Sprintf("unsupported --msg-type: %s (supported: image, file, audio, video, location, profile)", msgType),
+						apperrors.WithReason("invalid_enum"),
+					)
 				}
 
 				params := map[string]any{
@@ -3487,7 +3521,10 @@ func newChatCommand() *cobra.Command {
 				text = args[0]
 			}
 			if text == "" {
-				return fmt.Errorf("message content required (use --content or positional arg, or --media-id for image)")
+				return apperrors.NewValidation(
+					"message content required (use --content or positional arg, or --media-id for image)",
+					apperrors.WithReason("require_one_of"),
+				)
 			}
 			title, _ := cmd.Flags().GetString("title")
 			if title == "" {
@@ -3526,6 +3563,7 @@ func newChatCommand() *cobra.Command {
 	}
 	chatMessageSendRunE := chatMessageSendCmd.RunE
 	DeclareLeafMetadata(chatMessageSendCmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
 			Confirmation: "not_required", Idempotency: "unknown",
@@ -3556,6 +3594,25 @@ func newChatCommand() *cobra.Command {
 				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "idempotency-key", Property: "uuid"},
 				{Name: "open-dingtalk-id", Property: "receiverOpenDingTalkId"},
+			},
+			Result: &contract.ResultSpec{
+				Outcomes: []contract.ResultOutcome{
+					contract.ResultOutcomeSuccess,
+					contract.ResultOutcomePending,
+					contract.ResultOutcomeFailure,
+				},
+				DataSchema: json.RawMessage(`{
+					"type":"object",
+					"description":"个人消息发送的下游响应；标识可能位于顶层或 result 对象中",
+					"properties":{
+						"success":{"type":"boolean","description":"下游是否接受发送请求"},
+						"result":{"type":"object","description":"下游返回的发送结果对象","additionalProperties":true},
+						"openTaskId":{"type":"string","description":"异步发送任务 ID"},
+						"openMessageId":{"type":"string","description":"发送成功后的消息 ID"},
+						"openConversationId":{"type":"string","description":"消息所在会话 ID"}
+					},
+					"additionalProperties":true
+				}`),
 			},
 		},
 	})
