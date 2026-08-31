@@ -1103,6 +1103,7 @@ func TestCrossPlatformCoverageAtomicThreadQuoteGuardRejectsConversationFailuresA
 	}{
 		{name: "invalid response", response: `<html>bad gateway</html>`, wantReason: "topic_quote_guard_unavailable"},
 		{name: "invalid topic indicator", response: `{"result":{"convThreadEnabled":"unknown"}}`, wantReason: "topic_quote_guard_unavailable"},
+		{name: "different conversation", response: `{"result":{"openConversationId":"other-group"}}`, wantReason: "topic_quote_guard_unavailable"},
 		{name: "topic conversation", response: `{"result":{"convThreadEnabled":true}}`, wantReason: "topic_quote_reply_disabled"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -1125,18 +1126,41 @@ func TestCrossPlatformCoverageAtomicThreadQuoteGuardRejectsConversationFailuresA
 }
 
 func TestCrossPlatformCoverageAtomicThreadQuoteGuardAllowsConversationWithoutTopicIndicator(t *testing.T) {
-	caller := &chatThreadCaller{responses: map[string]string{
-		"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"message-1","openConversationId":"cid"}]}}`,
-		"chat/get_conversation_info": `{"result":{"openConversationId":"cid"}}`,
-	}}
-	if err := executeAtomicThreadCommand(t, caller,
-		"message", "reply", "--conversation-id", "cid", "--ref-msg-id", "message-1",
-		"--ref-sender", "DAAAAAAAAAAAiE", "--text", "普通引用"); err != nil {
-		t.Fatal(err)
-	}
-	if len(caller.calls) != 3 || caller.calls[0].tool != "list_messages_by_ids" ||
-		caller.calls[1].tool != "get_conversation_info" || caller.calls[2].tool != "send_personal_message" {
-		t.Fatalf("calls = %#v", caller.calls)
+	for _, test := range []struct {
+		name     string
+		args     []string
+		wantTool string
+	}{
+		{
+			name: "personal reply",
+			args: []string{
+				"message", "reply", "--conversation-id", "cid", "--ref-msg-id", "message-1",
+				"--ref-sender", "DAAAAAAAAAAAiE", "--text", "普通引用",
+			},
+			wantTool: "send_personal_message",
+		},
+		{
+			name: "bot reply",
+			args: []string{
+				"message", "send-by-bot", "--robot-code", "robot-1", "--conversation-id", "cid",
+				"--reply", "message-1", "--ref-sender", "DAAAAAAAAAAAiE", "--text", "普通引用",
+			},
+			wantTool: "send_robot_group_message",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &chatThreadCaller{responses: map[string]string{
+				"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"message-1","openConversationId":"cid"}]}}`,
+				"chat/get_conversation_info": `{"result":{"openConversationId":"cid"}}`,
+			}}
+			if err := executeAtomicThreadCommand(t, caller, test.args...); err != nil {
+				t.Fatal(err)
+			}
+			if len(caller.calls) != 3 || caller.calls[0].tool != "list_messages_by_ids" ||
+				caller.calls[1].tool != "get_conversation_info" || caller.calls[2].tool != test.wantTool {
+				t.Fatalf("calls = %#v", caller.calls)
+			}
+		})
 	}
 }
 
@@ -1446,6 +1470,8 @@ func TestCrossPlatformCoverageDetectTopicContainerState(t *testing.T) {
 		{name: "invalid string", value: map[string]any{"convThreadEnabled": "unknown"}, want: topicContainerUnknown},
 		{name: "invalid type", value: map[string]any{"convThreadEnabled": 1}, want: topicContainerUnknown},
 		{name: "missing response object", value: nil, want: topicContainerUnknown},
+		{name: "missing conversation id", value: map[string]any{"result": map[string]any{}}, want: topicContainerUnknown},
+		{name: "different conversation id", value: map[string]any{"result": map[string]any{"openConversationId": "other-group"}}, want: topicContainerUnknown},
 		{name: "indicator absent", value: map[string]any{"result": map[string]any{"openConversationId": "group-1"}}, want: topicContainerUnspecified},
 		{name: "nested map", value: map[string]any{"result": map[string]any{"convThreadEnabled": true}}, want: topicContainerTopic},
 		{name: "nested array", value: []any{map[string]any{"convThreadEnabled": true}}, want: topicContainerTopic},
@@ -1453,7 +1479,7 @@ func TestCrossPlatformCoverageDetectTopicContainerState(t *testing.T) {
 		{name: "is topic group false", value: map[string]any{"isTopicGroup": false}, want: topicContainerNonTopic},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := detectTopicContainerState(test.value); got != test.want {
+			if got := detectTopicContainerState(test.value, "group-1"); got != test.want {
 				t.Fatalf("state = %v, want %v", got, test.want)
 			}
 		})

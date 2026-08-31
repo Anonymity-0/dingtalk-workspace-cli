@@ -1112,7 +1112,7 @@ func guardTopicQuoteReply(cmd *cobra.Command, openConversationID, openMessageID 
 	if err := json.Unmarshal([]byte(raw), &data); err != nil {
 		return topicQuoteGuardUnavailable("chat/get_conversation_info", "会话信息响应无法解析，已阻止发送")
 	}
-	switch detectTopicContainerState(data) {
+	switch detectTopicContainerState(data, openConversationID) {
 	case topicContainerTopic:
 		return topicQuoteReplyDisabledError()
 	case topicContainerUnknown:
@@ -1148,16 +1148,19 @@ const (
 	topicContainerTopic
 )
 
-func detectTopicContainerState(value any) topicContainerState {
+func detectTopicContainerState(value any, openConversationID string) topicContainerState {
+	wantConversationID := strings.TrimSpace(openConversationID)
 	sawFalse := false
 	sawInvalid := false
-	sawObject := false
+	sawConversationID := false
 	var visit func(any) bool
 	visit = func(current any) bool {
 		switch typed := current.(type) {
 		case map[string]any:
-			sawObject = true
 			for key, child := range typed {
+				if key == "openConversationId" && strings.TrimSpace(fmt.Sprint(child)) == wantConversationID {
+					sawConversationID = true
+				}
 				if key != "convThreadEnabled" && key != "topicGroup" && key != "isTopicGroup" {
 					if visit(child) {
 						return true
@@ -1198,7 +1201,7 @@ func detectTopicContainerState(value any) topicContainerState {
 	if sawFalse && !sawInvalid {
 		return topicContainerNonTopic
 	}
-	if sawInvalid || !sawObject {
+	if sawInvalid || !sawConversationID {
 		return topicContainerUnknown
 	}
 	return topicContainerUnspecified
