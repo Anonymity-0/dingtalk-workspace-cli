@@ -2470,7 +2470,7 @@ dws chat message send --conversation-id <openConversationId> --msg-type image --
 群聊传 --group，单聊传 --receiver，二者互斥。群聊创建时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人（仅 --card-engine streaming 支持，a2ui 下显式报错）。
 
 **注意：send-card 必须和 update-card 搭配使用。** 创建卡片时无需传入内容，后续通过 update-card 更新内容，最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。
-默认 `--card-engine streaming`，旧链路保持 `im.create_and_send_card` 不变。A2UI 使用 `--card-engine a2ui`，调用 `im.create_and_send_a2ui_card`，必须传 `--content` JSON 字符串数组，例如 `'["message1","message2"]'`；CLI 会解析为 `a2uiMessages`，并用换行拼接为 `summary`（真实契约无 `fallbackText` 字段），单聊传 userId 时 CLI 自动解析为 openDingTalkId 后发送。A2UI 创建默认 `flowStatus=1(PROCESSING)`。
+默认 `--card-engine streaming`，旧链路保持 `im.create_and_send_card` 不变。A2UI 使用 `--card-engine a2ui`，调用 `im.create_and_send_a2ui_card`，必须传 `--content` JSON 字符串数组（元素为 A2UI 协议 JSON），例如 `'["{\"version\":\"v1.0\",\"updateDataModel\":{\"surfaceId\":\"surface\",\"path\":\"/status\",\"value\":\"starting\"}}"]'`；CLI 会解析为 `a2uiMessages`，并用换行拼接为 `summary`（真实契约无 `fallbackText` 字段），单聊传 userId 时 CLI 自动解析为 openDingTalkId 后发送。A2UI 创建默认 `flowStatus=1(PROCESSING)`。
 flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；A2UI 更新只接受数字 1-9（CLI 映射为枚举字符串发送），额外包含 6=中止(ABORTED)，7=超时(TIMEOUT)，8=确认中(CONFIRMING)，9=已确认(CONFIRMED)。
 ```
 Usage:
@@ -2480,7 +2480,7 @@ Example:
   dws chat message send-card --group <openConversationId> --at-open-dingtalk-ids <openDingTalkId>
   dws chat message send-card --group <openConversationId> --at-all
   dws chat message send-card --receiver <openDingTalkId>
-  dws chat message send-card --group <openConversationId> --card-engine a2ui --content '["message1","message2"]'
+  dws chat message send-card --group <openConversationId> --card-engine a2ui --content '["{\"version\":\"v1.0\",\"updateDataModel\":{\"surfaceId\":\"surface\",\"path\":\"/status\",\"value\":\"starting\"}}"]'
   # 查询群 ID: dws chat search --query "群名"
   # 查询人员: dws aisearch person --query "姓名" --dimension name
 Flags:
@@ -2506,7 +2506,7 @@ Usage:
 Example:
   dws chat message update-card --biz-id <bizId> --content "更新的卡片内容" --flow-status 2
   dws chat message update-card --biz-id <bizId> --content "最终内容" --flow-status 3
-  dws chat message update-card --biz-id <bizId> --card-engine a2ui --content '["message1","message2"]' --flow-status 9
+  dws chat message update-card --biz-id <bizId> --card-engine a2ui --content '["{\"version\":\"v1.0\",\"updateDataModel\":{\"surfaceId\":\"surface\",\"path\":\"/status\",\"value\":\"finished\"}}"]' --flow-status 9
 Flags:
       --biz-id string    卡片业务 ID (必填)
       --card-engine string 卡片引擎：streaming 或 a2ui（默认 streaming）

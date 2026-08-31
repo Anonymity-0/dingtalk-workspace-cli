@@ -6506,7 +6506,7 @@ A2UI 通过 --card-engine a2ui 启用，--content 必须是 JSON 字符串数组
   dws chat message send-card --conversation-id <openConversationId> --at-open-dingtalk-ids <openDingTalkId>
   dws chat message send-card --conversation-id <openConversationId> --at-all
   dws chat message send-card --open-dingtalk-id <openDingTalkId>
-  dws chat message send-card --conversation-id <openConversationId> --card-engine a2ui --content '["message1","message2"]'
+  dws chat message send-card --conversation-id <openConversationId> --card-engine a2ui --content '["{\"version\":\"v1.0\",\"updateDataModel\":{\"surfaceId\":\"surface\",\"path\":\"/status\",\"value\":\"starting\"}}"]'
   # 查询群 ID: dws chat search --query "群名"
   # 查询人员: dws contact user search --keyword "姓名" --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {

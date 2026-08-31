@@ -19,7 +19,8 @@ A2UI 原子命令规则：
 
 - `send-card --card-engine a2ui` 调用 `im.create_and_send_a2ui_card`。
 - `update-card --card-engine a2ui` 调用 `im.update_a2ui_card`。
-- `--content` 必须是 JSON 字符串数组，例如 `'["message1","message2"]'`；
+- `--content` 必须是 JSON 字符串数组，元素为 A2UI 协议 JSON，例如
+  `'["{\"version\":\"v1.0\",\"updateDataModel\":{\"surfaceId\":\"surface\",\"path\":\"/status\",\"value\":\"finished\"}}"]'`；
   CLI 解析为 `a2uiMessages`，send-card 额外生成 `summary`，值为数组元素按换行拼接
   （真实 MCP 契约无 `fallbackText` 字段）。
 - 群聊目标写入顶层 `openConversationId`；单聊目标写入顶层 `receiverOpenDingTalkId`
