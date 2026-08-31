@@ -1116,7 +1116,7 @@ func guardTopicQuoteReply(cmd *cobra.Command, openConversationID, openMessageID 
 	case topicContainerTopic:
 		return topicQuoteReplyDisabledError()
 	case topicContainerUnknown:
-		return topicQuoteGuardUnavailable("chat/get_conversation_info", "会话信息未明确返回 convThreadEnabled，无法确认引用回复目标是否属于话题圈，已阻止发送")
+		return topicQuoteGuardUnavailable("chat/get_conversation_info", "会话信息无法确认有效的话题圈标识，已阻止发送")
 	}
 	return nil
 }
@@ -1143,6 +1143,7 @@ type topicContainerState uint8
 
 const (
 	topicContainerUnknown topicContainerState = iota
+	topicContainerUnspecified
 	topicContainerNonTopic
 	topicContainerTopic
 )
@@ -1150,10 +1151,12 @@ const (
 func detectTopicContainerState(value any) topicContainerState {
 	sawFalse := false
 	sawInvalid := false
+	sawObject := false
 	var visit func(any) bool
 	visit = func(current any) bool {
 		switch typed := current.(type) {
 		case map[string]any:
+			sawObject = true
 			for key, child := range typed {
 				if key != "convThreadEnabled" && key != "topicGroup" && key != "isTopicGroup" {
 					if visit(child) {
@@ -1195,7 +1198,10 @@ func detectTopicContainerState(value any) topicContainerState {
 	if sawFalse && !sawInvalid {
 		return topicContainerNonTopic
 	}
-	return topicContainerUnknown
+	if sawInvalid || !sawObject {
+		return topicContainerUnknown
+	}
+	return topicContainerUnspecified
 }
 
 func topicQuoteGuardUnavailable(operation, message string) error {
