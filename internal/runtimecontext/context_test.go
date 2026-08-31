@@ -16,7 +16,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
-func TestProviderReadyAndHeader(t *testing.T) {
+func TestCrossPlatformCoverageProviderReadyAndHeader(t *testing.T) {
 	if initializationEnvironment != 0 || defaultTimeout != 3*time.Second {
 		t.Fatalf("runtime defaults = env %d, timeout %v", initializationEnvironment, defaultTimeout)
 	}
@@ -52,7 +52,7 @@ func TestProviderReadyAndHeader(t *testing.T) {
 	}
 }
 
-func TestProviderFailureOutcomes(t *testing.T) {
+func TestCrossPlatformCoverageProviderFailureOutcomes(t *testing.T) {
 	tests := []struct {
 		name      string
 		starter   nativeStarter
@@ -150,7 +150,7 @@ func TestProviderFailureOutcomes(t *testing.T) {
 	}
 }
 
-func TestValidateTokenAndHeaderBoundaries(t *testing.T) {
+func TestCrossPlatformCoverageValidateTokenAndHeaderBoundaries(t *testing.T) {
 	invalid := [][]byte{
 		nil,
 		{},
@@ -176,9 +176,12 @@ func TestValidateTokenAndHeaderBoundaries(t *testing.T) {
 	if diagnostic["callback_code"] != code || diagnostic["token_length"] != 0 || diagnostic["token_fingerprint"] != "" {
 		t.Fatalf("diagnostic = %#v", diagnostic)
 	}
+	if header, ok := (Result{State: StateReady, token: strings.Repeat("x", maxHeaderBytes)}).HeaderValue(); ok || header != "" {
+		t.Fatalf("oversized header = %q, %v", header, ok)
+	}
 }
 
-func TestProviderTimeoutIgnoresLateCallback(t *testing.T) {
+func TestCrossPlatformCoverageProviderTimeoutIgnoresLateCallback(t *testing.T) {
 	late := make(chan func([]byte, int32, error), 1)
 	provider := newProvider(func(_ string, callback func([]byte, int32, error)) (nativeSession, int32, error) {
 		late <- callback
@@ -195,7 +198,7 @@ func TestProviderTimeoutIgnoresLateCallback(t *testing.T) {
 	}
 }
 
-func TestProviderConcurrentCallersInitializeOnce(t *testing.T) {
+func TestCrossPlatformCoverageProviderConcurrentCallersInitializeOnce(t *testing.T) {
 	var calls atomic.Int32
 	provider := newProvider(func(_ string, callback func([]byte, int32, error)) (nativeSession, int32, error) {
 		calls.Add(1)
@@ -240,7 +243,7 @@ func TestCrossPlatformCoverageRuntimeLibraryName(t *testing.T) {
 	}
 }
 
-func TestCopyCString(t *testing.T) {
+func TestCrossPlatformCoverageCopyCString(t *testing.T) {
 	terminated := make([]byte, maxHeaderBytes)
 	copy(terminated, "copied-value")
 	got, err := copyCString(unsafe.Pointer(&terminated[0]))
@@ -280,7 +283,7 @@ func TestCopyCString(t *testing.T) {
 	}
 }
 
-func TestResolveLibraryPathUsesResolvedExecutable(t *testing.T) {
+func TestCrossPlatformCoverageResolveLibraryPathUsesResolvedExecutable(t *testing.T) {
 	root := t.TempDir()
 	realDir := filepath.Join(root, "real")
 	payloadDir := filepath.Join(realDir, ".dws-runtime", PayloadVersion)
@@ -302,6 +305,19 @@ func TestResolveLibraryPathUsesResolvedExecutable(t *testing.T) {
 	if err != nil || got != filepath.Join(payloadDir, name) {
 		t.Fatalf("resolveLibraryPath = %q, %v", got, err)
 	}
+
+	t.Run("unsupported platform", func(t *testing.T) {
+		testseam.Swap(t, &currentGOOS, "plan9")
+		if _, err := resolveLibraryPath(); err == nil || classifyLocationError(err) != "unsupported_platform" {
+			t.Fatalf("resolveLibraryPath error = %v", err)
+		}
+	})
+	t.Run("executable path", func(t *testing.T) {
+		testseam.Swap(t, &osExecutable, func() (string, error) { return "", errors.New("executable") })
+		if _, err := resolveLibraryPath(); err == nil || !strings.Contains(err.Error(), "executable path") {
+			t.Fatalf("resolveLibraryPath error = %v", err)
+		}
+	})
 }
 
 func successfulLocator() (string, error) { return "/payload/library", nil }

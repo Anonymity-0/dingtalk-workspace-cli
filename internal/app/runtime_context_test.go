@@ -20,6 +20,9 @@ func TestCrossPlatformCoverageRuntimeContextRequestScoping(t *testing.T) {
 	t.Setenv(envDWSAgentVersion, "1.0.0")
 	t.Setenv(envDWSAgentExt, `{"source":"agent"}`)
 	ready := runtimecontext.ReadyResultForTest("runtime-value")
+	if headers := applyRuntimeContextHeader(nil, ready); headers[runtimecontext.HeaderName] != `{"umid":"runtime-value"}` {
+		t.Fatalf("nil runtime headers = %#v", headers)
+	}
 	resolveCalls := 0
 	testseam.Swap(t, &runtimeContextResolve, func() runtimecontext.Result {
 		resolveCalls++

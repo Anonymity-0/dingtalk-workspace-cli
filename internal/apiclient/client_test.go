@@ -80,7 +80,7 @@ func TestDo_Success(t *testing.T) {
 	}
 }
 
-func TestDo_DingTalkExtensionHeader(t *testing.T) {
+func TestCrossPlatformCoverageDoDingTalkExtensionHeader(t *testing.T) {
 	c := NewClient("test-token", "")
 	c.DingTalkExt = `{"umid":"runtime-value"}`
 	c.HTTPClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -174,7 +174,7 @@ func TestIsLegacyAPI(t *testing.T) {
 	}
 }
 
-func TestDo_LegacyAPI_TokenInQueryParam(t *testing.T) {
+func TestCrossPlatformCoverageDoLegacyAPITokenInQueryParam(t *testing.T) {
 	c := NewClient("legacy-token", "")
 	c.DingTalkExt = `{"umid":"legacy-value"}`
 	c.HTTPClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -254,7 +254,7 @@ func TestResolvePageLimit(t *testing.T) {
 	}
 }
 
-func TestPaginateAll_ProgressLog(t *testing.T) {
+func TestCrossPlatformCoveragePaginateAllProgressLog(t *testing.T) {
 	callCount := 0
 	c := NewClient("test-token", "")
 	c.DingTalkExt = `{"umid":"paginated-value"}`

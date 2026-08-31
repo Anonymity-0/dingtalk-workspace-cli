@@ -240,12 +240,14 @@ func validateToken(raw []byte) (string, error) {
 }
 
 var (
-	osExecutable = os.Executable
-	evalSymlinks = filepath.EvalSymlinks
+	osExecutable  = os.Executable
+	evalSymlinks  = filepath.EvalSymlinks
+	currentGOOS   = runtime.GOOS
+	currentGOARCH = runtime.GOARCH
 )
 
 func resolveLibraryPath() (string, error) {
-	name, err := libraryName(runtime.GOOS, runtime.GOARCH)
+	name, err := libraryName(currentGOOS, currentGOARCH)
 	if err != nil {
 		return "", err
 	}

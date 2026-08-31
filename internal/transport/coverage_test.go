@@ -259,7 +259,7 @@ func TestReasonForMethod(t *testing.T) {
 
 // ─── doWithRetry (via CallTool) ────────────────────────────────────────
 
-func TestCallTool_RetriesOn502(t *testing.T) {
+func TestCrossPlatformCoverageCallToolRetriesOn502(t *testing.T) {
 	attempts := 0
 	srv := newMockMCPServer(t, func(w http.ResponseWriter, r *http.Request) {
 		attempts++

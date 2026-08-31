@@ -80,7 +80,7 @@ func TestWriteEnvelopePreservesDeclaredBusinessDataAndRedactsFrameworkChannels(t
 	}
 }
 
-func TestEmitResultRedactsEveryErrorInfoCanary(t *testing.T) {
+func TestCrossPlatformCoverageEmitResultRedactsEveryErrorInfoCanary(t *testing.T) {
 	info := &ErrorInfo{
 		Type:    "api",
 		Message: "Authorization: Bearer message-auth-canary",
@@ -224,7 +224,7 @@ func TestWriteEnvelopeRedactsNoticeSensitiveKeys(t *testing.T) {
 // logging.IsSensitiveKey variants (snake/kebab/camel and secret/token/
 // credential/password substrings) are sensitive, the header-only set-cookie
 // stays covered, and the pagination cursor next_token stays visible.
-func TestIsSensitiveOutputKeyBoundary(t *testing.T) {
+func TestCrossPlatformCoverageIsSensitiveOutputKeyBoundary(t *testing.T) {
 	for _, key := range []string{
 		"api_key", "api-key", "client-secret", "clientSecret", "credential_id",
 		"set-cookie", "Authorization", "password", "x-user-access-token", "x-dingtalk-ext", "umid",

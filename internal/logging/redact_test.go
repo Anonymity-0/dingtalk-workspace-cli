@@ -21,7 +21,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/requestmeta"
 )
 
-func TestIsSensitiveKey(t *testing.T) {
+func TestCrossPlatformCoverageIsSensitiveKey(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -138,7 +138,7 @@ func TestSanitizeArguments_Empty(t *testing.T) {
 	}
 }
 
-func TestRedactHeaders(t *testing.T) {
+func TestCrossPlatformCoverageRedactHeaders(t *testing.T) {
 	t.Parallel()
 	headers := make(http.Header)
 	headers.Set("Authorization", "Bearer test-credential-value")
