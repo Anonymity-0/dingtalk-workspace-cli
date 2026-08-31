@@ -25,12 +25,14 @@ func TestCrossPlatformCoverageProviderReadyAndHeader(t *testing.T) {
 			t.Fatalf("path = %q", path)
 		}
 		callback([]byte("device-value"), 0, nil)
+		callback([]byte("duplicate-value"), 0, nil)
 		return nativeSession{handle: 7, callback: 9}, 1, nil
 	}, func() (string, error) {
 		return "/payload/library", nil
 	}, time.Second)
 
-	result := provider.resolve()
+	testseam.Swap(t, &defaultProvider, provider)
+	result := Resolve()
 	if result.State != StateReady || result.token != "device-value" {
 		t.Fatalf("result = %#v", result)
 	}
@@ -39,6 +41,10 @@ func TestCrossPlatformCoverageProviderReadyAndHeader(t *testing.T) {
 	}
 	if value, ok := result.HeaderValue(); !ok || value != `{"umid":"device-value"}` {
 		t.Fatalf("header = %q, %v", value, ok)
+	}
+	fixture := ReadyResultForTest("fixture-value")
+	if value, ok := fixture.HeaderValue(); !ok || value != `{"umid":"fixture-value"}` {
+		t.Fatalf("test fixture header = %q, %v", value, ok)
 	}
 	detail := result.DiagnosticDetail()
 	if detail["token_length"] != 12 || detail["token_fingerprint"] == "" {
@@ -142,6 +148,9 @@ func TestCrossPlatformCoverageProviderFailureOutcomes(t *testing.T) {
 			result := provider.resolve()
 			if result.State != test.wantState || result.ErrorCategory != test.wantError {
 				t.Fatalf("result = %#v", result)
+			}
+			if detail := result.DiagnosticDetail(); detail["error_category"] != test.wantError {
+				t.Fatalf("diagnostic detail = %#v", detail)
 			}
 			if value, ok := result.HeaderValue(); ok || value != "" {
 				t.Fatalf("unexpected header = %q, %v", value, ok)
@@ -305,6 +314,15 @@ func TestCrossPlatformCoverageResolveLibraryPathUsesResolvedExecutable(t *testin
 	if err != nil || got != filepath.Join(payloadDir, name) {
 		t.Fatalf("resolveLibraryPath = %q, %v", got, err)
 	}
+
+	t.Run("missing payload", func(t *testing.T) {
+		missingDir := filepath.Join(root, "missing")
+		testseam.Swap(t, &osExecutable, func() (string, error) { return filepath.Join(missingDir, "dws"), nil })
+		testseam.Swap(t, &evalSymlinks, func(string) (string, error) { return filepath.Join(missingDir, "dws"), nil })
+		if _, err := resolveLibraryPath(); err == nil || classifyLocationError(err) != "payload_unavailable" {
+			t.Fatalf("resolveLibraryPath error = %v", err)
+		}
+	})
 
 	t.Run("unsupported platform", func(t *testing.T) {
 		testseam.Swap(t, &currentGOOS, "plan9")
