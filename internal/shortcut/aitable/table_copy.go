@@ -174,6 +174,7 @@ func executeTableCopy(rt *shortcut.RuntimeContext) error {
 		result.Checkpoint = map[string]any{"targetTableId": targetTable, "step": "resolve field mapping"}
 		return compositeError(result, err, false)
 	}
+	recordVerifier := resolvedRecordFieldTypeResolver(targetFields)
 	createdCount := 0
 	for offset := 0; offset < len(sourceRecords); offset += recordBatchSize {
 		end := minInt(offset+recordBatchSize, len(sourceRecords))
@@ -212,7 +213,7 @@ func executeTableCopy(rt *shortcut.RuntimeContext) error {
 			return compositeError(result, writeErr, false)
 		}
 		result.KnownEffects = append(result.KnownEffects, map[string]any{"tool": "create_records", "offset": offset, "recordIds": createdIDs})
-		verifyErr := verifyTableCopyRecordsEventually(rt, targetBase, targetTable, createdIDs, batch)
+		verifyErr := verifyTableCopyRecordsEventually(rt, targetBase, targetTable, createdIDs, batch, recordVerifier)
 		if verifyErr != nil {
 			result.Status = "partial_success"
 			result.CompletedCount = createdCount
@@ -238,6 +239,7 @@ func verifyTableCopyRecordsEventually(
 	baseID, tableID string,
 	createdIDs []string,
 	expected []map[string]any,
+	resolver *recordFieldTypeResolver,
 ) error {
 	var lastErr error
 	for attempt := 0; attempt <= len(tableCopyRecordReadbackDelays); attempt++ {
@@ -245,7 +247,7 @@ func verifyTableCopyRecordsEventually(
 		if err != nil {
 			return err
 		}
-		lastErr = matchCreatedCells(expected, actual)
+		lastErr = matchCreatedCells(expected, actual, resolver)
 		if lastErr == nil {
 			return nil
 		}
