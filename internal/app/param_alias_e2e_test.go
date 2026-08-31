@@ -162,8 +162,10 @@ func (c *paramAliasCaptureCaller) paramAliasResponseForTool(tool string) string 
 		}
 		encoded, _ := json.Marshal(map[string]any{"success": true, "result": map[string]any{"fileId": "node-1", "name": name}})
 		return string(encoded)
-	case "get_cover", "get_node_stats":
+	case "get_cover":
 		return `{"success":true,"result":{"nodeId":"node-1"}}`
+	case "get_node_stats":
+		return `{"success":true,"result":{"nodeId":"node-1","views":1}}`
 	case "get_file_publish_status":
 		return `{"success":true,"result":{"fileId":"node-1","published":false}}`
 	case "create_folder", "create_shortcut":
