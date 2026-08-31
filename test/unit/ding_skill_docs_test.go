@@ -58,7 +58,9 @@ func assertDingReferenceContract(t *testing.T, content string) {
 		"`sourceMessageId`",
 		"`sourceConversationId`",
 		"`openDingId`",
-		"`resource_type_mismatch`",
+		"不透明标识",
+		"不依据 `msg` / `cid` 前缀",
+		"裸 `--id` 的资源有效性由服务端校验",
 		"## 临时群消息转 DING 的有界状态链",
 		"禁止在 Chat 内再次按",
 		"dws chat +chat-create",
@@ -84,6 +86,7 @@ func assertDingReferenceContract(t *testing.T, content string) {
 		"ding-intent-guide.md",
 		"ding-lite-recipes.md",
 		"## 命令总览",
+		"CLI 会拒绝 `msg...` / `cid...`",
 	} {
 		if strings.Contains(content, forbidden) {
 			t.Errorf("DING reference retains redundant content %q", forbidden)

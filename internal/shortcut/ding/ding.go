@@ -166,23 +166,10 @@ var RecallPersonal = compatibilityDingWrite(
 )
 
 func validateDingRecallID(value string) error {
-	id := strings.TrimSpace(value)
-	lower := strings.ToLower(id)
-	if id == "" {
+	if strings.TrimSpace(value) == "" {
 		return apperrors.NewValidation("openDingId 不能为空")
 	}
-	if strings.HasPrefix(lower, "msg") || strings.HasPrefix(lower, "cid") {
-		return apperrors.NewValidation(
-			"撤回目标不是 DING 资源：--id 必须是 openDingId，不能是 openMessageId 或 openConversationId",
-			apperrors.WithOperation("ding/validate_recall_target"),
-			apperrors.WithReason("resource_type_mismatch"),
-			apperrors.WithOrigin("client"),
-			apperrors.WithFailureStage("preflight"),
-			apperrors.WithExecutionStarted(false),
-			apperrors.WithRetryable(false),
-			apperrors.WithHint("请从消息转 DING 回执或 DING 列表读取 openDingId；sourceMessageId 只属于聊天消息。"),
-		)
-	}
+	// Prefixes are not a resource-type contract for an opaque openDingId.
 	return nil
 }
 

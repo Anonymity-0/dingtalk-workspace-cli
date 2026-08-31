@@ -52,24 +52,11 @@ func dingPersonalRemindType(value string) (string, error) {
 }
 
 func validateDingRecallTarget(value string) error {
-	id := strings.TrimSpace(value)
-	lower := strings.ToLower(id)
-	if id == "" {
+	if strings.TrimSpace(value) == "" {
 		return apperrors.NewValidation("openDingId 不能为空")
 	}
-	if strings.HasPrefix(lower, "msg") || strings.HasPrefix(lower, "cid") {
-		return apperrors.NewValidation(
-			"撤回目标不是 DING 资源：--id 必须是 openDingId，不能是 openMessageId 或 openConversationId",
-			apperrors.WithOperation("ding/validate_recall_target"),
-			apperrors.WithReason("resource_type_mismatch"),
-			apperrors.WithOrigin("client"),
-			apperrors.WithFailureStage("preflight"),
-			apperrors.WithExecutionStarted(false),
-			apperrors.WithRetryable(false),
-			apperrors.WithHint("请使用 send、send-personal、send-by-message 或 DING 列表返回的 openDingId；原聊天 sourceMessageId 只能用于 chat 消息操作。"),
-			apperrors.WithActions("停止撤回，不要把 sourceMessageId 传给 DING 撤回命令；重新读取转换回执中的 openDingId 后再执行"),
-		)
-	}
+	// openDingId is opaque. A bare --id has no resource-type evidence;
+	// preserve it verbatim and let the service validate the target.
 	return nil
 }
 

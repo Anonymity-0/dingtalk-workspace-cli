@@ -95,8 +95,11 @@ dws aisearch person --query "<姓名>" --dimension name --format json
 dws ding message recall-personal --id <OPEN_DING_ID> --format json
 ```
 
-撤回前校验字段名和 `resourceType=ding`。CLI 会拒绝 `msg...` / `cid...` 等已知非 DING
-身份并返回 `resource_type_mismatch`；此时立即停止，不能改用 Chat 撤回来宣称完成。
+撤回前根据回执字段和 `resourceType=ding` 校验来源，只使用 `openDingId`，不得拿
+`sourceMessageId` 或会话 ID 替代。`openDingId` 是不透明标识，不依据 `msg` / `cid` 前缀
+推断资源类型；裸 `--id` 的资源有效性由服务端校验，CLI 只拒绝空白值，不额外查询。
+若结构化证据表明目标属于 Chat，立即停止并重新取得 DING 回执；不能改用 Chat 撤回
+来宣称完成。服务端拒绝后也不切换资源、身份或重放。
 
 ## 临时群消息转 DING 的有界状态链
 

@@ -63,24 +63,86 @@ func TestCrossPlatformCoverageResolveDingRobotCodeUsesExplicitOrConfiguredValue(
 	}
 }
 
-func TestCrossPlatformCoverageDingRecallTargetRejectsChatResourceIDs(t *testing.T) {
-	for _, id := range []string{"msgm9nQxDfZgPcvmF52jSUwAg==", "cidQDXPJySpuMWRqAH5LEc3Ig=="} {
-		err := validateDingRecallTarget(id)
-		if err == nil {
-			t.Fatalf("validateDingRecallTarget(%q) unexpectedly succeeded", id)
-		}
-		var typed *apperrors.Error
-		if !errors.As(err, &typed) || typed.Reason != "resource_type_mismatch" {
-			t.Fatalf("validateDingRecallTarget(%q) = %#v, want resource_type_mismatch", id, err)
-		}
-		if typed.ExecutionStarted == nil || *typed.ExecutionStarted {
-			t.Fatalf("validateDingRecallTarget(%q) execution_started=%v", id, typed.ExecutionStarted)
-		}
-	}
-	for _, id := range []string{"78E3B7A70B89407BF371EF7DE295CFAB", "ding-fixture"} {
+func TestCrossPlatformCoverageDingRecallTargetTreatsIDsAsOpaque(t *testing.T) {
+	for _, id := range []string{"msgOpaque+/==", "cidOpaque-123", "MSG", "cid", "78E3B7A70B89407BF371EF7DE295CFAB", "ding-fixture"} {
 		if err := validateDingRecallTarget(id); err != nil {
 			t.Fatalf("validateDingRecallTarget(%q) = %v", id, err)
 		}
+	}
+	for _, id := range []string{"", " \t\n"} {
+		if err := validateDingRecallTarget(id); err == nil {
+			t.Fatalf("blank ID %q was accepted", id)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageDingRecallCommandsPreserveOpaqueReceiptIdentity(t *testing.T) {
+	for _, tc := range []struct {
+		command, tool, server string
+	}{
+		{"recall", "recall_ding_message", "ding"},
+		{"recall-personal", "recall_personal_ding", "im"},
+	} {
+		for _, id := range []string{"msgOpaque+/==", "cidOpaque-123", "MSG", "cid"} {
+			t.Run(tc.command+"/"+id, func(t *testing.T) {
+				// Obtain the recall identity from the conversion receipt rather
+				// than substituting the source message or classifying its prefix.
+				raw, err := json.Marshal(map[string]any{"success": true, "result": map[string]any{"openDingId": id}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				receipt, err := enrichDingConversionReceipt(string(raw), "source-conversation", "source-message")
+				if err != nil {
+					t.Fatal(err)
+				}
+				var parsed struct {
+					Result struct {
+						SourceMessageID string `json:"sourceMessageId"`
+						RecallTarget    struct {
+							ResourceType string `json:"resourceType"`
+							OpenDingID   string `json:"openDingId"`
+						} `json:"recallTarget"`
+					} `json:"result"`
+				}
+				if err := json.Unmarshal([]byte(receipt), &parsed); err != nil {
+					t.Fatal(err)
+				}
+				if parsed.Result.SourceMessageID != "source-message" || parsed.Result.RecallTarget.ResourceType != "ding" || parsed.Result.RecallTarget.OpenDingID != id {
+					t.Fatalf("conversion confused source and DING identities: %s", receipt)
+				}
+				caller := &imReadResultCaller{responses: map[string]string{tc.tool: `{"success":true,"result":true}`}}
+				args := []string{"message", tc.command, "--id", parsed.Result.RecallTarget.OpenDingID}
+				if tc.command == "recall" {
+					args = append(args, "--robot-code", "selected-robot")
+				}
+				if _, err := executeIMReadCommand(t, caller, []string{"dws", "ding"}, newDingCommand, args...); err != nil {
+					t.Fatalf("opaque DING recall failed: %v", err)
+				}
+				if len(caller.calls) != 1 || caller.calls[0].toolName != tc.tool || caller.calls[0].productID != tc.server || caller.args["openDingId"] != id {
+					t.Fatalf("identity changed or duplicate/discovery call: calls=%v args=%v", caller.calls, caller.args)
+				}
+				if tc.command == "recall" && caller.args["robotCode"] != "selected-robot" {
+					t.Fatalf("recall changed robot: %#v", caller.args)
+				}
+			})
+		}
+		t.Run(tc.command+"/blank and server rejection", func(t *testing.T) {
+			args := []string{"message", tc.command, "--id", " \t"}
+			if tc.command == "recall" {
+				args = append(args, "--robot-code", "selected-robot")
+			}
+			caller := &imReadResultCaller{}
+			if _, err := executeIMReadCommand(t, caller, []string{"dws", "ding"}, newDingCommand, args...); err == nil || len(caller.calls) != 0 {
+				t.Fatalf("blank recall: err=%v calls=%v", err, caller.calls)
+			}
+			args[3] = "msgOpaque+/=="
+			rejected := apperrors.NewAPI("server rejected recall", apperrors.WithReason("resource_type_mismatch"), apperrors.WithRetryable(false))
+			caller = &imReadResultCaller{errors: map[string]error{tc.tool: rejected}}
+			_, err := executeIMReadCommand(t, caller, []string{"dws", "ding"}, newDingCommand, args...)
+			if !errors.Is(err, rejected) || len(caller.calls) != 1 {
+				t.Fatalf("server rejection lost or retried: err=%v calls=%v", err, caller.calls)
+			}
+		})
 	}
 }
 

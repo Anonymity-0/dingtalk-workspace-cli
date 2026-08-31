@@ -409,12 +409,24 @@ func TestCrossPlatformCoverageDINGCompatibilityWritesRequireConfirmationAndExecu
 		t.Fatalf("confirmed recall calls=%v args=%v", confirmedRecall.history, confirmedRecall.arguments)
 	}
 
-	wrongResourceRecall := &dingCoverageCaller{responses: map[string][]string{}}
-	if err := runDingRoot(t, RecallPersonal, wrongResourceRecall, true, "--id", "msgm9nQxDfZgPcvmF52jSUwAg=="); err == nil {
-		t.Fatal("chat sourceMessageId was accepted as a DING recall target")
+	for _, id := range []string{"msgOpaque+/==", "cidOpaque-123", "MSG", "cid"} {
+		unconfirmed := &dingCoverageCaller{}
+		if err := runDingRoot(t, RecallPersonal, unconfirmed, false, "--id", id); err == nil || len(unconfirmed.history) != 0 {
+			t.Fatalf("opaque ID bypassed confirmation: id=%q err=%v calls=%v", id, err, unconfirmed.history)
+		}
+		confirmed := &dingCoverageCaller{responses: map[string][]string{
+			"recall_personal_ding": {`{"success":true,"result":true}`},
+		}}
+		if err := runDingRoot(t, RecallPersonal, confirmed, true, "--id", id); err != nil {
+			t.Fatalf("opaque DING ID %q rejected: %v", id, err)
+		}
+		if len(confirmed.history) != 1 || confirmed.history[0] != "recall_personal_ding" || confirmed.arguments[0]["openDingId"] != id {
+			t.Fatalf("opaque ID changed or recall replayed: id=%q calls=%v args=%v", id, confirmed.history, confirmed.arguments)
+		}
 	}
-	if len(wrongResourceRecall.history) != 0 {
-		t.Fatalf("resource type mismatch reached MCP: calls=%v", wrongResourceRecall.history)
+	blankRecall := &dingCoverageCaller{}
+	if err := runDingRoot(t, RecallPersonal, blankRecall, true, "--id", " \t"); err == nil || len(blankRecall.history) != 0 {
+		t.Fatalf("blank ID reached MCP: err=%v calls=%v", err, blankRecall.history)
 	}
 }
 
