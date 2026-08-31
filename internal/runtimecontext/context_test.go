@@ -241,7 +241,7 @@ func TestCrossPlatformCoverageRuntimeLibraryName(t *testing.T) {
 }
 
 func TestCopyCString(t *testing.T) {
-	terminated := make([]byte, maxHeaderBytes+1)
+	terminated := make([]byte, maxHeaderBytes)
 	copy(terminated, "copied-value")
 	got, err := copyCString(unsafe.Pointer(&terminated[0]))
 	if err != nil || string(got) != "copied-value" {
@@ -254,12 +254,29 @@ func TestCopyCString(t *testing.T) {
 	if _, err := copyCString(nil); err == nil {
 		t.Fatal("copyCString accepted nil")
 	}
-	unterminated := make([]byte, maxHeaderBytes+1)
+	lastByteTerminated := make([]byte, maxHeaderBytes)
+	for index := range lastByteTerminated[:maxHeaderBytes-1] {
+		lastByteTerminated[index] = 'x'
+	}
+	got, err = copyCString(unsafe.Pointer(&lastByteTerminated[0]))
+	if err != nil || len(got) != maxHeaderBytes-1 {
+		t.Fatalf("copyCString last-byte terminator = %d bytes, %v", len(got), err)
+	}
+
+	unterminated := make([]byte, maxHeaderBytes)
 	for index := range unterminated {
 		unterminated[index] = 'x'
 	}
 	if _, err := copyCString(unsafe.Pointer(&unterminated[0])); err == nil {
 		t.Fatal("copyCString accepted unterminated input")
+	}
+
+	terminatorBeyondLimit := make([]byte, maxHeaderBytes+1)
+	for index := range terminatorBeyondLimit[:maxHeaderBytes] {
+		terminatorBeyondLimit[index] = 'x'
+	}
+	if _, err := copyCString(unsafe.Pointer(&terminatorBeyondLimit[0])); err == nil {
+		t.Fatal("copyCString read a terminator beyond the scan limit")
 	}
 }
 
