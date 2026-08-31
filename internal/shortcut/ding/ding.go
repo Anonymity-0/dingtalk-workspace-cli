@@ -212,6 +212,10 @@ func dingPersonalRemindType(value string) (string, error) {
 }
 
 func init() {
+	RecallPersonal.Constraints = []shortcut.Constraint{{
+		Kind: shortcut.ConstraintCustom, Flags: []string{"id"},
+		Description: "--id 去除空白后不能为空；openDingId 是不透明标识，不按前缀推断资源类型",
+	}}
 	RecallPersonal.Validate = func(rt *shortcut.RuntimeContext) error {
 		return validateDingRecallID(rt.Str("id"))
 	}

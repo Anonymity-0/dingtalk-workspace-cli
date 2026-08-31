@@ -104,6 +104,12 @@ func TestCrossPlatformCoverageDINGContractsAreStrictTypedAndUnified(t *testing.T
 	if List.Contract.Pagination == nil {
 		t.Fatal("+list lacks cursor pagination")
 	}
+	if RecallPersonal.Validate == nil || len(RecallPersonal.Constraints) != 1 ||
+		RecallPersonal.Constraints[0].Kind != shortcut.ConstraintCustom ||
+		strings.Join(RecallPersonal.Constraints[0].Flags, ",") != "id" ||
+		strings.TrimSpace(RecallPersonal.Constraints[0].Description) == "" {
+		t.Fatal("recall ID validation must be published as a bound custom constraint")
+	}
 }
 
 func TestCrossPlatformCoverageDINGListResponseMatrix(t *testing.T) {
