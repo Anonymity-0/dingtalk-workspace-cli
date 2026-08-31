@@ -188,7 +188,15 @@ func outputDrivePageResult(rt *shortcut.RuntimeContext, result drivePageResult) 
 		Count:      output.NewCount(result.Items),
 		Pagination: pagination,
 	}
-	return output.StoreResult(rt.Command().Context(), output.Success(result.Business, output.WithMeta(meta)))
+	// Keep the existing data paths for consumers of the already-unified commands.
+	// Both projections derive from the same validated pagination state.
+	data := cloneDriveMap(result.Business)
+	data["count"] = result.Items
+	data["hasMore"] = !result.EndpointExhausted
+	if result.NextToken != "" {
+		data["nextCursor"] = result.NextToken
+	}
+	return output.StoreResult(rt.Command().Context(), output.Success(data, output.WithMeta(meta)))
 }
 
 func drivePaginationError(options drivePageOptions, reason string, cause error, page int, items []map[string]any, cursors drivePaginationErrorCursors) error {
@@ -197,7 +205,6 @@ func drivePaginationError(options drivePageOptions, reason string, cause error, 
 		message += ": " + cause.Error()
 	}
 	details := map[string]any{
-		"contractVersion": "drive.list.v1",
 		"status":          "partial_success",
 		"complete":        false,
 		"reason":          reason,

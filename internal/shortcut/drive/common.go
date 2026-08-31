@@ -60,7 +60,7 @@ func driveCollectionResult(collection, description string) *contract.ResultSpec 
 	return &contract.ResultSpec{
 		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess},
 		DataSchema: json.RawMessage(fmt.Sprintf(
-			`{"type":"object","description":%q,"properties":{%q:{"type":"array","description":%q,"items":{"type":"object","description":"Drive 资源条目","additionalProperties":true}}},"required":[%q],"additionalProperties":false}`,
+			`{"type":"object","description":%q,"properties":{"count":{"type":"integer","description":"本次有效结果数量"},%q:{"type":"array","description":%q,"items":{"type":"object","description":"Drive 资源条目","additionalProperties":true}},"nextCursor":{"type":"string","description":"下一页游标"},"hasMore":{"type":"boolean","description":"服务端是否仍有下一页"}},"required":["count",%q],"additionalProperties":true}`,
 			description, collection, description, collection,
 		)),
 	}

@@ -411,7 +411,10 @@ func TestCrossPlatformCoverageDriveUnifiedPaginationContract(t *testing.T) {
 			if len(rows) != 2 {
 				t.Fatalf("business data=%#v", data)
 			}
-			for _, leaked := range []string{"count", "pagesRead", "complete", "truncated", "hasMore", "nextCursor", "stopReason"} {
+			if data["count"] != float64(2) || data["hasMore"] != false || data["nextCursor"] != nil {
+				t.Fatalf("legacy data paths=%#v", data)
+			}
+			for _, leaked := range []string{"pagesRead", "complete", "truncated", "stopReason"} {
 				if _, found := data[leaked]; found {
 					t.Fatalf("business data leaked pagination field %q: %#v", leaked, data)
 				}
@@ -440,6 +443,122 @@ func TestCrossPlatformCoverageDriveUnifiedPaginationContract(t *testing.T) {
 	if pagination["endpoint_exhausted"] != false || pagination["next_token"] != "limited-c2" {
 		t.Fatalf("bounded pagination=%#v", pagination)
 	}
+	data, _ := envelope["data"].(map[string]any)
+	if data["count"] != float64(1) || data["hasMore"] != true || data["nextCursor"] != pagination["next_token"] {
+		t.Fatalf("bounded legacy data paths=%#v", data)
+	}
+}
+
+func TestCrossPlatformCoverageDriveCollectionWireCompatibility(t *testing.T) {
+	for _, tc := range []struct {
+		declaration shortcut.Shortcut
+		tool        string
+		inputKey    string
+		outputKey   string
+		args        []string
+		autoPage    bool
+	}{
+		{List, "list_files", "items", "files", nil, true},
+		{Search, "search_files", "items", "files", []string{"--query", "synthetic"}, true},
+		{Recent, "get_recent_list", "recentItems", "items", nil, true},
+		{RecycleList, "list_recycle_items", "recycleItems", "items", nil, false},
+		{StarList, "get_star_list", "starList", "items", nil, false},
+		{VersionHistory, "list_file_versions", "versions", "versions", []string{"--node", "test-node"}, false},
+		{SearchDocs, "search_documents", "documents", "docs", []string{"--query", "synthetic"}, false},
+	} {
+		t.Run(tc.declaration.Command, func(t *testing.T) {
+			var schema struct {
+				Properties           map[string]json.RawMessage `json:"properties"`
+				Required             []string                   `json:"required"`
+				AdditionalProperties bool                       `json:"additionalProperties"`
+			}
+			if err := json.Unmarshal(tc.declaration.Contract.Result.DataSchema, &schema); err != nil {
+				t.Fatal(err)
+			}
+			if !schema.AdditionalProperties || fmt.Sprint(schema.Required) != fmt.Sprint([]string{"count", tc.outputKey}) {
+				t.Fatalf("shared schema narrowed the legacy contract: %#v", schema)
+			}
+			for _, field := range []string{"count", tc.outputKey, "hasMore", "nextCursor"} {
+				if _, ok := schema.Properties[field]; !ok {
+					t.Fatalf("schema lost legacy property %q", field)
+				}
+			}
+			modes := []string{"single-page"}
+			if tc.autoPage {
+				modes = append(modes, "bounded-auto-page")
+			}
+			for _, mode := range modes {
+				t.Run(mode, func(t *testing.T) {
+					for _, hasMore := range []bool{false, true} {
+						payload := map[string]any{"success": true, tc.inputKey: []any{}, "hasMore": hasMore}
+						if hasMore {
+							payload["nextCursor"] = "test-next-page"
+						}
+						caller := &driveCoverageCaller{responses: map[string][]string{tc.tool: {driveJSON(payload)}}}
+						args := append([]string{}, tc.args...)
+						if mode == "bounded-auto-page" {
+							args = append(args, "--page-all", "--max-pages", "1")
+						}
+						raw, err := runDriveCoverageRaw(t, tc.declaration, caller, args...)
+						if err != nil {
+							t.Fatal(err)
+						}
+						var envelope map[string]any
+						if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
+							t.Fatal(err)
+						}
+						data, _ := envelope["data"].(map[string]any)
+						if data["count"] != float64(0) || data["hasMore"] != hasMore || data[tc.outputKey] == nil || len(caller.calls) != 1 {
+							t.Fatalf("legacy output/call count drift: data=%#v calls=%#v", data, caller.calls)
+						}
+						if hasMore && data["nextCursor"] != "test-next-page" || !hasMore && data["nextCursor"] != nil {
+							t.Fatalf("legacy cursor drift: %#v", data)
+						}
+						if tc.autoPage {
+							meta, _ := envelope["meta"].(map[string]any)
+							pagination, _ := meta["pagination"].(map[string]any)
+							if meta["count"] != data["count"] || pagination["endpoint_exhausted"] != !hasMore || pagination["next_token"] != data["nextCursor"] {
+								t.Fatalf("data/meta disagree: %#v", envelope)
+							}
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageDrivePaginationErrorOperation(t *testing.T) {
+	for _, tc := range []struct {
+		declaration shortcut.Shortcut
+		server      string
+		tool        string
+		inputKey    string
+		args        []string
+	}{
+		{List, "drive", "list_files", "items", nil},
+		{Search, "drive", "search_files", "items", []string{"--query", "synthetic"}},
+		{Recent, "doc", "get_recent_list", "recentItems", nil},
+	} {
+		t.Run(tc.declaration.Command, func(t *testing.T) {
+			for _, payload := range []string{"__ERROR__", driveJSON(map[string]any{"success": true, tc.inputKey: []any{}, "hasMore": true})} {
+				caller := &driveCoverageCaller{responses: map[string][]string{tc.tool: {payload}}}
+				err := runDriveCoverage(t, tc.declaration, caller, tc.args...)
+				var typed *apperrors.Error
+				if !errors.As(err, &typed) || typed.Operation != tc.server+"/"+tc.tool {
+					t.Fatalf("pagination error operation: %#v", err)
+				}
+				for _, field := range []string{"contractVersion", "contract_version"} {
+					if _, found := typed.Details[field]; found {
+						t.Fatalf("pagination error published undeclared protocol %q: %#v", field, typed.Details)
+					}
+				}
+				if typed.FailureStage != "pagination" || !strings.HasPrefix(typed.Reason, "drive_pagination_") {
+					t.Fatalf("pagination error lost recovery facts: %#v", typed)
+				}
+			}
+		})
+	}
 }
 
 func TestCrossPlatformCoverageDrivePaginationValidationAndSchema(t *testing.T) {
@@ -448,7 +567,7 @@ func TestCrossPlatformCoverageDrivePaginationValidationAndSchema(t *testing.T) {
 			t.Fatalf("%s pagination declaration is incomplete: rollout=%q pagination=%v validate=%v constraints=%#v", declaration.Command, declaration.OutputRollout, declaration.Contract.Pagination != nil, declaration.Validate != nil, declaration.Constraints)
 		}
 		dataSchema := string(declaration.Contract.Result.DataSchema)
-		for _, leaked := range []string{`"pagesRead"`, `"complete"`, `"truncated"`, `"hasMore"`, `"nextCursor"`, `"stopReason"`} {
+		for _, leaked := range []string{`"pagesRead"`, `"complete"`, `"truncated"`, `"stopReason"`} {
 			if strings.Contains(dataSchema, leaked) {
 				t.Fatalf("%s data_schema leaked pagination field %s: %s", declaration.Command, leaked, dataSchema)
 			}
