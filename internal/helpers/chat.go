@@ -6598,9 +6598,9 @@ A2UI 通过 --card-engine a2ui 启用，--content 必须是 JSON 字符串数组
 			},
 			Description: "创建并向群聊或单聊发送互动卡片；群聊创建时可 @成员或 @所有人",
 			Interface: &contract.InterfaceSpec{
-				Mode:         "composite",
+				Mode:         "mcp",
 				Availability: "available",
-				Reason:       "card-engine=streaming 调用 im.create_and_send_card；card-engine=a2ui 调用 im.create_and_send_a2ui_card",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "create_and_send_card"},
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "创建并向群聊或单聊发送互动卡片；群聊创建时可 @成员或 @所有人",
@@ -6737,9 +6737,9 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 			},
 			Description: "更新已发送流式卡片的内容和状态",
 			Interface: &contract.InterfaceSpec{
-				Mode:         "composite",
+				Mode:         "mcp",
 				Availability: "available",
-				Reason:       "card-engine=streaming 调用 im.update_streaming_card；card-engine=a2ui 调用 im.update_a2ui_card",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_streaming_card"},
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "更新已发送流式卡片的内容和状态",
