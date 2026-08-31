@@ -9,7 +9,6 @@ import (
 	"unsafe"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
-	"github.com/ebitengine/purego"
 )
 
 func TestCrossPlatformCoverageNativeAdapter(t *testing.T) {
@@ -60,24 +59,24 @@ func TestCrossPlatformCoverageNativeAdapter(t *testing.T) {
 	t.Run("callback and initialize", func(t *testing.T) {
 		testseam.Swap(t, &openNativeLibrary, func(string) (uintptr, error) { return 12, nil })
 		testseam.Swap(t, &lookupNativeSymbol, func(uintptr, string) (uintptr, error) { return 13, nil })
-		var nativeCallback func(purego.CDecl, unsafe.Pointer, int32) uintptr
+		var nativeCallback any
 		testseam.Swap(t, &makeNativeCallback, func(fn any) uintptr {
-			nativeCallback = fn.(func(purego.CDecl, unsafe.Pointer, int32) uintptr)
+			nativeCallback = fn
 			return 14
 		})
-		testseam.Swap(t, &bindNativeInitialize, func(symbol uintptr) func(purego.CDecl, int32, uintptr) int32 {
+		testseam.Swap(t, &bindNativeInitialize, func(symbol uintptr) nativeInitializer {
 			if symbol != 13 {
 				t.Fatalf("symbol = %d", symbol)
 			}
-			return func(_ purego.CDecl, environment int32, callback uintptr) int32 {
+			return nativeInitializerForTest(func(environment int32, callback uintptr) int32 {
 				if environment != initializationEnvironment || callback != 14 {
 					t.Fatalf("initialize = env %d, callback %d", environment, callback)
 				}
 				value := make([]byte, maxHeaderBytes)
 				copy(value, "native-value")
-				nativeCallback(purego.CDecl{}, unsafe.Pointer(&value[0]), 23)
+				invokeNativeCallbackForTest(nativeCallback, unsafe.Pointer(&value[0]), 23)
 				return 1
-			}
+			})
 		})
 		var got string
 		var code int32
@@ -96,7 +95,7 @@ func TestCrossPlatformCoverageNativeAdapter(t *testing.T) {
 		testseam.Swap(t, &openNativeLibrary, func(string) (uintptr, error) { return 15, nil })
 		testseam.Swap(t, &lookupNativeSymbol, func(uintptr, string) (uintptr, error) { return 16, nil })
 		testseam.Swap(t, &makeNativeCallback, func(any) uintptr { return 17 })
-		testseam.Swap(t, &bindNativeInitialize, func(uintptr) func(purego.CDecl, int32, uintptr) int32 {
+		testseam.Swap(t, &bindNativeInitialize, func(uintptr) nativeInitializer {
 			panic("binding")
 		})
 		if _, _, err := startNative("payload", func([]byte, int32, error) {}); !errors.Is(err, errNativeBinding) {

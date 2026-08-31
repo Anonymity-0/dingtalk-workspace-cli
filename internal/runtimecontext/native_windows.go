@@ -12,6 +12,9 @@ import (
 
 const initSymbol = "k9Xm2pQv"
 
+type nativeInitializer func(int32, uintptr) int32
+type nativeCallbackFunc func(unsafe.Pointer, int32) uintptr
+
 var (
 	openNativeLibrary = func(path string) (uintptr, error) {
 		handle, err := windows.LoadLibrary(path)
@@ -21,8 +24,8 @@ var (
 		return windows.GetProcAddress(windows.Handle(handle), name)
 	}
 	makeNativeCallback   = purego.NewCallback
-	bindNativeInitialize = func(symbol uintptr) func(purego.CDecl, int32, uintptr) int32 {
-		var initialize func(purego.CDecl, int32, uintptr) int32
+	bindNativeInitialize = func(symbol uintptr) nativeInitializer {
+		var initialize nativeInitializer
 		purego.RegisterFunc(&initialize, symbol)
 		return initialize
 	}
@@ -43,13 +46,13 @@ func startNative(path string, callback func([]byte, int32, error)) (session nati
 	if err != nil {
 		return session, 0, fmt.Errorf("%w: %v", errNativeSymbol, err)
 	}
-	callbackPointer := makeNativeCallback(func(_ purego.CDecl, token unsafe.Pointer, code int32) uintptr {
+	callbackPointer := makeNativeCallback(nativeCallbackFunc(func(token unsafe.Pointer, code int32) uintptr {
 		raw, copyErr := copyCString(token)
 		callback(raw, code, copyErr)
 		return 0
-	})
+	}))
 	session.callback = callbackPointer
 	initialize := bindNativeInitialize(symbol)
-	accepted = initialize(purego.CDecl{}, initializationEnvironment, callbackPointer)
+	accepted = initialize(initializationEnvironment, callbackPointer)
 	return session, accepted, nil
 }
