@@ -3,6 +3,16 @@ set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 PAYLOAD="$ROOT/third_party/runtimepayload/20260825"
+ALLOW_UNSUPPORTED_TOOLS=0
+
+if [ "${1:-}" = "--allow-unsupported-tools" ]; then
+  ALLOW_UNSUPPORTED_TOOLS=1
+  shift
+fi
+[ "$#" -eq 0 ] || {
+  printf 'usage: %s [--allow-unsupported-tools]\n' "$0" >&2
+  exit 2
+}
 
 fail() {
   printf 'runtime payload verification failed: %s\n' "$*" >&2
@@ -64,18 +74,44 @@ if [ -z "$windows_arm64_exports" ] && command -v llvm-objdump >/dev/null 2>&1; t
   windows_arm64_exports="$(llvm-objdump -p "$PAYLOAD/windows/arm64/x7k2m9p4q1w864.dll" 2>/dev/null || true)"
 fi
 
-[ -n "$darwin_exports" ] || fail "nm cannot inspect the macOS library"
-[ -n "$linux_amd64_exports" ] || fail "nm cannot inspect the Linux amd64 library"
-[ -n "$linux_arm64_exports" ] || fail "nm cannot inspect the Linux arm64 library"
-[ -n "$windows_amd64_exports" ] || fail "objdump cannot inspect the Windows amd64 library"
-[ -n "$windows_arm64_exports" ] || fail "objdump cannot inspect the Windows arm64 library"
+check_darwin=1
+check_linux_amd64=1
+check_linux_arm64=1
+check_windows_amd64=1
+check_windows_arm64=1
+
+if [ -z "$darwin_exports" ]; then
+  [ "$ALLOW_UNSUPPORTED_TOOLS" -eq 1 ] || fail "cannot inspect macOS library exports"
+  check_darwin=0
+  printf 'Skipping macOS library export inspection: compatible tooling is unavailable.\n'
+fi
+if [ -z "$linux_amd64_exports" ]; then
+  [ "$ALLOW_UNSUPPORTED_TOOLS" -eq 1 ] || fail "cannot inspect Linux amd64 library exports"
+  check_linux_amd64=0
+  printf 'Skipping Linux amd64 library export inspection: compatible tooling is unavailable.\n'
+fi
+if [ -z "$linux_arm64_exports" ]; then
+  [ "$ALLOW_UNSUPPORTED_TOOLS" -eq 1 ] || fail "cannot inspect Linux arm64 library exports"
+  check_linux_arm64=0
+  printf 'Skipping Linux arm64 library export inspection: compatible tooling is unavailable.\n'
+fi
+if [ -z "$windows_amd64_exports" ]; then
+  [ "$ALLOW_UNSUPPORTED_TOOLS" -eq 1 ] || fail "cannot inspect Windows amd64 library exports"
+  check_windows_amd64=0
+  printf 'Skipping Windows amd64 library export inspection: compatible tooling is unavailable.\n'
+fi
+if [ -z "$windows_arm64_exports" ]; then
+  [ "$ALLOW_UNSUPPORTED_TOOLS" -eq 1 ] || fail "cannot inspect Windows arm64 library exports"
+  check_windows_arm64=0
+  printf 'Skipping Windows arm64 library export inspection: compatible tooling is unavailable.\n'
+fi
 
 for symbol in k9Xm2pQv d4Rw7Lnz h6Yb3Jtq m8Vc5Kxf p2Zn9Gsa t5Qe1Hud b7Uj4Myr f3Wi8Olc; do
-  printf '%s\n' "$darwin_exports" | grep -Eq "[[:space:]]_?${symbol}$" || fail "missing macOS export $symbol"
-  printf '%s\n' "$linux_amd64_exports" | grep -Eq "[[:space:]]${symbol}$" || fail "missing Linux amd64 export $symbol"
-  printf '%s\n' "$linux_arm64_exports" | grep -Eq "[[:space:]]${symbol}$" || fail "missing Linux arm64 export $symbol"
-  printf '%s\n' "$windows_amd64_exports" | grep -Eq "[[:space:]]${symbol}$" || fail "missing Windows amd64 export $symbol"
-  printf '%s\n' "$windows_arm64_exports" | grep -Eq "[[:space:]]${symbol}$" || fail "missing Windows arm64 export $symbol"
+  [ "$check_darwin" -eq 0 ] || printf '%s\n' "$darwin_exports" | grep -Eq "[[:space:]]_?${symbol}$" || fail "missing macOS export $symbol"
+  [ "$check_linux_amd64" -eq 0 ] || printf '%s\n' "$linux_amd64_exports" | grep -Eq "[[:space:]]${symbol}$" || fail "missing Linux amd64 export $symbol"
+  [ "$check_linux_arm64" -eq 0 ] || printf '%s\n' "$linux_arm64_exports" | grep -Eq "[[:space:]]${symbol}$" || fail "missing Linux arm64 export $symbol"
+  [ "$check_windows_amd64" -eq 0 ] || printf '%s\n' "$windows_amd64_exports" | grep -Eq "[[:space:]]${symbol}$" || fail "missing Windows amd64 export $symbol"
+  [ "$check_windows_arm64" -eq 0 ] || printf '%s\n' "$windows_arm64_exports" | grep -Eq "[[:space:]]${symbol}$" || fail "missing Windows arm64 export $symbol"
 done
 
 file "$PAYLOAD/darwin/universal/x7k2m9p4q1w8.dylib" | grep -Eiq 'universal|arm64.*x86_64|x86_64.*arm64' || fail "invalid macOS library architecture"

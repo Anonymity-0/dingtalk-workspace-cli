@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-"$(dirname "$0")/../policy/check-runtime-payload.sh"
+"$(dirname "$0")/../policy/check-runtime-payload.sh" --allow-unsupported-tools
 go build -buildmode=pie -trimpath -ldflags="-s -w" -o dws ./cmd
 
 case "$(uname -s)" in
