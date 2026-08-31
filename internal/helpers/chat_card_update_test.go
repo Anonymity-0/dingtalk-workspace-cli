@@ -255,11 +255,11 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 				t.Fatalf("args %v made %d calls", args, caller.calls)
 			}
 		}
-		if _, err := a2uiFlowStatusFromInt(0); err == nil || !strings.Contains(err.Error(), "1-9") {
-			t.Fatalf("a2ui status 0 error = %v, want 1-9 range", err)
+		if _, err := normalizeA2UIUpdateFlowStatus(""); err == nil || !strings.Contains(err.Error(), "PROCESSING") {
+			t.Fatalf("empty a2ui status error = %v, want enum list", err)
 		}
-		if _, err := a2uiFlowStatusFromInt(10); err == nil || !strings.Contains(err.Error(), "1-9") {
-			t.Fatalf("a2ui status 10 error = %v, want 1-9 range", err)
+		if _, err := normalizeA2UIUpdateFlowStatus("BAD_STATUS"); err == nil || !strings.Contains(err.Error(), "PROCESSING") {
+			t.Fatalf("bad a2ui status error = %v, want enum list", err)
 		}
 	})
 }

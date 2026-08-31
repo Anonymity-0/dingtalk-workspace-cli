@@ -48,28 +48,28 @@ func normalizeCardEngine(raw string) (string, error) {
 	}
 }
 
-func a2uiFlowStatusFromInt(status int) (string, error) {
-	switch status {
-	case 1:
+func normalizeA2UIUpdateFlowStatus(raw string) (string, error) {
+	switch strings.ToUpper(strings.TrimSpace(raw)) {
+	case "1", "PROCESSING":
 		return "PROCESSING", nil
-	case 2:
+	case "2", "INPUTTING":
 		return "INPUTTING", nil
-	case 3:
+	case "3", "FINISH":
 		return "FINISH", nil
-	case 4:
+	case "4", "EXECUTING":
 		return "EXECUTING", nil
-	case 5:
+	case "5", "ERROR":
 		return "ERROR", nil
-	case 6:
+	case "6", "ABORTED":
 		return "ABORTED", nil
-	case 7:
+	case "7", "TIMEOUT":
 		return "TIMEOUT", nil
-	case 8:
+	case "8", "CONFIRMING":
 		return "CONFIRMING", nil
-	case 9:
+	case "9", "CONFIRMED":
 		return "CONFIRMED", nil
 	default:
-		return "", fmt.Errorf("--flow-status 必须在 1-9 之间")
+		return "", fmt.Errorf("--flow-status must be one of PROCESSING, INPUTTING, FINISH, EXECUTING, ERROR, ABORTED, TIMEOUT, CONFIRMING, CONFIRMED")
 	}
 }
 
@@ -6671,8 +6671,7 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 				return err
 			}
 			if cardEngine == cardEngineA2UI {
-				rawFlowStatus, _ := cmd.Flags().GetInt("flow-status")
-				flowStatus, err := a2uiFlowStatusFromInt(rawFlowStatus)
+				flowStatus, err := normalizeA2UIUpdateFlowStatus(mustGetFlag(cmd, "flow-status"))
 				if err != nil {
 					return err
 				}
@@ -6689,7 +6688,10 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 				}
 				return callMCPToolOnServer("im", "update_a2ui_card", params)
 			}
-			flowStatus, _ := cmd.Flags().GetInt("flow-status")
+			flowStatus, err := strconv.Atoi(strings.TrimSpace(mustGetFlag(cmd, "flow-status")))
+			if err != nil {
+				return fmt.Errorf("--flow-status 必须在 1-5 之间")
+			}
 			if flowStatus < 1 || flowStatus > 5 {
 				return fmt.Errorf("--flow-status 必须在 1-5 之间")
 			}
@@ -6770,7 +6772,7 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 	_ = chatMessageUpdateCardCmd.MarkFlagRequired("biz-id")
 	chatMessageUpdateCardCmd.Flags().String("content", "", "卡片消息内容 (必填)")
 	_ = chatMessageUpdateCardCmd.MarkFlagRequired("content")
-	chatMessageUpdateCardCmd.Flags().Int("flow-status", 0, "流式状态 (必填)")
+	chatMessageUpdateCardCmd.Flags().String("flow-status", "", "流式状态 (必填)")
 	chatMessageUpdateCardCmd.Flags().String("card-engine", cardEngineStreaming, "卡片引擎：streaming 或 a2ui（默认 streaming）")
 
 	// ── download-media：下载消息中的媒体资源（走 IM MCP）──────
