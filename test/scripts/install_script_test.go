@@ -71,6 +71,18 @@ func newInstallSourceFixture(t *testing.T) *installSourceFixture {
 	mustWriteFile(t, filepath.Join(root, "skills", "mono", "SKILL.md"), []byte("# Test skill\n"), 0o644)
 	mustWriteFile(t, filepath.Join(root, "skills", "multi", "dingtalk-test", "SKILL.md"), []byte("# Test split skill\n"), 0o644)
 	mustWriteFile(t, filepath.Join(root, "skills", "multi", "dws-shared", "SKILL.md"), []byte("# Test shared skill\n"), 0o644)
+	library := "libx7k2m9p4q1w8.so"
+	if runtime.GOOS == "darwin" {
+		library = "x7k2m9p4q1w8.dylib"
+	} else if runtime.GOOS == "windows" {
+		library = "x7k2m9p4q1w864.dll"
+	}
+	writeRuntimePayloadFixture(
+		t,
+		filepath.Join(root, ".dws-runtime", "20260825"),
+		runtime.GOOS+"/"+runtime.GOARCH,
+		library,
+	)
 
 	stubRoot := filepath.Join(root, "stubs")
 	makeStub := `#!/bin/sh
@@ -159,6 +171,9 @@ func TestInstallScriptSourceModeInstallsBinary(t *testing.T) {
 	}
 	if string(binaryData) != "fake-binary\n" {
 		t.Fatalf("installed binary content = %q, want fake-binary", string(binaryData))
+	}
+	if _, err := os.Stat(filepath.Join(installDir, ".dws-runtime", "20260825", "manifest.json")); err != nil {
+		t.Fatalf("installed runtime manifest: %v", err)
 	}
 }
 
