@@ -422,13 +422,9 @@ func UploadDocSpaceFileData(ctx context.Context, request DocSpaceUploadRequest) 
 		return nil, fmt.Errorf("document-space overwriteNode and folderId are mutually exclusive")
 	}
 
-	credentialArgs := map[string]any{"workspaceId": request.WorkspaceID}
-	if request.OverwriteNode != "" {
-		credentialArgs["overwriteNodeId"] = request.OverwriteNode
-		credentialArgs["name"] = request.FileName
-	} else if request.FolderID != "" {
-		credentialArgs["folderId"] = request.FolderID
-	}
+	// Share the native upload metadata so the first capability check receives
+	// the final name and size before any bytes are uploaded to OSS.
+	credentialArgs := docFileUploadInfoArgs(request.FileName, request.FileSize, request.FolderID, request.WorkspaceID, request.OverwriteNode)
 	credentialText, err := callMCPToolReturnTextOnServer(ctx, "doc", "get_file_upload_info", credentialArgs)
 	if err != nil {
 		return nil, err
