@@ -37,8 +37,8 @@ metadata:
 
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
-| 全局按名称或关键词找文件 | `dws drive +search --query <关键词>` | 多候选停止；Drive 搜索没有 Doc 的 `--page-all`，按真实 nextCursor 翻页；在线文档正文搜索走 `doc +search` |
-| 浏览根目录或已知文件夹 | `dws drive +list [--folder <dentryUuid>]` | 默认一页，处理 nextCursor |
+| 全局按名称或关键词找文件 | `dws drive +search --query <关键词> --page-all --max-pages 20 --max-items 500` | 需要完整搜索时自动翻页；只需首批结果时可不加 `--page-all`；多候选停止；在线文档正文搜索走 `doc +search` |
+| 浏览根目录或已知文件夹 | `dws drive +list [--folder <dentryUuid>] --page-all --max-pages 20 --max-items 500` | 需要完整浏览时自动翻页；只需首批结果时可不加 `--page-all` |
 | 发现钉盘企业空间或“我的文件”空间 | `dws wiki space list --type <orgSpace\|mySpace> --format json` | Drive 只读前置；orgSpace 按 nextToken 续页，取 spaceId/rootFolderId 后回到 Drive |
 | 查看最近访问/编辑 | `dws drive +recent [--operate-type 1] --limit <N>` | 1=最近编辑；默认最近访问 |
 | 查看节点类型和元数据 | `dws drive +inspect --node <dentryUuid>` | 按需加 stats/publish/cover，不为普通列表强制调用 |
@@ -80,7 +80,7 @@ metadata:
 
 ## 关键结果语义
 
-- `+list/+search/+recent` 检查集合、hasMore 和 nextCursor；缺少集合不能当空结果，多候选禁止默认第一项。
+- `+list/+search/+recent` 的完整查询统一使用 `--page-all --max-pages <N> --max-items <N>`，并检查集合、完整性和截断状态；只需首批结果时可不加 `--page-all`。缺少集合不能当空结果，多候选禁止默认第一项。
 - `+download` 验证相对路径存在且 sizeBytes > 0；`+upload` 检查最终 nodeId、名称、类型和大小。只有源端与结果都提供可比哈希时才核对 checksum；缺失时保留现有证据，不虚构端到端校验和。
 - copy/move/rename/create-folder 检查 `ok/outcome` 和读回；`partial_success` 不是完成。
 - status 检查分类集合；pull/push/sync 检查 summary 和逐项结果，failed/unknown 必须保留。
