@@ -252,28 +252,34 @@ func TestCrossPlatformCoverageJSONOutputContractReportsMissingLocalArtifact(t *t
 		return ch
 	})
 
+	// wantErr 为空表示任意非空错误（fail-closed）：drive 下载引擎先写 .dwspart
+	// 再原子发布，stub 未写临时文件时在发布点失败；doc export 在读取产物时失败。
 	tests := []struct {
-		name  string
-		build func() *cobra.Command
-		args  []string
-		steps []scriptedToolStep
+		name    string
+		wantErr string
+		build   func() *cobra.Command
+		args    []string
+		steps   []scriptedToolStep
 	}{
 		{
-			name:  "latest drive download",
-			build: newDriveCommand,
-			args:  []string{"download", "--node", "node-latest", "--output", filepath.Join(t.TempDir(), "latest.txt")},
-			steps: []scriptedToolStep{{text: `{"downloadUrl":"https://example.test/latest.txt","fileSize":7,"version":9}`}},
+			name:    "latest drive download",
+			wantErr: "",
+			build:   newDriveCommand,
+			args:    []string{"download", "--node", "node-latest", "--output", filepath.Join(t.TempDir(), "latest.txt")},
+			steps:   []scriptedToolStep{{text: `{"downloadUrl":"https://example.test/latest.txt","fileSize":7,"version":9}`}},
 		},
 		{
-			name:  "versioned drive download",
-			build: newDriveCommand,
-			args:  []string{"download", "--node", "node-versioned", "--version", "4", "--output", filepath.Join(t.TempDir(), "versioned.txt")},
-			steps: []scriptedToolStep{{text: `{"downloadUrl":"https://example.test/versioned.txt","fileSize":7}`}},
+			name:    "versioned drive download",
+			wantErr: "",
+			build:   newDriveCommand,
+			args:    []string{"download", "--node", "node-versioned", "--version", "4", "--output", filepath.Join(t.TempDir(), "versioned.txt")},
+			steps:   []scriptedToolStep{{text: `{"downloadUrl":"https://example.test/versioned.txt","fileSize":7}`}},
 		},
 		{
-			name:  "doc export",
-			build: newDocCommand,
-			args:  []string{"export", "--node", "doc-node", "--export-format", "markdown", "--output", filepath.Join(t.TempDir(), "export.md")},
+			name:    "doc export",
+			wantErr: "读取",
+			build:   newDocCommand,
+			args:    []string{"export", "--node", "doc-node", "--export-format", "markdown", "--output", filepath.Join(t.TempDir(), "export.md")},
 			steps: []scriptedToolStep{
 				{text: `{"jobId":"export-job-1"}`},
 				{text: `{"status":"SUCCESS","downloadUrl":"https://example.test/export.md"}`},
@@ -284,8 +290,11 @@ func TestCrossPlatformCoverageJSONOutputContractReportsMissingLocalArtifact(t *t
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, _, err := executeJSONOutputContractCommand(t, &scriptedToolCaller{format: "json", steps: tt.steps}, tt.build, tt.args...)
-			if err == nil || !strings.Contains(err.Error(), "读取") {
-				t.Fatalf("expected missing local artifact error, got %v", err)
+			if err == nil {
+				t.Fatal("expected missing local artifact to fail closed")
+			}
+			if tt.wantErr != "" && !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("expected error containing %q, got %v", tt.wantErr, err)
 			}
 		})
 	}

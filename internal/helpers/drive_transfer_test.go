@@ -626,7 +626,7 @@ func TestCrossPlatformCoverageDownloadSingleWithAuthRetry(t *testing.T) {
 		return "https://new.example.com/f", map[string]string{"dentry-token": "new-token"}, 0, nil
 	}
 	dest := filepath.Join(t.TempDir(), "auth.bin")
-	if err := downloadSingleWithAuthRetry(context.Background(), fetch, "https://old.example.com/f", nil, dest); err != nil {
+	if err := downloadSingleWithAuthRetry(context.Background(), fetch, "https://old.example.com/f", nil, dest, false); err != nil {
 		t.Fatalf("401 重试后应成功: %v", err)
 	}
 	if !fetched || calls.Load() != 2 {
@@ -644,7 +644,7 @@ func TestCrossPlatformCoverageDownloadSingleWithAuthRetry_StillFails(t *testing.
 	fetch := func(ctx context.Context) (string, map[string]string, int, error) {
 		return "https://new.example.com/f", nil, 0, nil
 	}
-	err := downloadSingleWithAuthRetry(context.Background(), fetch, "https://old.example.com/f", nil, filepath.Join(t.TempDir(), "x"))
+	err := downloadSingleWithAuthRetry(context.Background(), fetch, "https://old.example.com/f", nil, filepath.Join(t.TempDir(), "x"), false)
 	if err == nil || !isAuthStatusError(err) {
 		t.Fatalf("应返回原始鉴权错误: %v", err)
 	}
@@ -1247,7 +1247,7 @@ func TestCrossPlatformCoverageDownloadSingleWithAuthRetry_NilFetch(t *testing.T)
 	})
 	defer SetHTTPGetFile(nil)
 	// fetch==nil → 不重试，直接返回原始错误
-	err := downloadSingleWithAuthRetry(context.Background(), nil, "https://old.example.com/f", nil, filepath.Join(t.TempDir(), "x"))
+	err := downloadSingleWithAuthRetry(context.Background(), nil, "https://old.example.com/f", nil, filepath.Join(t.TempDir(), "x"), false)
 	if err == nil || !isAuthStatusError(err) {
 		t.Fatalf("fetch==nil 应直接返回鉴权错误: %v", err)
 	}
@@ -1264,7 +1264,7 @@ func TestCrossPlatformCoverageDownloadSingleWithAuthRetry_FetchError(t *testing.
 	fetch := func(ctx context.Context) (string, map[string]string, int, error) {
 		return "", nil, 0, fmt.Errorf("fetch failed")
 	}
-	err := downloadSingleWithAuthRetry(context.Background(), fetch, "https://old.example.com/f", nil, filepath.Join(t.TempDir(), "x"))
+	err := downloadSingleWithAuthRetry(context.Background(), fetch, "https://old.example.com/f", nil, filepath.Join(t.TempDir(), "x"), false)
 	if err == nil || !isAuthStatusError(err) {
 		t.Fatalf("fetch 报错应返回原始鉴权错误: %v", err)
 	}
@@ -1388,7 +1388,7 @@ func TestCrossPlatformCoverageProbeRangeSupport_ContentRangeParseError(t *testin
 
 func TestCrossPlatformCoverageWriteStreamToFile_CreateError(t *testing.T) {
 	// 写入不存在目录下的文件 → os.Create 失败
-	err := writeStreamToFile(strings.NewReader("data"), "/no-such-dir/sub/file.bin")
+	err := writeStreamToFile(strings.NewReader("data"), "/no-such-dir/sub/file.bin", false)
 	if err == nil {
 		t.Fatal("不存在路径应失败")
 	}
@@ -1397,7 +1397,7 @@ func TestCrossPlatformCoverageWriteStreamToFile_CreateError(t *testing.T) {
 func TestCrossPlatformCoverageWriteStreamToFile_CopyError(t *testing.T) {
 	dest := filepath.Join(t.TempDir(), "copy-err.bin")
 	errReader := &errReaderHelper{err: fmt.Errorf("read broken")}
-	err := writeStreamToFile(errReader, dest)
+	err := writeStreamToFile(errReader, dest, false)
 	if err == nil || !strings.Contains(err.Error(), "read broken") {
 		t.Fatalf("io.Copy 错误应传播: %v", err)
 	}
@@ -2253,7 +2253,7 @@ func TestCrossPlatformCoverageDriveTransferFinalRenameFailure(t *testing.T) {
 
 	creds := &driveCredentialState{url: srv.URL}
 	dest := filepath.Join(t.TempDir(), "rename-fail.bin")
-	opts := driveDownloadOptions{partSize: 30, parallel: 2, resume: false, knownSize: 100}
+	opts := driveDownloadOptions{partSize: 30, parallel: 2, resume: false, knownSize: 100, overwrite: true}
 	err := downloadRangedParts(context.Background(), creds, dest, 100, opts)
 	if err == nil || !strings.Contains(err.Error(), "重命名下载文件失败") {
 		t.Fatalf("最终 rename 失败应报错: %v", err)

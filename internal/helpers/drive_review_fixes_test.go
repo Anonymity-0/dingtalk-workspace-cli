@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -239,7 +240,10 @@ func TestCrossPlatformCoverageDriveDownloadVersionDryRun(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageDriveDownloadVersionDirectoryOutput(t *testing.T) {
-	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error { return nil })
+	// 下载引擎先写 <dest>.dwspart 再原子发布；stub 必须履约写入目标路径。
+	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, destPath string) error {
+		return os.WriteFile(destPath, []byte("payload"), 0o644)
+	})
 	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	dir := t.TempDir()
@@ -488,7 +492,10 @@ func TestCrossPlatformCoverageMapOrderByToCamelCase(t *testing.T) {
 // ── download：space-id 透传与非 JSON dry-run 预览（补齐门禁覆盖缺口） ──
 
 func TestCrossPlatformCoverageDriveDownloadSpaceIDArg(t *testing.T) {
-	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error { return nil })
+	// 下载引擎先写 <dest>.dwspart 再原子发布；stub 必须履约写入目标路径。
+	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, destPath string) error {
+		return os.WriteFile(destPath, []byte("payload"), 0o644)
+	})
 	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"resourceUrl":"https://x.test/files/report.pdf"}`}}}

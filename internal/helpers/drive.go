@@ -893,6 +893,7 @@ func newDriveCommand() *cobra.Command {
 			dlOpts.knownSize = parseDownloadFileSize(text)
 			dlOpts.nodeID = fileID
 			dlOpts.version = parseDownloadFileVersion(text)
+			dlOpts.overwrite = overwrite
 			fetchCred := func(fctx context.Context) (string, map[string]string, int, error) {
 				t, ferr := callMCPToolReturnText(fctx, "download_file", argsMap)
 				if ferr != nil {
@@ -905,6 +906,10 @@ func newDriveCommand() *cobra.Command {
 				return u, h, parseDownloadFileVersion(t), nil
 			}
 			if err := driveTransferDownload(ctx, fetchCred, resourceURL, dlHeaders, outputPath, dlOpts); err != nil {
+				if errors.Is(err, errDriveDownloadTargetExists) {
+					// 发布阶段兜底：检查后新出现的目标同样拒绝，不静默覆盖。
+					return newDownloadTargetExistsError(outputPath, "drive download")
+				}
 				if errors.Is(err, context.Canceled) || ctx.Err() == context.Canceled {
 					partSize, _ := cmd.Flags().GetString("part-size")
 					noResume, _ := cmd.Flags().GetBool("no-resume")
@@ -1100,6 +1105,7 @@ func newDriveCommand() *cobra.Command {
 			dlOpts.knownSize = parseDownloadFileSize(text)
 			dlOpts.nodeID = fileID
 			dlOpts.version = versionNum
+			dlOpts.overwrite = overwrite
 			fetchCred := func(fctx context.Context) (string, map[string]string, int, error) {
 				t, ferr := callMCPToolReturnTextOnServer(fctx, "drive", "download_file_version", dlArgsMap)
 				if ferr != nil {
@@ -1112,6 +1118,10 @@ func newDriveCommand() *cobra.Command {
 				return u, h, parseDownloadFileVersion(t), nil
 			}
 			if err := driveTransferDownload(ctx, fetchCred, resourceURL, dlHeaders, outputPath, dlOpts); err != nil {
+				if errors.Is(err, errDriveDownloadTargetExists) {
+					// 发布阶段兜底：检查后新出现的目标同样拒绝，不静默覆盖。
+					return newDownloadTargetExistsError(outputPath, "drive download-version")
+				}
 				if errors.Is(err, context.Canceled) || ctx.Err() == context.Canceled {
 					partSize, _ := cmd.Flags().GetString("part-size")
 					noResume, _ := cmd.Flags().GetBool("no-resume")
@@ -4485,20 +4495,27 @@ func sanitizeFileName(name string) string {
 // Returns empty string if not found.
 // checkDownloadConflict 在下载引擎启动前检查目标文件是否已存在：默认拒绝
 // 覆盖并返回结构化错误；--overwrite 显式放行（仅 stderr 告警）。断点续传的
-// .dwspart/.dwspart.meta 中间产物不视为冲突——只 stat 最终目标路径。
+// .dwspart/.dwspart.meta 中间产物不视为冲突——只 stat 最终目标路径。该检查只是
+// 提前失败优化；发布阶段的原子 no-replace 兜底由 drivePublishFile 保证。
 func checkDownloadConflict(outputPath string, overwrite bool, operation string) error {
 	if _, statErr := os.Stat(outputPath); statErr == nil {
 		if !overwrite {
-			return &CLIError{
-				Code:       CodeFileAlreadyExists,
-				Message:    fmt.Sprintf("output file already exists: %s", outputPath),
-				Suggestion: "请先确认用户是否允许覆盖该文件，再决定是否添加 --overwrite 参数",
-				Operation:  operation,
-			}
+			return newDownloadTargetExistsError(outputPath, operation)
 		}
 		deps.Out.PrintWarning(fmt.Sprintf("目标文件已存在，将覆盖: %s", outputPath))
 	}
 	return nil
+}
+
+// newDownloadTargetExistsError 构造目标文件已存在结构化错误（检查点与发布
+// 点共用的同一契约：文案与建议保持一致，便于调用方无差别处理）。
+func newDownloadTargetExistsError(outputPath, operation string) *CLIError {
+	return &CLIError{
+		Code:       CodeFileAlreadyExists,
+		Message:    fmt.Sprintf("output file already exists: %s", outputPath),
+		Suggestion: "请先确认用户是否允许覆盖该文件，再决定是否添加 --overwrite 参数",
+		Operation:  operation,
+	}
 }
 
 // driveRejectURLOnlyConflicts 仲裁 --url-only 与落盘/分片传输参数的互斥：URL

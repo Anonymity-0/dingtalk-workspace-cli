@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -67,6 +68,45 @@ var (
 )
 
 var driveWorkerContextErr = func(ctx context.Context) error { return ctx.Err() }
+
+// errDriveDownloadTargetExists 发布阶段发现目标文件已存在且无 --overwrite。
+// checkDownloadConflict 只能在下载开始前检查；长下载期间目标可能被并发创建，
+// 发布点必须以原子 no-replace 语义兜底（TOCTOU 防御）。
+var errDriveDownloadTargetExists = errors.New("download target file already exists")
+
+// drivePublishFile 下载产物的最终原子发布：overwrite=true 走 rename 无条件
+// 替换；overwrite=false 用 link(2) 实现存在即失败（EEXIST）的原子 no-replace，
+// 成功后移除临时文件。link(2) 在 Unix 与 Windows(NTFS) 上均为原子语义，
+// 避免了检查后、发布前窗口内新出现的目标被静默覆盖。
+var driveOsLink = os.Link
+
+func drivePublishFile(source, target string, overwrite bool) error {
+	if overwrite {
+		return driveOsRename(source, target)
+	}
+	if err := driveOsLink(source, target); err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			return fmt.Errorf("%w: %s", errDriveDownloadTargetExists, target)
+		}
+		return err
+	}
+	return os.Remove(source)
+}
+
+// downloadViaTemp 整流路径的写-发布骨架：内容先写 <dest>.dwspart，成功后按
+// overwrite 策略原子发布；任何失败都清理临时文件（整流无续传价值）。
+func downloadViaTemp(destPath string, overwrite bool, write func(tmpPath string) error) error {
+	tmpPath := destPath + drivePartFileSuffix
+	if err := write(tmpPath); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	if err := drivePublishFile(tmpPath, destPath, overwrite); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	return nil
+}
 
 // ──────────────────────────────────────────────────────────
 // HTTP 状态错误
@@ -153,6 +193,7 @@ type driveDownloadOptions struct {
 	partSize  int64
 	parallel  int
 	resume    bool
+	overwrite bool   // 发布阶段覆盖策略：false 时目标已存在则原子拒绝（TOCTOU 兜底）
 	knownSize int64  // MCP 返回的 fileSize；未知(0)或小于阈值时直接整流
 	nodeID    string // 节点唯一标识（dentryUuid），用于生成 checkpoint 指纹
 	version   int    // 文件版本号；0 表示最新版
@@ -289,7 +330,7 @@ func driveTransferDownload(ctx context.Context, fetch driveCredentialFetcher, ra
 	threshold := 2 * opts.partSize
 	if opts.knownSize < threshold {
 		// 含 knownSize==0（大小未知）：不发起额外探测请求，保持存量整流行为
-		return downloadSingleWithAuthRetry(ctx, fetch, rawURL, headers, destPath)
+		return downloadSingleWithAuthRetry(ctx, fetch, rawURL, headers, destPath, opts.overwrite)
 	}
 
 	creds := &driveCredentialState{fetch: fetch, url: rawURL, headers: headers, initialVersion: opts.version}
@@ -300,7 +341,7 @@ func driveTransferDownload(ctx context.Context, fetch driveCredentialFetcher, ra
 	if fullResp != nil {
 		// 服务端不支持 Range（忽略探测请求头返回 200 全量流）：直接消费落盘
 		defer fullResp.Body.Close()
-		return writeStreamToFile(fullResp.Body, destPath)
+		return writeStreamToFile(fullResp.Body, destPath, opts.overwrite)
 	}
 	curURL, curHeaders, _ := creds.current()
 	if totalSize <= 0 || totalSize < threshold {
@@ -310,23 +351,26 @@ func driveTransferDownload(ctx context.Context, fetch driveCredentialFetcher, ra
 				return "", nil, 0, fmt.Errorf("下载凭证已过期且无法自动刷新")
 			}
 			return fetch(fctx)
-		}, curURL, curHeaders, destPath)
+		}, curURL, curHeaders, destPath, opts.overwrite)
 	}
 	return downloadRangedParts(ctx, creds, destPath, totalSize, opts)
 }
 
 // downloadSingleWithAuthRetry 整流下载；401/403（凭证过期）时重新调用 MCP
-// 获取新 URL+token 重试一次，仍失败走既有错误路径。
-func downloadSingleWithAuthRetry(ctx context.Context, fetch driveCredentialFetcher, urlStr string, headers map[string]string, destPath string) error {
-	err := httpGetFile(ctx, urlStr, headers, destPath)
-	if err == nil || !isAuthStatusError(err) || fetch == nil {
-		return err
-	}
-	newURL, newHeaders, _, ferr := fetch(ctx)
-	if ferr != nil {
-		return err
-	}
-	return httpGetFile(ctx, newURL, newHeaders, destPath)
+// 获取新 URL+token 重试一次，仍失败走既有错误路径。内容先写 <dest>.dwspart
+// 临时文件，成功后按 overwrite 策略原子发布（TOCTOU 兜底）。
+func downloadSingleWithAuthRetry(ctx context.Context, fetch driveCredentialFetcher, urlStr string, headers map[string]string, destPath string, overwrite bool) error {
+	return downloadViaTemp(destPath, overwrite, func(tmpPath string) error {
+		err := httpGetFile(ctx, urlStr, headers, tmpPath)
+		if err == nil || !isAuthStatusError(err) || fetch == nil {
+			return err
+		}
+		newURL, newHeaders, _, ferr := fetch(ctx)
+		if ferr != nil {
+			return err
+		}
+		return httpGetFile(ctx, newURL, newHeaders, tmpPath)
+	})
 }
 
 // probeRangeSupport 发送 Range: bytes=0-0 探测请求验证 206/Content-Range。
@@ -440,16 +484,18 @@ func parseContentRange(header string) (start, end, total int64, err error) {
 	return start, end, total, nil
 }
 
-func writeStreamToFile(r io.Reader, destPath string) error {
-	out, err := os.Create(destPath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	if _, err := io.Copy(out, r); err != nil {
-		return err
-	}
-	return nil
+func writeStreamToFile(r io.Reader, destPath string, overwrite bool) error {
+	return downloadViaTemp(destPath, overwrite, func(tmpPath string) error {
+		out, err := os.Create(tmpPath)
+		if err != nil {
+			return err
+		}
+		defer out.Close()
+		if _, err := io.Copy(out, r); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 // ──────────────────────────────────────────────────────────
@@ -689,7 +735,12 @@ dispatch:
 	if fi.Size() != totalSize {
 		return fmt.Errorf("下载完成但文件长度不符: got %d, want %d", fi.Size(), totalSize)
 	}
-	if err := driveOsRename(partPath, destPath); err != nil {
+	if err := drivePublishFile(partPath, destPath, opts.overwrite); err != nil {
+		if errors.Is(err, errDriveDownloadTargetExists) {
+			// 发布阶段发现新目标：保留 .dwspart/.dwspart.meta，加 --overwrite
+			// 重跑可复用已完成分片。
+			return err
+		}
 		return fmt.Errorf("重命名下载文件失败: %w", err)
 	}
 	_ = os.Remove(metaPath)
