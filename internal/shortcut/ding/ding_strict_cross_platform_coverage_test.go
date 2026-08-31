@@ -430,6 +430,19 @@ func TestCrossPlatformCoverageDINGCompatibilityWritesRequireConfirmationAndExecu
 	}
 }
 
+func TestCrossPlatformCoverageDINGRecallIDValidationBoundary(t *testing.T) {
+	for _, id := range []string{"", " \t\n"} {
+		if err := validateDingRecallID(id); err == nil {
+			t.Fatalf("blank recall ID %q was accepted", id)
+		}
+	}
+	for _, id := range []string{"msgOpaque+/==", "cidOpaque-123", "MSG", "cid", "ding-fixture"} {
+		if err := validateDingRecallID(id); err != nil {
+			t.Fatalf("opaque recall ID %q was rejected: %v", id, err)
+		}
+	}
+}
+
 func runDingRoot(t *testing.T, declaration shortcut.Shortcut, caller *dingCoverageCaller, yes bool, args ...string) error {
 	t.Helper()
 	helpers.InitDepsForTest(t, caller)
