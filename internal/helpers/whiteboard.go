@@ -39,6 +39,12 @@ var compactWhiteboardJSON = json.Compact
 func newWhiteboardCommand() *cobra.Command {
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "whiteboard",
+		HelpReferences: contract.HelpReferences{
+			RelatedSkills: []string{"dingtalk-misc"},
+			Documentation: []contract.HelpDocumentation{
+				contract.SkillDocumentation("白板深度指南", "dingtalk-misc", "references/whiteboard.md"),
+			},
+		},
 		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "读取和更新钉钉文档内嵌白板的 OpenNodes 内容",
 			UseWhen:      []string{"用户要读取或写入白板/画布中的 OpenNodes 图形、文本、分组、连接线、Vector 或整页布局时"},

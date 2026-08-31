@@ -1316,8 +1316,25 @@ jobs:
               return mergeResult.sha;
             }
 
+            function classifyMergePreflight(pullRequest) {
+              if (
+                pullRequest.mergeable === true &&
+                pullRequest.mergeable_state === 'behind'
+              ) {
+                return 'behind';
+              }
+              if (
+                pullRequest.mergeable === null &&
+                pullRequest.mergeable_state === 'unknown'
+              ) {
+                return 'unknown';
+              }
+              return 'attempt';
+            }
+
             function classifyMergeAttemptRecovery(
               status,
+              errorMessage,
               latestPull,
               expectedHeadSha,
               expectedAppLogin,
@@ -1350,6 +1367,19 @@ jobs:
                 );
               }
               if (status === 405 || status === 409) {
+                return {outcome: 'not_ready'};
+              }
+              const baseRepository =
+                latestPull.base?.repo?.full_name?.toLowerCase();
+              if (
+                status === 403 &&
+                errorMessage === 'Resource not accessible by integration' &&
+                latestPull.head.sha === expectedHeadSha &&
+                latestPull.base?.ref === 'main' &&
+                baseRepository === expectedBaseRepository &&
+                latestPull.mergeable === true &&
+                latestPull.mergeable_state === 'behind'
+              ) {
                 return {outcome: 'not_ready'};
               }
               throw new Error(`unsupported merge recovery status ${status}`);
@@ -1702,6 +1732,21 @@ jobs:
                   );
                   continue;
                 }
+                const mergePreflight = classifyMergePreflight(finalPull);
+                if (mergePreflight === 'behind') {
+                  notReady += 1;
+                  core.info(
+                    `PR #${candidate.number} is behind main at final synchronous merge preflight; left open for the next event.`,
+                  );
+                  continue;
+                }
+                if (mergePreflight === 'unknown') {
+                  notReady += 1;
+                  core.info(
+                    `PR #${candidate.number} has unknown mergeability at final synchronous merge preflight; left open for the next event.`,
+                  );
+                  continue;
+                }
 
                 stage = 'synchronous merge';
                 let responseMergeSha;
@@ -1734,7 +1779,7 @@ jobs:
                   );
                 } catch (error) {
                   const status = Number(error.status);
-                  if (![404, 405, 409].includes(status)) {
+                  if (![403, 404, 405, 409].includes(status)) {
                     throw error;
                   }
                   const {data: latestPull} = await github.rest.pulls.get({
@@ -1744,6 +1789,7 @@ jobs:
                   });
                   const recovery = classifyMergeAttemptRecovery(
                     status,
+                    error.message,
                     latestPull,
                     expectedHeadSha,
                     expectedAppOwner,

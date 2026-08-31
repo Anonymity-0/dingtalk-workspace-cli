@@ -140,15 +140,24 @@ func parseDateToTimestamp(dateStr, paramName string) (int64, error) {
 // the string representation required by getScheduleByRange. Date-only starts
 // use the beginning of the day, while date-only ends include the whole day.
 func normalizeScheduleRangeDate(dateStr, paramName string) (string, time.Time, error) {
+	return normalizeScheduleRangeDateInLocation(dateStr, paramName, time.Local)
+}
+
+func normalizeScheduleRangeDateInLocation(dateStr, paramName string, loc *time.Location) (string, time.Time, error) {
 	dateStr = strings.TrimSpace(dateStr)
-	if t, err := time.ParseInLocation("2006-01-02 15:04:05", dateStr, time.Local); err == nil {
+	const dateTimeLayout = "2006-01-02 15:04:05"
+	if t, err := time.ParseInLocation(dateTimeLayout, dateStr, loc); err == nil {
 		return t.Format("2006-01-02 15:04:05"), t, nil
 	}
-	if t, err := time.ParseInLocation("2006-01-02", dateStr, time.Local); err == nil {
+	if day, err := time.ParseInLocation("2006-01-02", dateStr, loc); err == nil {
+		boundary := dateStr + " 00:00:00"
+		hour, minute, second := 0, 0, 0
 		if strings.Contains(strings.ToLower(paramName), "end") {
-			t = t.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+			boundary = dateStr + " 23:59:59"
+			hour, minute, second = 23, 59, 59
 		}
-		return t.Format("2006-01-02 15:04:05"), t, nil
+		t := time.Date(day.Year(), day.Month(), day.Day(), hour, minute, second, 0, loc)
+		return boundary, t, nil
 	}
 	return "", time.Time{}, fmt.Errorf("invalid --%s format, use YYYY-MM-DD or YYYY-MM-DD HH:mm:ss (e.g. 2026-04-01)", paramName)
 }
@@ -535,6 +544,12 @@ func newAttendanceCommand() *cobra.Command {
 	// products.attendance). Catalog assembly stamps provenance contract_final.
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "attendance",
+		HelpReferences: contract.HelpReferences{
+			RelatedSkills: []string{"dingtalk-misc"},
+			Documentation: []contract.HelpDocumentation{
+				contract.SkillDocumentation("考勤深度指南", "dingtalk-misc", "references/attendance.md"),
+			},
+		},
 		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "查询考勤记录、排班、班次、考勤组、审批、报表、个人规则和假期，并执行经确认的考勤配置变更。",
 			UseWhen: []string{
