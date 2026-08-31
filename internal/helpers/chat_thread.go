@@ -1149,60 +1149,56 @@ const (
 )
 
 func detectTopicContainerState(value any, openConversationID string) topicContainerState {
+	envelope, ok := value.(map[string]any)
+	if !ok {
+		return topicContainerUnknown
+	}
+	conversation, ok := envelope["result"].(map[string]any)
+	if !ok {
+		return topicContainerUnknown
+	}
 	wantConversationID := strings.TrimSpace(openConversationID)
+	conversationID, ok := conversation["openConversationId"].(string)
+	if !ok || strings.TrimSpace(conversationID) != wantConversationID {
+		return topicContainerUnknown
+	}
+
+	sawTrue := false
 	sawFalse := false
 	sawInvalid := false
-	sawConversationID := false
-	var visit func(any) bool
-	visit = func(current any) bool {
-		switch typed := current.(type) {
-		case map[string]any:
-			for key, child := range typed {
-				if key == "openConversationId" && strings.TrimSpace(fmt.Sprint(child)) == wantConversationID {
-					sawConversationID = true
-				}
-				if key != "convThreadEnabled" && key != "topicGroup" && key != "isTopicGroup" {
-					if visit(child) {
-						return true
-					}
-					continue
-				}
-				switch enabled := child.(type) {
-				case bool:
-					if enabled {
-						return true
-					}
-					sawFalse = true
-				case string:
-					switch strings.ToLower(strings.TrimSpace(enabled)) {
-					case "true", "1":
-						return true
-					case "false", "0":
-						sawFalse = true
-					default:
-						sawInvalid = true
-					}
-				default:
-					sawInvalid = true
-				}
-			}
-		case []any:
-			for _, child := range typed {
-				if visit(child) {
-					return true
-				}
-			}
+	for _, key := range []string{"convThreadEnabled", "topicGroup", "isTopicGroup"} {
+		raw, present := conversation[key]
+		if !present {
+			continue
 		}
-		return false
+		switch enabled := raw.(type) {
+		case bool:
+			if enabled {
+				sawTrue = true
+			} else {
+				sawFalse = true
+			}
+		case string:
+			switch strings.ToLower(strings.TrimSpace(enabled)) {
+			case "true", "1":
+				sawTrue = true
+			case "false", "0":
+				sawFalse = true
+			default:
+				sawInvalid = true
+			}
+		default:
+			sawInvalid = true
+		}
 	}
-	if visit(value) {
+	if sawInvalid || (sawTrue && sawFalse) {
+		return topicContainerUnknown
+	}
+	if sawTrue {
 		return topicContainerTopic
 	}
-	if sawFalse && !sawInvalid {
+	if sawFalse {
 		return topicContainerNonTopic
-	}
-	if sawInvalid || !sawConversationID {
-		return topicContainerUnknown
 	}
 	return topicContainerUnspecified
 }
