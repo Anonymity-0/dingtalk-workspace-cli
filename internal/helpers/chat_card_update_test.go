@@ -15,6 +15,7 @@ package helpers
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -172,7 +173,7 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 			"message", "update-card",
 			"--biz-id", "biz-1",
 			"--content", "[\"message1\",\"message2\"]",
-			"--flow-status", "FINISH",
+			"--flow-status", "3",
 			"--card-engine", "a2ui",
 		)
 		if err != nil {
@@ -192,6 +193,28 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 		}
 		if annotations, ok := caller.args["a2uiAnnotations"].([]any); !ok || len(annotations) != 0 {
 			t.Fatalf("a2uiAnnotations = %#v", caller.args["a2uiAnnotations"])
+		}
+	})
+
+	t.Run("a2ui maps numeric flow status to enum", func(t *testing.T) {
+		for status, want := range map[int]string{
+			1: "PROCESSING", 2: "INPUTTING", 3: "FINISH", 4: "EXECUTING", 5: "ERROR",
+			6: "ABORTED", 7: "TIMEOUT", 8: "CONFIRMING", 9: "CONFIRMED",
+		} {
+			caller := &scriptedToolCaller{}
+			err := runNativeCardUpdate(t, caller,
+				"message", "update-card",
+				"--biz-id", "biz-1",
+				"--content", "[\"message\"]",
+				"--flow-status", fmt.Sprintf("%d", status),
+				"--card-engine", "a2ui",
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if caller.calls != 1 || caller.tool != "update_a2ui_card" || caller.args["flowStatus"] != want {
+				t.Fatalf("status %d: call = count:%d tool:%q flowStatus:%#v", status, caller.calls, caller.tool, caller.args["flowStatus"])
+			}
 		}
 	})
 
@@ -215,7 +238,8 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 	t.Run("a2ui validates content and status before call", func(t *testing.T) {
 		tests := [][]string{
 			{"--content", "plain", "--flow-status", "1"},
-			{"--content", "[\"message\"]", "--flow-status", "BAD_STATUS"},
+			{"--content", "[\"message\"]", "--flow-status", "0"},
+			{"--content", "[\"message\"]", "--flow-status", "10"},
 			{"--content", "[1]", "--flow-status", "1"},
 		}
 		for _, extra := range tests {
@@ -229,6 +253,12 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 			if caller.calls != 0 {
 				t.Fatalf("args %v made %d calls", args, caller.calls)
 			}
+		}
+		if _, err := a2uiFlowStatusFromInt(0); err == nil || !strings.Contains(err.Error(), "1-9") {
+			t.Fatalf("a2ui status 0 error = %v, want 1-9 range", err)
+		}
+		if _, err := a2uiFlowStatusFromInt(10); err == nil || !strings.Contains(err.Error(), "1-9") {
+			t.Fatalf("a2ui status 10 error = %v, want 1-9 range", err)
 		}
 	})
 }

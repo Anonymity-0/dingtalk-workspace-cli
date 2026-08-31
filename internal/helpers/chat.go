@@ -48,36 +48,28 @@ func normalizeCardEngine(raw string) (string, error) {
 	}
 }
 
-func parseStreamingCardFlowStatus(raw string) (int, error) {
-	flowStatus, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil || flowStatus < 1 || flowStatus > 5 {
-		return 0, fmt.Errorf("--flow-status 必须在 1-5 之间")
-	}
-	return flowStatus, nil
-}
-
-func normalizeA2UIUpdateFlowStatus(raw string) (string, error) {
-	switch strings.ToUpper(strings.TrimSpace(raw)) {
-	case "1", "PROCESSING":
+func a2uiFlowStatusFromInt(status int) (string, error) {
+	switch status {
+	case 1:
 		return "PROCESSING", nil
-	case "2", "INPUTTING":
+	case 2:
 		return "INPUTTING", nil
-	case "3", "FINISH":
+	case 3:
 		return "FINISH", nil
-	case "4", "EXECUTING":
+	case 4:
 		return "EXECUTING", nil
-	case "5", "ERROR":
+	case 5:
 		return "ERROR", nil
-	case "6", "ABORTED":
+	case 6:
 		return "ABORTED", nil
-	case "7", "TIMEOUT":
+	case 7:
 		return "TIMEOUT", nil
-	case "8", "CONFIRMING":
+	case 8:
 		return "CONFIRMING", nil
-	case "9", "CONFIRMED":
+	case 9:
 		return "CONFIRMED", nil
 	default:
-		return "", fmt.Errorf("--flow-status must be one of PROCESSING, INPUTTING, FINISH, EXECUTING, ERROR, ABORTED, TIMEOUT, CONFIRMING, CONFIRMED")
+		return "", fmt.Errorf("--flow-status 必须在 1-9 之间")
 	}
 }
 
@@ -93,6 +85,8 @@ func parseA2UIMessages(raw string) ([]string, error) {
 		return nil, fmt.Errorf("--content must contain at least one message when --card-engine=a2ui")
 	}
 	return messages, nil
+}
+
 func normalizeChatGroupCreateResponse(resp map[string]any) {
 	result, ok := resp["result"].(map[string]any)
 	if !ok {
@@ -6501,7 +6495,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 		Use:   "send-card",
 		Short: "创建并推送流式卡片",
 		Long: `向群聊或单聊创建并推送流式卡片。群聊传 --conversation-id，单聊传 --open-dingtalk-id，二者互斥。
-群聊创建卡片时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人。
+群聊创建卡片时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人（仅 --card-engine streaming 支持）。
 创建时无需传入卡片内容，后续通过 update-card 更新内容。
 
 注意：send-card 必须和 update-card 搭配使用。发送卡片后，使用返回的 bizId 调用 update-card 更新内容，
@@ -6534,6 +6528,9 @@ A2UI 通过 --card-engine a2ui 启用，--content 必须是 JSON 字符串数组
 				return fmt.Errorf("--at-open-dingtalk-ids and --at-all are only supported with --conversation-id")
 			}
 			if cardEngine == cardEngineA2UI {
+				if len(atOpenDingTalkIDs) > 0 || atAll {
+					return fmt.Errorf("--at-open-dingtalk-ids and --at-all are only supported with --card-engine streaming")
+				}
 				messages, err := parseA2UIMessages(mustGetFlag(cmd, "content"))
 				if err != nil {
 					return err
@@ -6551,10 +6548,14 @@ A2UI 通过 --card-engine a2ui 启用，--content 必须是 JSON 字符串数组
 					}
 					return callMCPToolOnServer("im", "create_and_send_a2ui_card", toolArgs)
 				}
+				resolved, err := resolveOpenDingTalkID(cmd.Context(), receiver)
+				if err != nil {
+					return err
+				}
 				toolArgs := map[string]any{
 					"requestId":              uuid.NewString(),
 					"bizCardId":              uuid.NewString(),
-					"receiverOpenDingTalkId": receiver,
+					"receiverOpenDingTalkId": resolved,
 					"protocolVersion":        "1.0",
 					"flowStatus":             defaultA2UIFlowStatus,
 					"a2uiMessages":           messages,
@@ -6638,11 +6639,11 @@ A2UI 通过 --card-engine a2ui 启用，--content 必须是 JSON 字符串数组
 		Long: `更新已发送的流式卡片内容。--biz-id 为 send-card 返回的业务 ID，--flow-status 控制流式状态。
 
 A2UI 通过 --card-engine a2ui 启用，--content 必须是 JSON 字符串数组。
-flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；a2ui 接受 PROCESSING、INPUTTING、FINISH、EXECUTING、ERROR、ABORTED、TIMEOUT、CONFIRMING、CONFIRMED，也兼容 1-9 数字写法。
-最后一次更新必须将 --flow-status 设为 FINISH，否则卡片会一直处于"生成中"的加载状态。`,
+flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；a2ui 接受数字 1-9（1=PROCESSING、2=INPUTTING、3=FINISH、4=EXECUTING、5=ERROR、6=ABORTED、7=TIMEOUT、8=CONFIRMING、9=CONFIRMED），CLI 映射为枚举字符串发送。
+最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。`,
 		Example: `  dws chat message update-card --biz-id <bizId> --content "更新的卡片内容" --flow-status 2
   dws chat message update-card --biz-id <bizId> --content "最终内容" --flow-status 3
-  dws chat message update-card --biz-id <bizId> --card-engine a2ui --content '["{\"version\":\"v1.0\",\"updateDataModel\":{\"surfaceId\":\"surface\",\"path\":\"/status\",\"value\":\"finished\"}}"]' --flow-status FINISH`,
+  dws chat message update-card --biz-id <bizId> --card-engine a2ui --content '["{\"version\":\"v1.0\",\"updateDataModel\":{\"surfaceId\":\"surface\",\"path\":\"/status\",\"value\":\"finished\"}}"]' --flow-status 3`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cardEngine, err := normalizeCardEngine(mustGetFlag(cmd, "card-engine"))
 			if err != nil {
@@ -6659,7 +6660,8 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 				return err
 			}
 			if cardEngine == cardEngineA2UI {
-				flowStatus, err := normalizeA2UIUpdateFlowStatus(mustGetFlag(cmd, "flow-status"))
+				rawFlowStatus, _ := cmd.Flags().GetInt("flow-status")
+				flowStatus, err := a2uiFlowStatusFromInt(rawFlowStatus)
 				if err != nil {
 					return err
 				}
@@ -6676,9 +6678,9 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 				}
 				return callMCPToolOnServer("im", "update_a2ui_card", params)
 			}
-			flowStatus, err := parseStreamingCardFlowStatus(mustGetFlag(cmd, "flow-status"))
-			if err != nil {
-				return err
+			flowStatus, _ := cmd.Flags().GetInt("flow-status")
+			if flowStatus < 1 || flowStatus > 5 {
+				return fmt.Errorf("--flow-status 必须在 1-5 之间")
 			}
 			params := map[string]any{
 				"bizId":      bizID,
@@ -6757,7 +6759,7 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 	_ = chatMessageUpdateCardCmd.MarkFlagRequired("biz-id")
 	chatMessageUpdateCardCmd.Flags().String("content", "", "卡片消息内容 (必填)")
 	_ = chatMessageUpdateCardCmd.MarkFlagRequired("content")
-	chatMessageUpdateCardCmd.Flags().String("flow-status", "", "流式状态 (必填)")
+	chatMessageUpdateCardCmd.Flags().Int("flow-status", 0, "流式状态 (必填)")
 	chatMessageUpdateCardCmd.Flags().String("card-engine", cardEngineStreaming, "卡片引擎：streaming 或 a2ui（默认 streaming）")
 
 	// ── download-media：下载消息中的媒体资源（走 IM MCP）──────

@@ -662,19 +662,61 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 		}
 	})
 
-	t.Run("direct message payload uses receiver open dingtalk id target without local conversion", func(t *testing.T) {
+	t.Run("direct message passes through D-form receiver", func(t *testing.T) {
 		caller := &scriptedToolCaller{}
 		err := runChatCoverageCommand(t, caller,
 			"message", "send-card",
-			"--open-dingtalk-id=D1",
+			"--open-dingtalk-id=DAAAAAAAAAAAiE",
 			"--card-engine=a2ui",
 			"--content=[\"message\"]",
 		)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if caller.calls != 1 || caller.tool != "create_and_send_a2ui_card" || caller.args["receiverOpenDingTalkId"] != "D1" {
+		if caller.calls != 1 || caller.tool != "create_and_send_a2ui_card" || caller.args["receiverOpenDingTalkId"] != "DAAAAAAAAAAAiE" {
 			t.Fatalf("call = count:%d tool:%q args:%#v", caller.calls, caller.tool, caller.args)
+		}
+	})
+
+	t.Run("direct message resolves userId receiver like streaming path", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{
+			{text: `{"result":[{"userId":"u1","openDingTalkId":"DAAAAAAAAAAAiE"}]}`},
+			{text: `{}`},
+		}}
+		err := runChatCoverageCommand(t, caller,
+			"message", "send-card",
+			"--open-dingtalk-id=u1",
+			"--card-engine=a2ui",
+			"--content=[\"message\"]",
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(caller.argsLog) != 2 {
+			t.Fatalf("expected 2 calls, got %d: %#v", len(caller.argsLog), caller.argsLog)
+		}
+		last := caller.argsLog[len(caller.argsLog)-1]
+		if caller.toolLog[len(caller.toolLog)-1] != "create_and_send_a2ui_card" || last["receiverOpenDingTalkId"] != "DAAAAAAAAAAAiE" {
+			t.Fatalf("last call tool:%q args:%#v", caller.toolLog[len(caller.toolLog)-1], last)
+		}
+	})
+
+	t.Run("a2ui rejects mention flags", func(t *testing.T) {
+		for _, tc := range []string{"--at-open-dingtalk-ids=DAAAAAAAAAAAiE", "--at-all"} {
+			caller := &scriptedToolCaller{}
+			err := runChatCoverageCommand(t, caller,
+				"message", "send-card",
+				"--conversation-id=cid",
+				"--card-engine=a2ui",
+				"--content=[\"message\"]",
+				tc,
+			)
+			if err == nil || !strings.Contains(err.Error(), "--card-engine streaming") {
+				t.Fatalf("flag %s: err = %v, want a2ui mention rejection", tc, err)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("flag %s made %d calls", tc, caller.calls)
+			}
 		}
 	})
 
