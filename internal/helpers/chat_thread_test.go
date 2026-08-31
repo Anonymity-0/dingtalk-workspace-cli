@@ -1473,6 +1473,8 @@ func TestCrossPlatformCoverageDetectTopicContainerState(t *testing.T) {
 		{name: "invalid string", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "convThreadEnabled": "unknown"}}, want: topicContainerUnknown},
 		{name: "invalid type", value: map[string]any{"result": map[string]any{"openConversationId": "group-1", "convThreadEnabled": 1}}, want: topicContainerUnknown},
 		{name: "missing response object", value: nil, want: topicContainerUnknown},
+		{name: "missing result object", value: map[string]any{}, want: topicContainerUnknown},
+		{name: "invalid result object", value: map[string]any{"result": []any{}}, want: topicContainerUnknown},
 		{name: "missing conversation id", value: map[string]any{"result": map[string]any{}}, want: topicContainerUnknown},
 		{name: "false without conversation id", value: map[string]any{"result": map[string]any{"convThreadEnabled": false}}, want: topicContainerUnknown},
 		{name: "different conversation id", value: map[string]any{"result": map[string]any{"openConversationId": "other-group", "convThreadEnabled": false}}, want: topicContainerUnknown},
