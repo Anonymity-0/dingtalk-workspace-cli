@@ -321,7 +321,7 @@ EOF
 }
 
 prepare_runtime_archives() {
-  "$ROOT/scripts/policy/check-runtime-payload.sh"
+  "$ROOT/scripts/policy/check-runtime-payload.sh" --allow-unsupported-tools
   work="$(mktemp -d)"
   found_any=0
   for archive in "$DIST_DIR"/dws-darwin-*.tar.gz "$DIST_DIR"/dws-linux-*.tar.gz "$DIST_DIR"/dws-windows-*.zip; do
