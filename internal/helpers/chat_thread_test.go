@@ -1155,14 +1155,59 @@ func TestCrossPlatformCoverageAtomicThreadQuoteGuardAllowsOrdinaryConversationFr
 		t.Run(test.name, func(t *testing.T) {
 			caller := &chatThreadCaller{responses: map[string]string{
 				"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"message-1","openConversationId":"cid"}]}}`,
-				"chat/get_conversation_info": `{"success":true,"result":{"conversationInfo":{"openConversationId":"cid","singleChat":false,"extension":{"newCSpaceIdIM":"space"}}}}`,
+				"chat/get_conversation_info": `{"success":true,"result":{"conversationInfo":{"openConversationId":"cid","title":"ordinary group","singleChat":false,"extension":{"newCSpaceIdIM":"space"}}}}`,
+				"im/search_groups":           `{"success":true,"result":{"groups":[{"openConversationId":"cid","title":"ordinary group","channel":false}],"hasMore":false}}`,
 			}}
 			if err := executeAtomicThreadCommand(t, caller, test.args...); err != nil {
 				t.Fatal(err)
 			}
-			if len(caller.calls) != 3 || caller.calls[0].tool != "list_messages_by_ids" ||
-				caller.calls[1].tool != "get_conversation_info" || caller.calls[2].tool != test.wantTool {
+			if len(caller.calls) != 4 || caller.calls[0].tool != "list_messages_by_ids" ||
+				caller.calls[1].tool != "get_conversation_info" || caller.calls[2].tool != "search_groups" ||
+				caller.calls[2].product != "im" || caller.calls[2].args["keyword"] != "ordinary group" ||
+				caller.calls[3].tool != test.wantTool {
 				t.Fatalf("calls = %#v", caller.calls)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageAtomicThreadQuoteGuardRequiresPositiveChannelForSparseTopicFields(t *testing.T) {
+	for _, test := range []struct {
+		name           string
+		searchResponse string
+		wantReason     string
+	}{
+		{
+			name:           "topic channel",
+			searchResponse: `{"success":true,"result":{"groups":[{"openConversationId":"cid","title":"topic group","channel":true}],"hasMore":false}}`,
+			wantReason:     "topic_quote_reply_disabled",
+		},
+		{
+			name:           "missing channel",
+			searchResponse: `{"success":true,"result":{"groups":[{"openConversationId":"cid","title":"topic group"}],"hasMore":false}}`,
+			wantReason:     "topic_quote_guard_unavailable",
+		},
+		{
+			name:           "different conversation",
+			searchResponse: `{"success":true,"result":{"groups":[{"openConversationId":"other","title":"topic group","channel":false}],"hasMore":false}}`,
+			wantReason:     "topic_quote_guard_unavailable",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &chatThreadCaller{responses: map[string]string{
+				"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"message-1","openConversationId":"cid"}]}}`,
+				"chat/get_conversation_info": `{"success":true,"result":{"conversationInfo":{"openConversationId":"cid","title":"topic group","singleChat":false}}}`,
+				"im/search_groups":           test.searchResponse,
+			}}
+			err := executeAtomicThreadCommand(t, caller,
+				"message", "reply", "--conversation-id", "cid", "--ref-msg-id", "message-1",
+				"--ref-sender", "DAAAAAAAAAAAiE", "--text", "引用")
+			var typed *apperrors.Error
+			if err == nil || !errors.As(err, &typed) || typed.Reason != test.wantReason {
+				t.Fatalf("error = %v, want reason %q", err, test.wantReason)
+			}
+			if len(caller.calls) != 3 || caller.calls[2].tool != "search_groups" {
+				t.Fatalf("quote guard reached write: %#v", caller.calls)
 			}
 		})
 	}
@@ -1494,7 +1539,7 @@ func TestCrossPlatformCoverageDetectTopicContainerState(t *testing.T) {
 		{name: "missing conversation id", value: conversationInfoEnvelope(map[string]any{}), want: topicContainerUnknown},
 		{name: "false without conversation id", value: conversationInfoEnvelope(map[string]any{"convThreadEnabled": false}), want: topicContainerUnknown},
 		{name: "different conversation id", value: conversationInfoEnvelope(map[string]any{"openConversationId": "other-group", "convThreadEnabled": false}), want: topicContainerUnknown},
-		{name: "ordinary sparse response", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "singleChat": false}), want: topicContainerNonTopic},
+		{name: "ordinary sparse response", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "title": "ordinary group", "singleChat": false}), want: topicContainerUnknown},
 		{name: "split across objects", value: conversationInfoEnvelope(map[string]any{"openConversationId": "other-group", "metadata": map[string]any{"openConversationId": "group-1", "convThreadEnabled": false}}), want: topicContainerUnknown},
 		{name: "topic group", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "topicGroup": "1"}), want: topicContainerTopic},
 		{name: "is topic group false", value: conversationInfoEnvelope(map[string]any{"openConversationId": "group-1", "isTopicGroup": false}), want: topicContainerNonTopic},
@@ -1502,6 +1547,41 @@ func TestCrossPlatformCoverageDetectTopicContainerState(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := detectTopicContainerState(test.value, "group-1"); got != test.want {
+				t.Fatalf("state = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageDetectTopicChannelState(t *testing.T) {
+	searchEnvelope := func(groups ...any) map[string]any {
+		return map[string]any{
+			"success": true,
+			"result":  map[string]any{"groups": groups},
+		}
+	}
+
+	for _, test := range []struct {
+		name  string
+		value any
+		want  topicContainerState
+	}{
+		{name: "ordinary channel", value: searchEnvelope(map[string]any{"openConversationId": "group-1", "title": "group", "channel": false}), want: topicContainerNonTopic},
+		{name: "topic channel", value: searchEnvelope(map[string]any{"openConversationId": "group-1", "title": "group", "channel": true}), want: topicContainerTopic},
+		{name: "missing response object", value: nil, want: topicContainerUnknown},
+		{name: "unsuccessful response", value: map[string]any{"success": false}, want: topicContainerUnknown},
+		{name: "missing groups", value: map[string]any{"success": true, "result": map[string]any{}}, want: topicContainerUnknown},
+		{name: "missing channel", value: searchEnvelope(map[string]any{"openConversationId": "group-1", "title": "group"}), want: topicContainerUnknown},
+		{name: "invalid channel", value: searchEnvelope(map[string]any{"openConversationId": "group-1", "title": "group", "channel": "false"}), want: topicContainerUnknown},
+		{name: "different conversation", value: searchEnvelope(map[string]any{"openConversationId": "group-2", "title": "group", "channel": false}), want: topicContainerUnknown},
+		{name: "different title", value: searchEnvelope(map[string]any{"openConversationId": "group-1", "title": "renamed", "channel": false}), want: topicContainerUnknown},
+		{name: "conflicting duplicates", value: searchEnvelope(
+			map[string]any{"openConversationId": "group-1", "title": "group", "channel": false},
+			map[string]any{"openConversationId": "group-1", "title": "group", "channel": true},
+		), want: topicContainerUnknown},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := detectTopicChannelState(test.value, "group-1", "group"); got != test.want {
 				t.Fatalf("state = %v, want %v", got, test.want)
 			}
 		})

@@ -1112,11 +1112,32 @@ func guardTopicQuoteReply(cmd *cobra.Command, openConversationID, openMessageID 
 	if err := json.Unmarshal([]byte(raw), &data); err != nil {
 		return topicQuoteGuardUnavailable("chat/get_conversation_info", "会话信息响应无法解析，已阻止发送")
 	}
-	switch detectTopicContainerState(data, openConversationID) {
+	inspection := inspectTopicContainerState(data, openConversationID)
+	switch inspection.state {
 	case topicContainerTopic:
 		return topicQuoteReplyDisabledError()
 	case topicContainerUnknown:
-		return topicQuoteGuardUnavailable("chat/get_conversation_info", "会话信息无法确认有效的话题圈标识，已阻止发送")
+		if !inspection.needsChannelLookup {
+			return topicQuoteGuardUnavailable("chat/get_conversation_info", "会话信息无法确认有效的话题圈标识，已阻止发送")
+		}
+		raw, err = callMCPToolReturnTextOnServer(cmd.Context(), "im", "search_groups", map[string]any{
+			"keyword": inspection.conversationTitle,
+			"limit":   100,
+			"cursor":  "0",
+		})
+		if err != nil {
+			return topicQuoteGuardUnavailable("im/search_groups", "无法读取会话类型，已阻止发送")
+		}
+		var searchData any
+		if err := json.Unmarshal([]byte(raw), &searchData); err != nil {
+			return topicQuoteGuardUnavailable("im/search_groups", "会话类型响应无法解析，已阻止发送")
+		}
+		switch detectTopicChannelState(searchData, openConversationID, inspection.conversationTitle) {
+		case topicContainerTopic:
+			return topicQuoteReplyDisabledError()
+		case topicContainerUnknown:
+			return topicQuoteGuardUnavailable("im/search_groups", "群搜索无法确认同一会话的 channel 标识，已阻止发送")
+		}
 	}
 	return nil
 }
@@ -1147,27 +1168,37 @@ const (
 	topicContainerTopic
 )
 
+type topicContainerInspection struct {
+	state              topicContainerState
+	conversationTitle  string
+	needsChannelLookup bool
+}
+
 func detectTopicContainerState(value any, openConversationID string) topicContainerState {
+	return inspectTopicContainerState(value, openConversationID).state
+}
+
+func inspectTopicContainerState(value any, openConversationID string) topicContainerInspection {
 	envelope, ok := value.(map[string]any)
 	if !ok {
-		return topicContainerUnknown
+		return topicContainerInspection{state: topicContainerUnknown}
 	}
 	success, ok := envelope["success"].(bool)
 	if !ok || !success {
-		return topicContainerUnknown
+		return topicContainerInspection{state: topicContainerUnknown}
 	}
 	result, ok := envelope["result"].(map[string]any)
 	if !ok {
-		return topicContainerUnknown
+		return topicContainerInspection{state: topicContainerUnknown}
 	}
 	conversation, ok := result["conversationInfo"].(map[string]any)
 	if !ok {
-		return topicContainerUnknown
+		return topicContainerInspection{state: topicContainerUnknown}
 	}
 	wantConversationID := strings.TrimSpace(openConversationID)
 	conversationID, ok := conversation["openConversationId"].(string)
 	if !ok || strings.TrimSpace(conversationID) != wantConversationID {
-		return topicContainerUnknown
+		return topicContainerInspection{state: topicContainerUnknown}
 	}
 
 	sawTrue := false
@@ -1199,19 +1230,84 @@ func detectTopicContainerState(value any, openConversationID string) topicContai
 		}
 	}
 	if sawInvalid || (sawTrue && sawFalse) {
-		return topicContainerUnknown
+		return topicContainerInspection{state: topicContainerUnknown}
 	}
 	if sawTrue {
-		return topicContainerTopic
+		return topicContainerInspection{state: topicContainerTopic}
 	}
 	if sawFalse {
+		return topicContainerInspection{state: topicContainerNonTopic}
+	}
+	title, ok := conversation["title"].(string)
+	title = strings.TrimSpace(title)
+	if !ok || title == "" {
+		return topicContainerInspection{state: topicContainerUnknown}
+	}
+	// Missing topic-only fields is not positive ordinary-group evidence. The
+	// caller must bind this exact conversation to search_groups.channel before
+	// allowing a write.
+	return topicContainerInspection{
+		state:              topicContainerUnknown,
+		conversationTitle:  title,
+		needsChannelLookup: true,
+	}
+}
+
+func detectTopicChannelState(value any, openConversationID, conversationTitle string) topicContainerState {
+	envelope, ok := value.(map[string]any)
+	if !ok {
+		return topicContainerUnknown
+	}
+	success, ok := envelope["success"].(bool)
+	if !ok || !success {
+		return topicContainerUnknown
+	}
+	result, ok := envelope["result"].(map[string]any)
+	if !ok {
+		return topicContainerUnknown
+	}
+	groups, ok := result["groups"].([]any)
+	if !ok {
+		return topicContainerUnknown
+	}
+
+	wantConversationID := strings.TrimSpace(openConversationID)
+	wantTitle := strings.TrimSpace(conversationTitle)
+	sawTopic := false
+	sawNonTopic := false
+	for _, item := range groups {
+		group, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		conversationID, ok := group["openConversationId"].(string)
+		if !ok || strings.TrimSpace(conversationID) != wantConversationID {
+			continue
+		}
+		title, ok := group["title"].(string)
+		if !ok || strings.TrimSpace(title) != wantTitle {
+			return topicContainerUnknown
+		}
+		channel, ok := group["channel"].(bool)
+		if !ok {
+			return topicContainerUnknown
+		}
+		if channel {
+			sawTopic = true
+		} else {
+			sawNonTopic = true
+		}
+	}
+	if sawTopic && sawNonTopic {
+		return topicContainerUnknown
+	}
+	if sawTopic {
+		return topicContainerTopic
+	}
+	if sawNonTopic {
 		return topicContainerNonTopic
 	}
-	// The live get_conversation_info response carries the conversation at
-	// result.conversationInfo and sparsely publishes topic-only indicators.
-	// After that exact object is bound to the requested conversation, absence
-	// of every topic indicator is the ordinary-conversation representation.
-	return topicContainerNonTopic
+	return topicContainerUnknown
 }
 
 func topicQuoteGuardUnavailable(operation, message string) error {
