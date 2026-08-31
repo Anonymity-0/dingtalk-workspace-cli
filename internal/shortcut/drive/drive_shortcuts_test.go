@@ -748,8 +748,9 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 		if err := json.Unmarshal([]byte(stdout.String()), &preview); err != nil {
 			t.Fatalf("decode drive dry-run output %q: %v", stdout.String(), err)
 		}
-		if preview["mimeType"] != "application/octet-stream" {
-			t.Fatalf("drive dry-run output = %#v, want explicit MIME type", preview)
+		data, ok := preview["data"].(map[string]any)
+		if !ok || preview["ok"] != true || preview["outcome"] != "success" || data["mimeType"] != "application/octet-stream" || data["executed"] != false {
+			t.Fatalf("drive dry-run output = %#v, want a successful non-executing envelope with explicit MIME type", preview)
 		}
 		if len(caller.history) != 0 {
 			t.Fatalf("drive dry-run reached MCP: %v", caller.history)
@@ -783,6 +784,9 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 				var typed *apperrors.Error
 				if !errors.As(err, &typed) || typed.ExecutionStarted == nil || !*typed.ExecutionStarted || typed.Retryable {
 					t.Fatalf("upload mismatch metadata = %#v", err)
+				}
+				if typed.Operation != "drive/commit_upload" || typed.FailureStage != "readback_verification" {
+					t.Fatalf("drive upload mismatch operation/stage = %q/%q", typed.Operation, typed.FailureStage)
 				}
 				if typed.Details["nodeId"] != "uploaded-4" || typed.Details["requestedName"] != "input.bin" {
 					t.Fatalf("upload mismatch details = %#v", typed.Details)
@@ -849,6 +853,42 @@ func TestCrossPlatformCoverageDriveUploadRoutesWorkspaceToDocSpace(t *testing.T)
 		}
 		if strings.Join(caller.history, ",") != "get_document_info" {
 			t.Fatalf("readback history = %v, want doc/get_document_info only", caller.history)
+		}
+	})
+
+	t.Run("workspace name mismatch preserves committed write evidence", func(t *testing.T) {
+		uploadCalls := 0
+		testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			uploadCalls++
+			return map[string]any{"dentryUuid": "doc-file-mismatch"}, nil
+		})
+		testseam.Swap(t, &uploadDriveFile, func(context.Context, helpers.DriveUploadRequest) (map[string]any, error) {
+			t.Fatal("workspace upload must not use the Drive transaction")
+			return nil, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"nodeId":"doc-file-mismatch","workspaceId":"wiki-1","name":"wrong","extension":"txt"}`},
+		}}
+		err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes")
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) {
+			t.Fatalf("workspace name mismatch must return a structured error: %v", err)
+		}
+		if typed.Operation != "doc/commit_uploaded_file" || typed.Reason != "readback_mismatch" || typed.FailureStage != "readback_verification" {
+			t.Fatalf("workspace mismatch error identity = %#v", typed)
+		}
+		if typed.ExecutionStarted == nil || !*typed.ExecutionStarted || typed.Retryable {
+			t.Fatalf("workspace mismatch must record committed, non-retryable execution: %#v", typed)
+		}
+		if typed.Details["status"] != "partial_success" || typed.Details["complete"] != false || typed.Details["retrySafe"] != false || typed.Details["nodeId"] != "doc-file-mismatch" || typed.Details["requestedName"] != "notes.txt" || typed.Details["actualName"] != "wrong" {
+			t.Fatalf("workspace mismatch lost repair evidence: %#v", typed.Details)
+		}
+		resource, ok := typed.Details["resource"].(map[string]any)
+		if !ok || resource["workspaceId"] != "wiki-1" || resource["extension"] != "txt" || !strings.Contains(typed.Hint, "禁止盲目重试") {
+			t.Fatalf("workspace mismatch lost readback or retry guidance: %#v", typed)
+		}
+		if uploadCalls != 1 || strings.Join(caller.history, ",") != "get_document_info" {
+			t.Fatalf("workspace mismatch repeated a write or used the wrong readback: uploads=%d history=%v", uploadCalls, caller.history)
 		}
 	})
 
