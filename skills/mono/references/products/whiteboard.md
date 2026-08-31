@@ -25,8 +25,8 @@ Reference；只有操作页仍缺少具体字段时，才读取一份精确协�
 - `+update` 内部仍使用完整同板 query 校验；成功结果只返回稳定目标、mode、验证节点
   数、summary 和精简 receipt，不返回 `source.pages[].nodes` 完整快照。用户明确要求
   更新后完整快照时，再执行一次 `+query`；否则不得为补输出重复查询。
-- append 的 `verified=true` 已包含独立读回证据，不再追加 query；overwrite 固定在
-  写后执行最终 query；其他流程仅在用户要求完整快照或读回证据缺失时 query。
+- append 和 overwrite 的 `verified=true` 均包含独立读回证据，不再追加 query；
+  额外 query 仅用于用户要求完整快照，或未验证/提交状态不明时的有界只读对账。
 
 ## 调用与上下文预算
 

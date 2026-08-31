@@ -43,7 +43,7 @@ func TestWhiteboardReferencesAreDeliveredToBothSkillSurfaces(t *testing.T) {
 		"./whiteboard/vector.md",
 		"./whiteboard/replace.md",
 		"每个普通任务最多读取一份操作",
-		"overwrite 固定在",
+		"append 和 overwrite 的 `verified=true` 均包含独立读回证据",
 		"## 调用与上下文预算",
 		"投影只减少重复上下文，不删除业务信息",
 		"成功结果只返回稳定目标、mode、验证节点",
@@ -150,15 +150,20 @@ func TestWhiteboardOperationReferencesPublishValidEnvelopes(t *testing.T) {
 					t.Fatalf("first node type = %#v, want %q", node["type"], tc.nodeType)
 				}
 			}
-			queryCount := 0
+			var commands []string
 			for _, fence := range bashFences(string(data)) {
-				queryCount += strings.Count(fence, "dws whiteboard +query")
+				for _, line := range strings.Split(fence, "\n") {
+					fields := strings.Fields(line)
+					if len(fields) >= 3 && fields[0] == "dws" && fields[1] == "whiteboard" {
+						commands = append(commands, fields[2])
+					}
+				}
 				if strings.Contains(fence, "--yes") {
 					t.Errorf("stored write example must not pre-authorize execution:\n%s", fence)
 				}
 			}
-			if tc.overwrite && queryCount != 2 {
-				t.Errorf("overwrite reference query count = %d, want old and final snapshots", queryCount)
+			if tc.overwrite && strings.Join(commands, " ") != "+query +update" {
+				t.Errorf("overwrite default commands = %v, want one pre-write snapshot then one internally verified update", commands)
 			}
 		})
 	}
@@ -192,7 +197,12 @@ func TestWhiteboardOperationReferencesKeepReviewedCapabilities(t *testing.T) {
 			`"overwrite": true`,
 			`"nodes": []`,
 			"不要先清空再追加",
-			"最终 query 与预期终态一致后才交付",
+			"不再追加 `+query`",
+			"仅用户明确要求更新后完整快照时",
+			"分别报告更新已验证成功、快照获取失败",
+			"不能报告完整成功",
+			"最多再对同一目标 `+query` 一次只读对账",
+			"不自动重放 overwrite、清空或追加",
 		},
 	}
 	for path, markers := range required {
