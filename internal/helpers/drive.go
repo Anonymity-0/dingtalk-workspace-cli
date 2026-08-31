@@ -729,9 +729,10 @@ func newDriveCommand() *cobra.Command {
   1. 获取下载 URL 和签名请求头 (download_file)
   2. HTTP GET 下载文件二进制内容到本地
 
---output 指定本地保存路径，可以是文件路径或目录。
-如果指定目录，文件名从下载 URL 中自动推断。`,
-		Example: `  dws drive download --node <dentryUuid> --output ./report.pdf
+--output 指定本地保存路径，可以是文件路径或目录，不指定时默认当前目录。
+路径为目录（或未指定）时，文件名优先取返回的 fileName，其次从下载 URL 推断。`,
+		Example: `  dws drive download --node <dentryUuid>
+  dws drive download --node <dentryUuid> --output ./report.pdf
   dws drive download --node <dentryUuid> --output ~/downloads/
   dws drive download --node <dentryUuid> --output ./big.zip --part-size 32MB --parallel 8`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -741,7 +742,7 @@ func newDriveCommand() *cobra.Command {
 			}
 			outputPath, _ := cmd.Flags().GetString("output")
 			if outputPath == "" {
-				return fmt.Errorf("flag --output is required")
+				outputPath = "." // 未指定保存路径时默认当前目录，文件名自动推断
 			}
 
 			argsMap := map[string]any{"fileId": fileID}
@@ -771,7 +772,11 @@ func newDriveCommand() *cobra.Command {
 				}
 				deps.Out.PrintKeyValue("操作", "下载钉盘文件")
 				deps.Out.PrintKeyValue("文件ID", fileID)
-				deps.Out.PrintKeyValue("输出", outputPath)
+				if rawOutput, _ := cmd.Flags().GetString("output"); rawOutput != "" {
+					deps.Out.PrintKeyValue("输出", rawOutput)
+				} else {
+					deps.Out.PrintKeyValue("输出", "当前目录（自动推断文件名）")
+				}
 				return nil
 			}
 
@@ -876,7 +881,7 @@ func newDriveCommand() *cobra.Command {
 				AvoidWhen: []string{
 					"在线文档(adoc)要导出为 Word/docx 改用 dws doc export，不要用 download 代替导出",
 					"只要临时下载链接语义且走文档附件块时用 dws doc media download",
-					"未指定 --output 不要调用（CLI 必填）",
+					"需要确定的输出路径时显式传 --output；缺省会落到当前目录",
 				},
 				Examples: []string{
 					"dws drive download --node <dentryUuid> --output ./report.pdf --format json",
@@ -908,7 +913,8 @@ func newDriveCommand() *cobra.Command {
   1. 获取历史版本下载 URL 和签名请求头 (download_file_version)
   2. HTTP GET 下载文件二进制内容到本地
 
-版本号从 dws drive list --node <dentryUuid> --versions 获取。`,
+版本号从 dws drive list --node <dentryUuid> --versions 获取。
+--output 指定本地保存路径，不指定时默认当前目录，文件名自动推断。`,
 		Example: `  dws drive download-version --node <dentryUuid> --version 3 --output ./report_v3.pdf
   dws drive download-version --node <dentryUuid> --version 3 --output ~/downloads/`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -922,7 +928,7 @@ func newDriveCommand() *cobra.Command {
 			}
 			outputPath, _ := cmd.Flags().GetString("output")
 			if outputPath == "" {
-				return fmt.Errorf("flag --output is required")
+				outputPath = "." // 未指定保存路径时默认当前目录，文件名自动推断
 			}
 
 			// fail-fast：分片下载参数校验
@@ -949,7 +955,11 @@ func newDriveCommand() *cobra.Command {
 				deps.Out.PrintKeyValue("操作", "下载文件历史版本")
 				deps.Out.PrintKeyValue("节点ID", fileID)
 				deps.Out.PrintKeyValue("版本号", fmt.Sprintf("%d", versionNum))
-				deps.Out.PrintKeyValue("输出", outputPath)
+				if rawOutput, _ := cmd.Flags().GetString("output"); rawOutput != "" {
+					deps.Out.PrintKeyValue("输出", rawOutput)
+				} else {
+					deps.Out.PrintKeyValue("输出", "当前目录（自动推断文件名）")
+				}
 				return nil
 			}
 
@@ -1277,7 +1287,7 @@ func newDriveCommand() *cobra.Command {
 
 	driveDownloadCmd.Flags().String("node", "", "文件 ID (dentryUuid) (必填)")
 	driveDownloadCmd.Flags().String("space-id", "", "文件所属空间 ID (可选)")
-	driveDownloadCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
+	driveDownloadCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，可选，默认当前目录)")
 	driveDownloadCmd.Flags().Int("version", 0, "下载指定历史版本号（兼容别名，等价 download-version）")
 	driveDownloadCmd.Flags().String("part-size", "16MB", "分片下载的分片大小，如 8MB/16MB/1GB，范围 1MB-1GB (可选)")
 	driveDownloadCmd.Flags().Int("parallel", 4, "分片下载并发数，范围 1-8 (可选)")
@@ -1285,7 +1295,7 @@ func newDriveCommand() *cobra.Command {
 
 	driveDownloadVersionCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (必填)")
 	driveDownloadVersionCmd.Flags().Int("version", 0, "历史版本号 (必填，正整数，从 drive list --versions 获取)")
-	driveDownloadVersionCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
+	driveDownloadVersionCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，可选，默认当前目录)")
 	driveDownloadVersionCmd.Flags().String("part-size", "16MB", "分片下载的分片大小，如 8MB/16MB/1GB，范围 1MB-1GB (可选)")
 	driveDownloadVersionCmd.Flags().Int("parallel", 4, "分片下载并发数，范围 1-8 (可选)")
 	driveDownloadVersionCmd.Flags().Bool("no-resume", false, "关闭断点续传 (可选)")

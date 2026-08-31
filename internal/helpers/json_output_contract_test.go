@@ -95,6 +95,44 @@ func TestCrossPlatformCoverageJSONOutputContractForCompletedFileTransfers(t *tes
 		}
 	})
 
+	t.Run("drive latest download with default output directory", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		stdout, _, err := executeJSONOutputContractCommand(t,
+			&scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: `{"downloadUrl":"https://example.test/latest.txt","fileName":"inferred-latest.txt","fileSize":7,"version":9}`}}},
+			newDriveCommand,
+			"download", "--node", "node-default-output")
+		if err != nil {
+			t.Fatal(err)
+		}
+		payload := assertJSONOutputPayload(t, stdout)
+		savedPath, _ := payload["savedPath"].(string)
+		if filepath.Base(savedPath) != "inferred-latest.txt" {
+			t.Fatalf("expected inferred filename in savedPath, got %#v", payload)
+		}
+		if _, statErr := os.Stat(savedPath); statErr != nil {
+			t.Fatalf("expected downloaded file at %q: %v", savedPath, statErr)
+		}
+	})
+
+	t.Run("drive historical download with default output directory", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		stdout, _, err := executeJSONOutputContractCommand(t,
+			&scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: `{"downloadUrl":"https://example.test/versioned.txt","fileName":"inferred-versioned.txt","fileSize":7}`}}},
+			newDriveCommand,
+			"download", "--node", "node-versioned-default", "--version", "4")
+		if err != nil {
+			t.Fatal(err)
+		}
+		payload := assertJSONOutputPayload(t, stdout)
+		savedPath, _ := payload["savedPath"].(string)
+		if filepath.Base(savedPath) != "inferred-versioned.txt" {
+			t.Fatalf("expected inferred filename in savedPath, got %#v", payload)
+		}
+		if _, statErr := os.Stat(savedPath); statErr != nil {
+			t.Fatalf("expected downloaded file at %q: %v", savedPath, statErr)
+		}
+	})
+
 	t.Run("doc export", func(t *testing.T) {
 		testseam.Swap(t, &helperAfter, func(time.Duration) <-chan time.Time {
 			ch := make(chan time.Time, 1)
@@ -134,6 +172,19 @@ func TestCrossPlatformCoverageJSONOutputContractDryRunIsMachineReadable(t *testi
 	if payload["dry_run"] != true || payload["executed"] != false || payload["nodeId"] != "node-dry-run" {
 		t.Fatalf("payload = %#v", payload)
 	}
+
+	t.Run("text mode default output annotation", func(t *testing.T) {
+		stdout, _, err := executeJSONOutputContractCommand(t,
+			&scriptedToolCaller{format: "text", dry: true},
+			newDriveCommand,
+			"download", "--node", "node-dry-run-default", "--dry-run")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(stdout, "当前目录（自动推断文件名）") {
+			t.Fatalf("expected default-output annotation in text preview, got %q", stdout)
+		}
+	})
 
 	stdout, _, err = executeJSONOutputContractCommand(t,
 		&scriptedToolCaller{format: "json", dry: true},
