@@ -701,6 +701,29 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 		}
 	})
 
+	t.Run("direct message userId resolution failure aborts a2ui send", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{
+			{err: errors.New("contact lookup unavailable")},
+		}}
+		err := runChatCoverageCommand(t, caller,
+			"message", "send-card",
+			"--open-dingtalk-id=u1",
+			"--card-engine=a2ui",
+			"--content=[\"message\"]",
+		)
+		if err == nil {
+			t.Fatal("expected userId resolution failure to propagate to caller")
+		}
+		if len(caller.toolLog) == 0 {
+			t.Fatal("expected contact resolution attempts before failure")
+		}
+		for _, tool := range caller.toolLog {
+			if tool == "create_and_send_a2ui_card" {
+				t.Fatalf("a2ui send executed despite resolution failure: %#v", caller.toolLog)
+			}
+		}
+	})
+
 	t.Run("a2ui rejects mention flags", func(t *testing.T) {
 		for _, tc := range []string{"--at-open-dingtalk-ids=DAAAAAAAAAAAiE", "--at-all"} {
 			caller := &scriptedToolCaller{}
@@ -721,7 +744,7 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 	})
 
 	t.Run("invalid a2ui content makes no call", func(t *testing.T) {
-		for _, content := range []string{"", "plain text", "{\"message\":\"x\"}", "[1]"} {
+		for _, content := range []string{"", "plain text", "{\"message\":\"x\"}", "[1]", "[]"} {
 			caller := &scriptedToolCaller{}
 			err := runChatCoverageCommand(t, caller,
 				"message", "send-card",

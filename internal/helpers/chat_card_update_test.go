@@ -241,6 +241,7 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 			{"--content", "[\"message\"]", "--flow-status", "0"},
 			{"--content", "[\"message\"]", "--flow-status", "10"},
 			{"--content", "[1]", "--flow-status", "1"},
+			{"--content", "[]", "--flow-status", "1"},
 		}
 		for _, extra := range tests {
 			caller := &scriptedToolCaller{}
