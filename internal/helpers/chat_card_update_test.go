@@ -268,6 +268,18 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 				t.Fatalf("args %v made %d calls", args, caller.calls)
 			}
 		}
+		for _, args := range [][]string{
+			{"message", "update-a2ui-card", "--biz-id", "biz-1", "--content", "[\"message\"]"},
+			{"message", "update-a2ui-card", "--biz-id", "<bizId>", "--content", "[\"message\"]", "--flow-status", "1"},
+		} {
+			caller := &scriptedToolCaller{}
+			if err := runNativeCardUpdate(t, caller, args...); err == nil {
+				t.Fatalf("args %v unexpectedly succeeded", args)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("args %v made %d calls", args, caller.calls)
+			}
+		}
 		if _, err := normalizeA2UIUpdateFlowStatus(""); err == nil || !strings.Contains(err.Error(), "PROCESSING") {
 			t.Fatalf("empty a2ui status error = %v, want enum list", err)
 		}
