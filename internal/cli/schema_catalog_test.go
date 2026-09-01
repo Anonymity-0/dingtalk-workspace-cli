@@ -1446,7 +1446,6 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		{"chat message send-card", "card-engine", "cardEngine", false, ""},
 		{"chat message send-card", "content", "content", false, ""},
 		{"chat message update-card", "card-engine", "cardEngine", false, ""},
-		{"chat message update-card", "flow-status-name", "flowStatus", false, ""},
 		{"chat message update-text-emotion", "old-emotion-id", "oldEmotionId", true, ""},
 		{"chat category batch-info", "category-ids", "categoryIds", true, "array"},
 		{"chat category list-by-conv", "conversation-id", "openConversationId", true, ""},

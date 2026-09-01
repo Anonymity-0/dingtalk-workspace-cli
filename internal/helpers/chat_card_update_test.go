@@ -173,7 +173,7 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 			"message", "update-card",
 			"--biz-id", "biz-1",
 			"--content", "[\"message1\",\"message2\"]",
-			"--flow-status-name", "FINISH",
+			"--flow-status", "FINISH",
 			"--card-engine", "a2ui",
 		)
 		if err != nil {
