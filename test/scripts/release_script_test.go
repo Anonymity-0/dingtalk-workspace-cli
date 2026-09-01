@@ -1000,6 +1000,31 @@ esac
 	}
 }
 
+func TestReleaseWorkflowDeliveryJobNamesMatchWorkflow(t *testing.T) {
+	t.Parallel()
+
+	const signedRuntimeJob = "Validate signed runtime package"
+	workflow := readReleaseWorkflow(t)
+	if got := strings.Count(workflow, "name: "+signedRuntimeJob); got != 1 {
+		t.Fatalf("release workflow contains %d %q jobs, want 1", got, signedRuntimeJob)
+	}
+
+	sourceRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("Abs(repo root) error = %v", err)
+	}
+	verifier, err := os.ReadFile(filepath.Join(sourceRoot, "scripts", "release", "verify-release-workflow-delivery.sh"))
+	if err != nil {
+		t.Fatalf("ReadFile(delivery verifier) error = %v", err)
+	}
+	if got := strings.Count(string(verifier), `"`+signedRuntimeJob+`"`); got != 4 {
+		t.Fatalf("delivery verifier contains %d %q requirements, want 4", got, signedRuntimeJob)
+	}
+	if strings.Contains(string(verifier), "Verify Apple Developer ID signatures") {
+		t.Fatal("delivery verifier retains the superseded signed-runtime job name")
+	}
+}
+
 func TestReleaseWorkflowDeliveryAcceptsOnlySharedProtectedRecovery(t *testing.T) {
 	sourceRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -1023,7 +1048,7 @@ case "$endpoint" in
   */actions/runs/42/jobs*)
     printf '{"jobs":['
     printf '{"name":"Build signed release artifacts","status":"completed","conclusion":"success","head_sha":"%s"},' "$WORKFLOW_SHA"
-    printf '{"name":"Verify Apple Developer ID signatures","status":"completed","conclusion":"success","head_sha":"%s"},' "$WORKFLOW_SHA"
+    printf '{"name":"Validate signed runtime package","status":"completed","conclusion":"success","head_sha":"%s"},' "$WORKFLOW_SHA"
     printf '{"name":"Publish immutable GitHub Release","status":"completed","conclusion":"success","head_sha":"%s"}' "$WORKFLOW_SHA"
     if [ "${MISSING_CHANNELS:-0}" != 1 ]; then
       printf ',{"name":"Publish npm and mirrors","status":"completed","conclusion":"success","head_sha":"%s"}' "$WORKFLOW_SHA"
@@ -1117,7 +1142,7 @@ required = [
     "Seal cloud release tag",
     "release-contract",
     "Build signed release artifacts",
-    "Verify Apple Developer ID signatures",
+    "Validate signed runtime package",
     "Publish immutable GitHub Release",
     "Publish npm and mirrors",
     "Release delivery gate",
@@ -1289,7 +1314,7 @@ commit = os.environ.get("JOB_SHA", os.environ["RELEASE_COMMIT"])
 core = [
     "release-contract",
     "Build signed release artifacts",
-    "Verify Apple Developer ID signatures",
+    "Validate signed runtime package",
     "Publish immutable GitHub Release",
 ]
 jobs = [{
