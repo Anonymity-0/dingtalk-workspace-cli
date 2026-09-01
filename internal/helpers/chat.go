@@ -6688,13 +6688,14 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 				}
 				return callMCPToolOnServer("im", "update_a2ui_card", params)
 			}
-			flowStatus, err := strconv.Atoi(strings.TrimSpace(mustGetFlag(cmd, "flow-status")))
+			parsedFlowStatus, err := strconv.ParseInt(strings.TrimSpace(mustGetFlag(cmd, "flow-status")), 0, 64)
 			if err != nil {
 				return fmt.Errorf("--flow-status 必须在 1-5 之间")
 			}
-			if flowStatus < 1 || flowStatus > 5 {
+			if parsedFlowStatus < 1 || parsedFlowStatus > 5 {
 				return fmt.Errorf("--flow-status 必须在 1-5 之间")
 			}
+			flowStatus := int(parsedFlowStatus)
 			params := map[string]any{
 				"bizId":      bizID,
 				"msgContent": mustGetFlag(cmd, "content"),

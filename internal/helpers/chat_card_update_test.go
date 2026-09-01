@@ -235,6 +235,23 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 		}
 	})
 
+	t.Run("streaming preserves native int spellings", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":{"bizId":"biz-1","updated":true}}`}}}
+		err := runNativeCardUpdate(t, caller,
+			"message", "update-card",
+			"--biz-id", "biz-1",
+			"--content", "完成",
+			"--flow-status", "0x3",
+			"--card-engine", "streaming",
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if caller.calls != 1 || caller.tool != "update_streaming_card" || caller.args["flowStatus"] != 3 {
+			t.Fatalf("call = count:%d tool:%q flowStatus:%#v", caller.calls, caller.tool, caller.args["flowStatus"])
+		}
+	})
+
 	t.Run("a2ui validates content and status before call", func(t *testing.T) {
 		tests := [][]string{
 			{"--content", "plain", "--flow-status", "1"},
