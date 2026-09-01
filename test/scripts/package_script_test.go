@@ -2252,7 +2252,7 @@ func TestReleaseWorkflowDraftLifecycleUsesOneReleaseID(t *testing.T) {
 
 	for _, required := range []string{
 		"id: publish",
-		"--json databaseId",
+		`"repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_VERSION"`,
 		`"repos/$GITHUB_REPOSITORY/releases/$release_id"`,
 		`uploaded_release_id="$(`,
 		`test "$uploaded_release_id" = "$release_id"`,
@@ -2273,7 +2273,7 @@ func TestReleaseWorkflowDraftLifecycleUsesOneReleaseID(t *testing.T) {
 	for _, forbidden := range []string{
 		`gh release download "$RELEASE_VERSION"`,
 		`gh release edit "$RELEASE_VERSION" --draft=false`,
-		`"repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_VERSION"`,
+		`gh release view "$RELEASE_VERSION"`,
 	} {
 		if strings.Contains(publishStep, forbidden) {
 			t.Errorf("Draft release lifecycle must not switch back from the locked release ID via %q", forbidden)
