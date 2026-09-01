@@ -6650,7 +6650,7 @@ A2UI 通过 --card-engine a2ui 启用，--content 必须是 JSON 字符串数组
 		Long: `更新已发送的流式卡片内容。--biz-id 为 send-card 返回的业务 ID，--flow-status 控制流式状态。
 
 A2UI 通过 --card-engine a2ui 启用，--content 必须是 JSON 字符串数组。
-flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；a2ui 接受数字 1-9（1=PROCESSING、2=INPUTTING、3=FINISH、4=EXECUTING、5=ERROR、6=ABORTED、7=TIMEOUT、8=CONFIRMING、9=CONFIRMED），CLI 映射为枚举字符串发送。
+flow-status 取值：streaming 使用 --flow-status 1-5；a2ui 使用 --flow-status-name PROCESSING、INPUTTING、FINISH、EXECUTING、ERROR、ABORTED、TIMEOUT、CONFIRMING、CONFIRMED，并兼容 --flow-status 1-9。
 最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。`,
 		Example: `  dws chat message update-card --biz-id <bizId> --content "更新的卡片内容" --flow-status 2
   dws chat message update-card --biz-id <bizId> --content "最终内容" --flow-status 3
@@ -6663,15 +6663,22 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 			if err := validateRequiredFlags(cmd, "biz-id", "content"); err != nil {
 				return err
 			}
-			if !cmd.Flags().Changed("flow-status") {
-				return fmt.Errorf("flag --flow-status is required")
+			flowStatusChanged := cmd.Flags().Changed("flow-status")
+			flowStatusNameChanged := cmd.Flags().Changed("flow-status-name")
+			if !flowStatusChanged && !flowStatusNameChanged {
+				return fmt.Errorf("one of --flow-status or --flow-status-name is required")
 			}
 			bizID, err := chatmsg.NormalizeCardBizID(mustGetFlag(cmd, "biz-id"))
 			if err != nil {
 				return err
 			}
 			if cardEngine == cardEngineA2UI {
-				flowStatus, err := normalizeA2UIUpdateFlowStatus(mustGetFlag(cmd, "flow-status"))
+				rawFlowStatus := mustGetFlag(cmd, "flow-status-name")
+				if flowStatusChanged {
+					numericFlowStatus, _ := cmd.Flags().GetInt("flow-status")
+					rawFlowStatus = strconv.Itoa(numericFlowStatus)
+				}
+				flowStatus, err := normalizeA2UIUpdateFlowStatus(rawFlowStatus)
 				if err != nil {
 					return err
 				}
@@ -6688,10 +6695,10 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 				}
 				return callMCPToolOnServer("im", "update_a2ui_card", params)
 			}
-			flowStatus, err := strconv.Atoi(strings.TrimSpace(mustGetFlag(cmd, "flow-status")))
-			if err != nil {
-				return fmt.Errorf("--flow-status 必须在 1-5 之间")
+			if flowStatusNameChanged {
+				return fmt.Errorf("--flow-status-name is only supported with --card-engine a2ui")
 			}
+			flowStatus, _ := cmd.Flags().GetInt("flow-status")
 			if flowStatus < 1 || flowStatus > 5 {
 				return fmt.Errorf("--flow-status 必须在 1-5 之间")
 			}
@@ -6765,6 +6772,7 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 				{Name: "card-engine", Property: "cardEngine", Required: boolPtr(false)},
 				{Name: "content", Property: "msgContent"},
 				{Name: "flow-status", Property: "flowStatus"},
+				{Name: "flow-status-name", Property: "flowStatus", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -6772,7 +6780,9 @@ flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTI
 	_ = chatMessageUpdateCardCmd.MarkFlagRequired("biz-id")
 	chatMessageUpdateCardCmd.Flags().String("content", "", "卡片消息内容 (必填)")
 	_ = chatMessageUpdateCardCmd.MarkFlagRequired("content")
-	chatMessageUpdateCardCmd.Flags().String("flow-status", "", "流式状态 (必填)")
+	chatMessageUpdateCardCmd.Flags().Int("flow-status", 0, "流式状态数字（streaming: 1-5；a2ui 兼容: 1-9）")
+	chatMessageUpdateCardCmd.Flags().String("flow-status-name", "", "A2UI 流式状态枚举")
+	chatMessageUpdateCardCmd.MarkFlagsMutuallyExclusive("flow-status", "flow-status-name")
 	chatMessageUpdateCardCmd.Flags().String("card-engine", cardEngineStreaming, "卡片引擎：streaming 或 a2ui（默认 streaming）")
 
 	// ── download-media：下载消息中的媒体资源（走 IM MCP）──────
