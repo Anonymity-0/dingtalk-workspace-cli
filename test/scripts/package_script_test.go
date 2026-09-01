@@ -2253,9 +2253,12 @@ func TestReleaseWorkflowDraftLifecycleUsesOneReleaseID(t *testing.T) {
 	for _, required := range []string{
 		"id: publish",
 		`"repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_VERSION"`,
+		`"repos/$GITHUB_REPOSITORY/releases?per_page=100"`,
+		"find_recovery_draft_release_id()",
+		"Expected exactly one draft GitHub Release for this recovery run",
 		`"repos/$GITHUB_REPOSITORY/releases/$release_id"`,
-		`uploaded_release_id="$(`,
-		`test "$uploaded_release_id" = "$release_id"`,
+		`uploaded_release_state="$(`,
+		`test "$uploaded_release_state" = "$(printf '%s\\t%s' "$release_id" "$RELEASE_VERSION")"`,
 		"Draft GitHub Release ID $release_id targets",
 		"Draft GitHub Release notes differ from the sealed CHANGELOG.",
 		"Draft GitHub Release is not bound to this exact recovery run.",
@@ -2285,7 +2288,7 @@ func TestReleaseWorkflowDraftLifecycleUsesOneReleaseID(t *testing.T) {
 	bodyVerify := strings.Index(publishStep, "Draft GitHub Release notes differ from the sealed CHANGELOG.")
 	markerVerify := strings.Index(publishStep, "Draft GitHub Release is not bound to this exact recovery run.")
 	upload := strings.Index(publishStep, `gh release upload "$RELEASE_VERSION"`)
-	idRecheck := strings.Index(publishStep, `test "$uploaded_release_id" = "$release_id"`)
+	idRecheck := strings.Index(publishStep, `test "$uploaded_release_state" = "$(printf '%s\\t%s' "$release_id" "$RELEASE_VERSION")"`)
 	verify := strings.Index(publishStep, "tmp/trusted-release-tooling/scripts/release/verify-github-release-assets.sh")
 	download := strings.LastIndex(publishStep, "tmp/trusted-release-tooling/scripts/release/download-github-release-assets.sh")
 	byteCompare := strings.Index(publishStep, `cmp -s "$local_asset" "$remote_asset"`)

@@ -1249,6 +1249,23 @@ jobs:
           fi
 
           release_id=""
+          recovery_marker=""
+          if [ "$IS_RECOVERY" = "true" ]; then
+            recovery_marker="<!-- dws-release-recovery run=$GITHUB_RUN_ID tag-object=$RELEASE_TAG_OBJECT commit=$RELEASE_COMMIT -->"
+          fi
+          find_recovery_draft_release_id() {
+            candidate_ids="$(
+              gh api --paginate -H 'X-GitHub-Api-Version: 2026-03-10' \
+                "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+                --jq ".[] | select(.tag_name == \"$RELEASE_VERSION\" and (.body | contains(\"$recovery_marker\"))) | .id"
+            )"
+            candidate_count="$(printf '%s\\n' "$candidate_ids" | sed '/^$/d' | wc -l | tr -d ' ')"
+            test "$candidate_count" = "1" || {
+              echo "Expected exactly one draft GitHub Release for this recovery run; found $candidate_count." >&2
+              return 1
+            }
+            printf '%s\\n' "$candidate_ids"
+          }
           if release_id="$(
             gh api -H 'X-GitHub-Api-Version: 2026-03-10' \
               "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_VERSION" \
@@ -1332,6 +1349,8 @@ jobs:
               echo "Published GitHub Release is immutable and verified; reusing its exact assets."
               exit 0
             fi
+          elif [ "$IS_RECOVERY" = "true" ] && release_id="$(find_recovery_draft_release_id 2>/dev/null)"; then
+            :
           else
             # shellcheck disable=SC2086
             gh release create "$RELEASE_VERSION" \
@@ -1340,11 +1359,12 @@ jobs:
               --title "$RELEASE_VERSION" \
               --notes-file "$RUNNER_TEMP/release-notes.md" \
               $prerelease_flag
-            release_id="$(
-              gh api -H 'X-GitHub-Api-Version: 2026-03-10' \
-                "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_VERSION" \
-                --jq .id
-            )"
+            if [ "$IS_RECOVERY" = "true" ]; then
+              release_id="$(find_recovery_draft_release_id)"
+            else
+              echo "GitHub cannot resolve a draft release by tag; retry through the controlled recovery path." >&2
+              exit 1
+            fi
           fi
           printf '%s\n' "$release_id" | grep -Eq '^[1-9][0-9]*$' || {
             echo "Draft GitHub Release has an invalid database ID: $release_id" >&2
@@ -1389,7 +1409,6 @@ jobs:
             exit 1
           }
           if [ "$IS_RECOVERY" = "true" ]; then
-            recovery_marker="<!-- dws-release-recovery run=$GITHUB_RUN_ID tag-object=$RELEASE_TAG_OBJECT commit=$RELEASE_COMMIT -->"
             case "$draft_body" in
               *"$recovery_marker"*) ;;
               *)
@@ -1404,13 +1423,13 @@ jobs:
             dist/dws-skills.zip \
             dist/checksums.txt \
             --clobber
-          uploaded_release_id="$(
+          uploaded_release_state="$(
             gh api -H 'X-GitHub-Api-Version: 2026-03-10' \
-              "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_VERSION" \
-              --jq .id
+              "repos/$GITHUB_REPOSITORY/releases/$release_id" \
+              --jq '[.id, .tag_name] | @tsv'
           )"
-          test "$uploaded_release_id" = "$release_id" || {
-            echo "GitHub Release identity changed during upload: $release_id -> $uploaded_release_id" >&2
+          test "$uploaded_release_state" = "$(printf '%s\\t%s' "$release_id" "$RELEASE_VERSION")" || {
+            echo "GitHub Release identity changed during upload: $release_id -> $uploaded_release_state" >&2
             exit 1
           }
           DWS_GITHUB_RELEASE_ID="$release_id" \
