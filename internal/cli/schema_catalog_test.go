@@ -1441,11 +1441,6 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		{"chat message edit", "at-open-dingtalk-ids", "atOpenDingTalkIds", false, "array"},
 		{"chat message update-text-emotion", "message-id", "openMsgId", true, ""},
 		{"chat message send", "idempotency-key", "uuid", false, ""},
-		{"chat message send-card", "at-all", "atAll", false, ""},
-		{"chat message send-card", "at-open-dingtalk-ids", "atOpenDingTalkIds", false, "array"},
-		{"chat message send-card", "card-engine", "cardEngine", false, ""},
-		{"chat message send-card", "content", "content", false, ""},
-		{"chat message update-card", "card-engine", "cardEngine", false, ""},
 		{"chat message update-text-emotion", "old-emotion-id", "oldEmotionId", true, ""},
 		{"chat category batch-info", "category-ids", "categoryIds", true, "array"},
 		{"chat category list-by-conv", "conversation-id", "openConversationId", true, ""},
@@ -1555,5 +1550,104 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		if _, ok := groupBotsParams[migrated]; ok {
 			t.Fatalf("chat group bots unexpectedly publishes migrated --%s", migrated)
 		}
+	}
+}
+
+func TestDeliveryCatalogChatCardEngineCompositeContract(t *testing.T) {
+	tests := []struct {
+		path             string
+		canonical        string
+		rpcNames         []string
+		excludedParams   []string
+		stableProperties map[string]string
+		required         map[string]bool
+		requiredWhen     map[string]string
+	}{
+		{
+			path:           "chat message send-card",
+			canonical:      "chat.create_and_send_card",
+			rpcNames:       []string{"im/create_and_send_card", "im/create_and_send_a2ui_card"},
+			excludedParams: []string{"at-all", "at-open-dingtalk-ids", "card-engine", "content"},
+			stableProperties: map[string]string{
+				"conversation-id":  "openConversationId",
+				"open-dingtalk-id": "receiverOpenDingTalkId",
+			},
+			required:     map[string]bool{"card-engine": false, "content": false},
+			requiredWhen: map[string]string{"content": "card-engine is a2ui"},
+		},
+		{
+			path:           "chat message update-card",
+			canonical:      "chat.update_streaming_card",
+			rpcNames:       []string{"im/update_streaming_card", "im/update_a2ui_card"},
+			excludedParams: []string{"card-engine", "content", "flow-status"},
+			stableProperties: map[string]string{
+				"biz-id": "bizId",
+			},
+			required: map[string]bool{"card-engine": false, "content": true, "flow-status": true},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.path, func(t *testing.T) {
+			leaf, err := queryDeliverySchemaPayload([]string{tc.path})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := schemaString(leaf["canonical_path"]); got != tc.canonical {
+				t.Fatalf("canonical_path = %q, want %q", got, tc.canonical)
+			}
+			if got := schemaString(leaf["interface_mode"]); got != "composite" {
+				t.Fatalf("interface_mode = %q, want composite", got)
+			}
+			if leaf["interface_ref"] != nil {
+				t.Fatalf("interface_ref = %#v, want nil for composite command", leaf["interface_ref"])
+			}
+			reason := schemaString(leaf["interface_reason"])
+			for _, rpcName := range tc.rpcNames {
+				if !strings.Contains(reason, rpcName) {
+					t.Fatalf("interface_reason = %q, want branch %q", reason, rpcName)
+				}
+			}
+			provenance := schemaMap(leaf["field_provenance"])
+			for _, field := range []string{"interface_mode", "availability", "interface_ref", "interface_reason"} {
+				if got := schemaString(provenance[field]["precedence"]); got != "contract_final" {
+					t.Fatalf("%s precedence = %q, want contract_final", field, got)
+				}
+			}
+
+			parameters := schemaMap(leaf["parameters"])
+			cardEngine := parameters["card-engine"]
+			if got, want := schemaStringSlice(cardEngine["enum"]), []string{"streaming", "a2ui"}; !equalStringSlices(got, want) {
+				t.Fatalf("--card-engine enum = %#v, want %#v", got, want)
+			}
+			for _, flagName := range tc.excludedParams {
+				param := parameters[flagName]
+				if property := schemaString(param["property"]); property != "" {
+					t.Fatalf("--%s property = %q, want reviewed empty composite mapping", flagName, property)
+				}
+				propertyProv := schemaMap(param["field_provenance"])["property"]
+				if got := schemaString(propertyProv["source"]); got != "reviewed_mapping_exclusion" {
+					t.Fatalf("--%s property source = %q, want reviewed_mapping_exclusion", flagName, got)
+				}
+				if schemaString(propertyProv["review_reason"]) == "" {
+					t.Fatalf("--%s property mapping exclusion has no review_reason", flagName)
+				}
+			}
+			for flagName, property := range tc.stableProperties {
+				if got := schemaString(parameters[flagName]["property"]); got != property {
+					t.Fatalf("--%s property = %q, want %q", flagName, got, property)
+				}
+			}
+			for flagName, required := range tc.required {
+				if got := parameters[flagName]["required"]; got != required {
+					t.Fatalf("--%s required = %#v, want %v", flagName, got, required)
+				}
+			}
+			for flagName, requiredWhen := range tc.requiredWhen {
+				if got := schemaString(parameters[flagName]["required_when"]); got != requiredWhen {
+					t.Fatalf("--%s required_when = %q, want %q", flagName, got, requiredWhen)
+				}
+			}
+		})
 	}
 }
