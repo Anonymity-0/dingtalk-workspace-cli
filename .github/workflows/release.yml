@@ -1079,7 +1079,7 @@ jobs:
           retention-days: 1
 
   verify-darwin-signatures:
-    name: Validate signed runtime package
+    name: Verify Apple Developer ID signatures
     if: ${{ !cancelled() && needs.release-contract.result == 'success' && needs.release.result == 'success' }}
     needs: [release-contract, release]
     runs-on: macos-latest
@@ -1103,7 +1103,7 @@ jobs:
           name: finalized-release-dist
           path: dist
 
-      - name: Validate packaged runtime
+      - name: Verify finalized Darwin signatures with Apple codesign
         run: |
           set -euo pipefail
           case "$(uname -m)" in

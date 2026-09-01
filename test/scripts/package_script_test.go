@@ -2189,7 +2189,7 @@ func TestReleaseWorkflowRecoveryReusesGuardedJobs(t *testing.T) {
 		}
 	}
 	if strings.Count(workflow, "name: Build signed release artifacts") != 1 ||
-		strings.Count(workflow, "name: Validate signed runtime package") != 1 ||
+		strings.Count(workflow, "name: Verify Apple Developer ID signatures") != 1 ||
 		strings.Count(workflow, "name: Publish immutable GitHub Release") != 1 ||
 		strings.Count(workflow, "name: Publish npm and mirrors") != 1 {
 		t.Fatal("normal and recovery publication must share one build/sign/publish job graph")
