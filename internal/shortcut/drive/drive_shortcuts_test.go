@@ -1531,7 +1531,10 @@ func TestCrossPlatformCoverageDriveInspectAndCollectionOptions(t *testing.T) {
 	if err := runDriveCoverage(t, Inspect, inspect, "--node", "n1", "--space-id", "space", "--include-stats", "--include-publish", "--include-cover"); err != nil {
 		t.Fatal(err)
 	}
-	list := &driveCoverageCaller{responses: map[string][]string{"list_files": {`{"success":true,"result":{"items":[{"fileId":"n1","dentryId":"d1","name":"x"}],"nextToken":"c2","hasMore":true}}`}}}
+	list := &driveCoverageCaller{responses: map[string][]string{
+		"get_file_info": {`{"success":true,"result":{"fileId":"folder","name":"ordinary-folder","type":"FOLDER"}}`},
+		"list_files":    {`{"success":true,"result":{"items":[{"fileId":"n1","dentryId":"d1","name":"x"}],"nextToken":"c2","hasMore":true}}`},
+	}}
 	if err := runDriveCoverage(t, List, list, "--space-id", "space", "--folder", "folder", "--limit", "1", "--cursor", "c1", "--order-by", "name", "--order", "asc", "--thumbnail"); err != nil {
 		t.Fatal(err)
 	}
@@ -1569,34 +1572,56 @@ func TestCrossPlatformCoverageDriveListPrefersDisplayNamesAndNormalizesTypes(t *
 	}
 }
 
-func TestCrossPlatformCoverageDriveListEnrichesDocumentRowsWithoutChangingStorageIdentity(t *testing.T) {
-	caller := &driveCoverageCaller{responses: map[string][]string{
-		"list_files": {`{"success":true,"items":[{"fileId":"storage-doc-1","dentryId":"123","docUrl":"https://alidocs.dingtalk.com/i/nodes/storage-doc-1","name":"8095425855","type":"FOLDER"},{"fileId":"storage-folder-2","dentryId":"456","docUrl":"https://alidocs.dingtalk.com/i/nodes/storage-folder-2","name":"8149695790","type":"FOLDER"}],"hasMore":false}`},
-		"get_document_info": {
-			`{"name":"level1-test","nodeId":"doc-1","nodeType":"file"}`,
-			`{"name":"Level2","nodeId":"folder-2","nodeType":"folder"}`,
+func TestCrossPlatformCoverageDriveListRoutesDocumentDirectoryOnce(t *testing.T) {
+	const documentURL = "https://alidocs.dingtalk.com/i/nodes/root-doc-folder"
+	for _, tc := range []struct {
+		name        string
+		folder      string
+		responses   map[string][]string
+		wantHistory string
+	}{
+		{
+			name:   "alidocs URL routes directly",
+			folder: documentURL,
+			responses: map[string][]string{
+				"list_nodes": {`{"success":true,"nodes":[{"name":"level1-test","nodeId":"doc-1","nodeType":"file"},{"name":"Level2","nodeId":"folder-2","nodeType":"folder"}],"hasMore":false}`},
+			},
+			wantHistory: "list_nodes",
 		},
-	}}
-	raw, err := runDriveCoverageRaw(t, List, caller, "--folder", "root", "--page-all")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var envelope map[string]any
-	if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
-		t.Fatal(err)
-	}
-	data, _ := envelope["data"].(map[string]any)
-	files, _ := data["files"].([]any)
-	first, _ := files[0].(map[string]any)
-	second, _ := files[1].(map[string]any)
-	if first["name"] != "level1-test" || first["type"] != "file" || first["nodeId"] != "storage-doc-1" || first["dentryId"] != "123" {
-		t.Fatalf("first enriched row = %#v", first)
-	}
-	if second["name"] != "Level2" || second["type"] != "folder" || second["nodeId"] != "storage-folder-2" || second["dentryId"] != "456" {
-		t.Fatalf("second enriched row = %#v", second)
-	}
-	if got := strings.Join(caller.history, ","); got != "list_files,get_document_info,get_document_info" {
-		t.Fatalf("history = %q, want storage list followed by selective document enrichment", got)
+		{
+			name:   "bare id uses one parent preflight",
+			folder: "root-doc-folder",
+			responses: map[string][]string{
+				"get_file_info": {`{"success":true,"result":{"fileId":"root-doc-folder","docUrl":"https://alidocs.dingtalk.com/i/nodes/root-doc-folder","type":"FOLDER"}}`},
+				"list_nodes":    {`{"success":true,"nodes":[{"name":"level1-test","nodeId":"doc-1","nodeType":"file"},{"name":"Level2","nodeId":"folder-2","nodeType":"folder"}],"hasMore":false}`},
+			},
+			wantHistory: "get_file_info,list_nodes",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &driveCoverageCaller{responses: tc.responses}
+			raw, err := runDriveCoverageRaw(t, List, caller, "--folder", tc.folder, "--page-all")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var envelope map[string]any
+			if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
+				t.Fatal(err)
+			}
+			data, _ := envelope["data"].(map[string]any)
+			files, _ := data["files"].([]any)
+			first, _ := files[0].(map[string]any)
+			second, _ := files[1].(map[string]any)
+			if first["name"] != "level1-test" || first["type"] != "file" || first["nodeId"] != "doc-1" {
+				t.Fatalf("first document row = %#v", first)
+			}
+			if second["name"] != "Level2" || second["type"] != "folder" || second["nodeId"] != "folder-2" {
+				t.Fatalf("second document row = %#v", second)
+			}
+			if got := strings.Join(caller.history, ","); got != tc.wantHistory {
+				t.Fatalf("history = %q, want %q", got, tc.wantHistory)
+			}
+		})
 	}
 }
 

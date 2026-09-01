@@ -25,7 +25,6 @@ type drivePageOptions struct {
 	CursorParam    string
 	CollectionKeys []string
 	Project        func([]any) []map[string]any
-	ProjectE       func([]any) ([]map[string]any, error)
 }
 
 type drivePageResult struct {
@@ -116,15 +115,7 @@ func collectDrivePages(rt *shortcut.RuntimeContext, base map[string]any, options
 		if err != nil {
 			return drivePageResult{}, drivePaginationError(options, "invalid_page", err, page, items, drivePaginationErrorCursors{Request: cursor})
 		}
-		var projected []map[string]any
-		if options.ProjectE != nil {
-			projected, err = options.ProjectE(rawItems)
-			if err != nil {
-				return drivePageResult{}, drivePaginationError(options, "projection_failed", err, page, items, drivePaginationErrorCursors{Request: cursor})
-			}
-		} else {
-			projected = options.Project(rawItems)
-		}
+		projected := options.Project(rawItems)
 		pageItems := make([]map[string]any, 0, len(projected))
 		pageSeen := map[string]bool{}
 		for _, item := range projected {

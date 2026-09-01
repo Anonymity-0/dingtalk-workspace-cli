@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -238,6 +239,15 @@ func normalizeDriveListType(value string) string {
 	default:
 		return normalized
 	}
+}
+
+func isAliDocsNodeURL(value string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || parsed == nil || !strings.EqualFold(parsed.Scheme, "https") || !strings.EqualFold(parsed.Hostname(), "alidocs.dingtalk.com") {
+		return false
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	return len(parts) >= 3 && parts[0] == "i" && parts[1] == "nodes" && strings.TrimSpace(parts[2]) != ""
 }
 
 func addDrivePagination(out map[string]any, container map[string]any) {

@@ -39,13 +39,13 @@ var List = shortcut.Shortcut{
 	Service:     "drive",
 	Command:     "+list",
 	Product:     "drive",
-	Description: "严格分页列出钉盘文件和文件夹",
-	Intent:      "浏览钉盘根目录或已知文件夹时使用；服务端明确空数组才表示空目录，缺字段、坏元素或空响应都会失败。",
+	Description: "严格分页列出钉盘或 alidocs 文档目录的直接子节点",
+	Intent:      "浏览钉盘根目录、普通文件夹或已知 alidocs 文档目录时使用；按父目录元数据选择权威列表接口，并统一返回真实名称和 file/folder 类型。",
 	Risk:        shortcut.RiskRead,
 	Safety:      contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
 	Contract: driveContract(
-		"+list", "严格分页列出钉盘文件和文件夹",
-		"浏览钉盘根目录或已知文件夹时使用；服务端明确空数组才表示空目录，缺字段、坏元素或空响应都会失败。",
+		"+list", "严格分页列出钉盘或 alidocs 文档目录的直接子节点",
+		"浏览钉盘根目录、普通文件夹或已知 alidocs 文档目录时使用；按父目录元数据选择权威列表接口，并统一返回真实名称和 file/folder 类型。",
 		[]string{"按关键词定位文件改用 drive +search；查看单个节点详情改用 drive +inspect"},
 		[]string{`dws drive +list --limit 20`, `dws drive +list --folder <dentryUuid> --limit 20`},
 		driveCollectionResult("files", "严格校验并投影的钉盘目录页"), driveCursorPagination(),
@@ -72,6 +72,42 @@ var List = shortcut.Shortcut{
 	Validate:    validateDriveAutoPagination,
 	Constraints: driveAutoPaginationConstraints(),
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		docRoute, err := resolveDriveListDocRoute(rt)
+		if err != nil {
+			return err
+		}
+		if docRoute {
+			if err := validateDriveListDocRouteFlags(rt); err != nil {
+				return err
+			}
+			out, err := collectDrivePages(rt, map[string]any{"folderId": rt.Str("folder")}, drivePageOptions{
+				PageAll:        rt.Bool("page-all"),
+				PageSize:       rt.Int("limit"),
+				MaxPages:       rt.Int("max-pages"),
+				MaxItems:       rt.Int("max-items"),
+				Cursor:         rt.Str("cursor"),
+				Server:         "doc",
+				Tool:           "list_nodes",
+				OutputKey:      "files",
+				PageSizeParam:  "pageSize",
+				CursorParam:    "pageToken",
+				CollectionKeys: []string{"nodes", "items", "files", "entries", "list"},
+				Project: func(items []any) []map[string]any {
+					return projectNormalizedDriveListRows(items, map[string][]string{
+						"name":     {"name", "title", "nodeName", "fileName"},
+						"type":     {"nodeType", "node_type", "docType", "type", "extension"},
+						"nodeId":   {"nodeId", "node_id", "id", "docId", "doc_id"},
+						"dentryId": {"dentryId"},
+						"fileSize": {"fileSize", "size", "byteSize", "length"},
+					})
+				},
+			})
+			if err != nil {
+				return err
+			}
+			return outputDrivePageResult(rt, out)
+		}
+
 		params := map[string]any{}
 		if rt.Changed("space-id") {
 			params["spaceId"] = rt.Str("space-id")
@@ -100,8 +136,8 @@ var List = shortcut.Shortcut{
 			PageSizeParam:  "maxResults",
 			CursorParam:    "nextToken",
 			CollectionKeys: []string{"items", "files", "dentries", "entries", "nodes", "list"},
-			ProjectE: func(items []any) ([]map[string]any, error) {
-				return projectDriveListRows(rt, items, map[string][]string{
+			Project: func(items []any) []map[string]any {
+				return projectNormalizedDriveListRows(items, map[string][]string{
 					"name":     {"fileName", "dentryName", "title", "name"},
 					"type":     {"nodeType", "dentryType", "fileType", "type", "spaceType", "extension"},
 					"nodeId":   {"fileId", "dentryUuid", "nodeId", "id"},
@@ -118,31 +154,36 @@ var List = shortcut.Shortcut{
 	},
 }
 
-func projectDriveListRows(rt *shortcut.RuntimeContext, items []any, aliases map[string][]string) ([]map[string]any, error) {
-	rows := projectNormalizedDriveListRows(items, aliases)
-	for index, item := range items {
-		source := item.(map[string]any)
-		docURL := firstString(source, "docUrl", "docURL", "url")
-		if !strings.Contains(strings.ToLower(docURL), "alidocs.dingtalk.com/") {
-			continue
-		}
-		nodeID := firstString(source, "fileId", "dentryUuid", "nodeId", "id")
-		if nodeID == "" {
-			return nil, fmt.Errorf("在线文档条目缺少稳定 nodeId，无法解析真实名称和类型")
-		}
-		info, err := rt.CallMCPData("doc", "get_document_info", map[string]any{"nodeId": nodeID})
-		if err != nil {
-			return nil, fmt.Errorf("读取在线文档 %s 的真实元信息失败: %w", nodeID, err)
-		}
-		name := firstString(info, "fileName", "dentryName", "title", "nodeName", "name")
-		nodeType := normalizeDriveListType(firstString(info, "nodeType", "node_type", "docType", "type", "extension"))
-		if name == "" || (nodeType != "file" && nodeType != "folder") {
-			return nil, fmt.Errorf("在线文档 %s 的真实元信息缺少名称或 file/folder 类型", nodeID)
-		}
-		rows[index]["name"] = name
-		rows[index]["type"] = nodeType
+func resolveDriveListDocRoute(rt *shortcut.RuntimeContext) (bool, error) {
+	folder := strings.TrimSpace(rt.Str("folder"))
+	if folder == "" {
+		return false, nil
 	}
-	return rows, nil
+	if isAliDocsNodeURL(folder) {
+		return true, nil
+	}
+	params := map[string]any{"fileId": folder}
+	if rt.Changed("space-id") {
+		params["spaceId"] = rt.Str("space-id")
+	}
+	data, err := rt.CallMCPData("drive", "get_file_info", params)
+	if err != nil {
+		return false, fmt.Errorf("读取父目录 %s 的存储元信息失败: %w", folder, err)
+	}
+	info, err := requireDriveObject(data, "drive/get_file_info")
+	if err != nil {
+		return false, err
+	}
+	return isAliDocsNodeURL(firstString(info, "docUrl", "docURL", "url")), nil
+}
+
+func validateDriveListDocRouteFlags(rt *shortcut.RuntimeContext) error {
+	for _, flag := range []string{"space-id", "order-by", "order", "thumbnail"} {
+		if rt.Changed(flag) {
+			return fmt.Errorf("--%s 仅适用于普通钉盘目录，不能用于 alidocs 文档目录", flag)
+		}
+	}
+	return nil
 }
 
 // Info → get_file_info
