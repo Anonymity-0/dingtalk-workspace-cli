@@ -2,10 +2,8 @@
 category: Added
 ---
 
-- **Chat A2UI card engine** (#1140) — `chat message send-card` and
-  `chat message update-card` accept `--card-engine streaming|a2ui` (default
-  `streaming`, streaming path unchanged). With `a2ui`, `send-card` delivers
-  `--content` as a JSON string array via the A2UI card tool (auto-generating
-  `requestId`/`bizCardId` and a newline-joined `summary`, and resolving
-  single-chat user IDs to `receiverOpenDingTalkId`), and `update-card`
-  accepts flow status 1-9 mapped to the A2UI status enum.
+- **Chat A2UI cards** (#1140) — adds `chat message send-a2ui-card` and
+  `chat message update-a2ui-card` as dedicated A2UI commands while preserving
+  the existing streaming card commands. A2UI content is delivered as a JSON
+  string array, and update status accepts enum names plus compatible numbers
+  1-9.

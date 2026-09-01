@@ -636,9 +636,8 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 	t.Run("group payload uses a2ui card tool", func(t *testing.T) {
 		caller := &scriptedToolCaller{}
 		err := runChatCoverageCommand(t, caller,
-			"message", "send-card",
+			"message", "send-a2ui-card",
 			"--conversation-id=cid",
-			"--card-engine=a2ui",
 			"--content=[\"message1\",\"message2\"]",
 		)
 		if err != nil {
@@ -665,9 +664,8 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 	t.Run("direct message passes through D-form receiver", func(t *testing.T) {
 		caller := &scriptedToolCaller{}
 		err := runChatCoverageCommand(t, caller,
-			"message", "send-card",
+			"message", "send-a2ui-card",
 			"--open-dingtalk-id=DAAAAAAAAAAAiE",
-			"--card-engine=a2ui",
 			"--content=[\"message\"]",
 		)
 		if err != nil {
@@ -684,9 +682,8 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 			{text: `{}`},
 		}}
 		err := runChatCoverageCommand(t, caller,
-			"message", "send-card",
+			"message", "send-a2ui-card",
 			"--open-dingtalk-id=u1",
-			"--card-engine=a2ui",
 			"--content=[\"message\"]",
 		)
 		if err != nil {
@@ -706,9 +703,8 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 			{err: errors.New("contact lookup unavailable")},
 		}}
 		err := runChatCoverageCommand(t, caller,
-			"message", "send-card",
+			"message", "send-a2ui-card",
 			"--open-dingtalk-id=u1",
-			"--card-engine=a2ui",
 			"--content=[\"message\"]",
 		)
 		if err == nil {
@@ -728,13 +724,12 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 		for _, tc := range []string{"--at-open-dingtalk-ids=DAAAAAAAAAAAiE", "--at-all"} {
 			caller := &scriptedToolCaller{}
 			err := runChatCoverageCommand(t, caller,
-				"message", "send-card",
+				"message", "send-a2ui-card",
 				"--conversation-id=cid",
-				"--card-engine=a2ui",
 				"--content=[\"message\"]",
 				tc,
 			)
-			if err == nil || !strings.Contains(err.Error(), "--card-engine streaming") {
+			if err == nil || !strings.Contains(err.Error(), "unknown flag") {
 				t.Fatalf("flag %s: err = %v, want a2ui mention rejection", tc, err)
 			}
 			if caller.calls != 0 {
@@ -747,9 +742,8 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 		for _, content := range []string{"", "plain text", "{\"message\":\"x\"}", "[1]", "[]"} {
 			caller := &scriptedToolCaller{}
 			err := runChatCoverageCommand(t, caller,
-				"message", "send-card",
+				"message", "send-a2ui-card",
 				"--conversation-id=cid",
-				"--card-engine=a2ui",
 				"--content="+content,
 			)
 			if err == nil {

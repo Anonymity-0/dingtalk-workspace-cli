@@ -170,11 +170,10 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 	t.Run("a2ui payload uses a2ui update tool", func(t *testing.T) {
 		caller := &scriptedToolCaller{}
 		err := runNativeCardUpdate(t, caller,
-			"message", "update-card",
+			"message", "update-a2ui-card",
 			"--biz-id", "biz-1",
 			"--content", "[\"message1\",\"message2\"]",
 			"--flow-status", "FINISH",
-			"--card-engine", "a2ui",
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -203,11 +202,10 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 		} {
 			caller := &scriptedToolCaller{}
 			err := runNativeCardUpdate(t, caller,
-				"message", "update-card",
+				"message", "update-a2ui-card",
 				"--biz-id", "biz-1",
 				"--content", "[\"message\"]",
 				"--flow-status", fmt.Sprintf("%d", status),
-				"--card-engine", "a2ui",
 			)
 			if err != nil {
 				t.Fatal(err)
@@ -225,7 +223,6 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 			"--biz-id", "biz-1",
 			"--content", "完成",
 			"--flow-status", "6",
-			"--card-engine", "streaming",
 		)
 		if err == nil || !strings.Contains(err.Error(), "1-5") {
 			t.Fatalf("error = %v, want streaming status range", err)
@@ -242,7 +239,6 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 			"--biz-id", "biz-1",
 			"--content", "完成",
 			"--flow-status", "0x3",
-			"--card-engine", "streaming",
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -262,7 +258,7 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 		}
 		for _, extra := range tests {
 			caller := &scriptedToolCaller{}
-			args := []string{"message", "update-card", "--biz-id", "biz-1", "--card-engine", "a2ui"}
+			args := []string{"message", "update-a2ui-card", "--biz-id", "biz-1"}
 			args = append(args, extra...)
 			err := runNativeCardUpdate(t, caller, args...)
 			if err == nil {

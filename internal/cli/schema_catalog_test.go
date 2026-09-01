@@ -1553,37 +1553,74 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 	}
 }
 
-func TestDeliveryCatalogChatCardEngineCompositeContract(t *testing.T) {
+func TestDeliveryCatalogChatCardEngineSplitContracts(t *testing.T) {
 	tests := []struct {
-		path             string
-		canonical        string
-		rpcNames         []string
-		excludedParams   []string
-		stableProperties map[string]string
-		required         map[string]bool
-		requiredWhen     map[string]string
+		path           string
+		canonical      string
+		rpcName        string
+		properties     map[string]string
+		types          map[string]string
+		interfaceTypes map[string]string
+		required       map[string]bool
+		absent         []string
+		enums          map[string][]string
+		targetChoice   bool
 	}{
 		{
-			path:           "chat message send-card",
-			canonical:      "chat.create_and_send_card",
-			rpcNames:       []string{"im/create_and_send_card", "im/create_and_send_a2ui_card"},
-			excludedParams: []string{"at-all", "at-open-dingtalk-ids", "card-engine", "content"},
-			stableProperties: map[string]string{
+			path:      "chat message send-card",
+			canonical: "chat.create_and_send_card",
+			rpcName:   "create_and_send_card",
+			properties: map[string]string{
+				"at-all":               "atAll",
+				"at-open-dingtalk-ids": "atOpenDingTalkIds",
+				"conversation-id":      "openConversationId",
+				"open-dingtalk-id":     "receiverOpenDingTalkId",
+			},
+			absent: []string{"card-engine", "content"},
+		},
+		{
+			path:      "chat message send-a2ui-card",
+			canonical: "chat.create_and_send_a2ui_card",
+			rpcName:   "create_and_send_a2ui_card",
+			properties: map[string]string{
+				"content":          "a2uiMessages",
 				"conversation-id":  "openConversationId",
 				"open-dingtalk-id": "receiverOpenDingTalkId",
 			},
-			required:     map[string]bool{"card-engine": false, "content": false},
-			requiredWhen: map[string]string{"content": "card-engine is a2ui"},
+			interfaceTypes: map[string]string{"content": "array"},
+			required:       map[string]bool{"content": true},
+			absent:         []string{"card-engine", "at-all", "at-open-dingtalk-ids"},
+			targetChoice:   true,
 		},
 		{
-			path:           "chat message update-card",
-			canonical:      "chat.update_streaming_card",
-			rpcNames:       []string{"im/update_streaming_card", "im/update_a2ui_card"},
-			excludedParams: []string{"card-engine", "content", "flow-status"},
-			stableProperties: map[string]string{
-				"biz-id": "bizId",
+			path:      "chat message update-card",
+			canonical: "chat.update_streaming_card",
+			rpcName:   "update_streaming_card",
+			properties: map[string]string{
+				"biz-id":      "bizId",
+				"content":     "msgContent",
+				"flow-status": "flowStatus",
 			},
-			required: map[string]bool{"card-engine": false, "content": true, "flow-status": true},
+			types:    map[string]string{"flow-status": "integer"},
+			required: map[string]bool{"biz-id": true, "content": true, "flow-status": true},
+			absent:   []string{"card-engine"},
+		},
+		{
+			path:      "chat message update-a2ui-card",
+			canonical: "chat.update_a2ui_card",
+			rpcName:   "update_a2ui_card",
+			properties: map[string]string{
+				"biz-id":      "bizId",
+				"content":     "a2uiMessages",
+				"flow-status": "flowStatus",
+			},
+			types:          map[string]string{"flow-status": "string"},
+			interfaceTypes: map[string]string{"content": "array"},
+			required:       map[string]bool{"biz-id": true, "content": true, "flow-status": true},
+			absent:         []string{"card-engine"},
+			enums: map[string][]string{
+				"flow-status": {"PROCESSING", "INPUTTING", "FINISH", "EXECUTING", "ERROR", "ABORTED", "TIMEOUT", "CONFIRMING", "CONFIRMED", "1", "2", "3", "4", "5", "6", "7", "8", "9"},
+			},
 		},
 	}
 
@@ -1596,46 +1633,44 @@ func TestDeliveryCatalogChatCardEngineCompositeContract(t *testing.T) {
 			if got := schemaString(leaf["canonical_path"]); got != tc.canonical {
 				t.Fatalf("canonical_path = %q, want %q", got, tc.canonical)
 			}
-			if got := schemaString(leaf["interface_mode"]); got != "composite" {
-				t.Fatalf("interface_mode = %q, want composite", got)
+			if got := schemaString(leaf["interface_mode"]); got != "mcp" {
+				t.Fatalf("interface_mode = %q, want mcp", got)
 			}
-			if leaf["interface_ref"] != nil {
-				t.Fatalf("interface_ref = %#v, want nil for composite command", leaf["interface_ref"])
+			interfaceRef, ok := leaf["interface_ref"].(map[string]any)
+			if !ok {
+				t.Fatalf("interface_ref = %#v, want object", leaf["interface_ref"])
 			}
-			reason := schemaString(leaf["interface_reason"])
-			for _, rpcName := range tc.rpcNames {
-				if !strings.Contains(reason, rpcName) {
-					t.Fatalf("interface_reason = %q, want branch %q", reason, rpcName)
-				}
+			if got := schemaString(interfaceRef["product_id"]); got != "im" {
+				t.Fatalf("interface_ref.product_id = %q, want im", got)
+			}
+			if got := schemaString(interfaceRef["rpc_name"]); got != tc.rpcName {
+				t.Fatalf("interface_ref.rpc_name = %q, want %q", got, tc.rpcName)
 			}
 			provenance := schemaMap(leaf["field_provenance"])
-			for _, field := range []string{"interface_mode", "availability", "interface_ref", "interface_reason"} {
+			for _, field := range []string{"interface_mode", "availability", "interface_ref"} {
 				if got := schemaString(provenance[field]["precedence"]); got != "contract_final" {
 					t.Fatalf("%s precedence = %q, want contract_final", field, got)
 				}
 			}
 
 			parameters := schemaMap(leaf["parameters"])
-			cardEngine := parameters["card-engine"]
-			if got, want := schemaStringSlice(cardEngine["enum"]), []string{"streaming", "a2ui"}; !equalStringSlices(got, want) {
-				t.Fatalf("--card-engine enum = %#v, want %#v", got, want)
-			}
-			for _, flagName := range tc.excludedParams {
-				param := parameters[flagName]
-				if property := schemaString(param["property"]); property != "" {
-					t.Fatalf("--%s property = %q, want reviewed empty composite mapping", flagName, property)
-				}
-				propertyProv := schemaMap(param["field_provenance"])["property"]
-				if got := schemaString(propertyProv["source"]); got != "reviewed_mapping_exclusion" {
-					t.Fatalf("--%s property source = %q, want reviewed_mapping_exclusion", flagName, got)
-				}
-				if schemaString(propertyProv["review_reason"]) == "" {
-					t.Fatalf("--%s property mapping exclusion has no review_reason", flagName)
-				}
-			}
-			for flagName, property := range tc.stableProperties {
+			for flagName, property := range tc.properties {
 				if got := schemaString(parameters[flagName]["property"]); got != property {
 					t.Fatalf("--%s property = %q, want %q", flagName, got, property)
+				}
+				propertyProv := schemaMap(parameters[flagName]["field_provenance"])["property"]
+				if got := schemaString(propertyProv["source"]); got != "native_annotation" {
+					t.Fatalf("--%s property source = %q, want native_annotation", flagName, got)
+				}
+			}
+			for flagName, interfaceType := range tc.interfaceTypes {
+				if got := schemaString(parameters[flagName]["interface_type"]); got != interfaceType {
+					t.Fatalf("--%s interface_type = %q, want %q", flagName, got, interfaceType)
+				}
+			}
+			for flagName, paramType := range tc.types {
+				if got := schemaString(parameters[flagName]["type"]); got != paramType {
+					t.Fatalf("--%s type = %q, want %q", flagName, got, paramType)
 				}
 			}
 			for flagName, required := range tc.required {
@@ -1643,9 +1678,30 @@ func TestDeliveryCatalogChatCardEngineCompositeContract(t *testing.T) {
 					t.Fatalf("--%s required = %#v, want %v", flagName, got, required)
 				}
 			}
-			for flagName, requiredWhen := range tc.requiredWhen {
-				if got := schemaString(parameters[flagName]["required_when"]); got != requiredWhen {
-					t.Fatalf("--%s required_when = %q, want %q", flagName, got, requiredWhen)
+			for flagName, enum := range tc.enums {
+				if got := schemaStringSlice(parameters[flagName]["enum"]); !equalStringSlices(got, enum) {
+					t.Fatalf("--%s enum = %#v, want %#v", flagName, got, enum)
+				}
+			}
+			for _, flagName := range tc.absent {
+				if _, ok := parameters[flagName]; ok {
+					t.Fatalf("hidden compatibility flag --%s unexpectedly published", flagName)
+				}
+			}
+			if tc.targetChoice {
+				constraints, _ := leaf["constraints"].(map[string]any)
+				for _, kind := range []string{"require_one_of", "mutually_exclusive"} {
+					groups, _ := constraints[kind].([]any)
+					found := false
+					for _, group := range groups {
+						if equalStringSlices(schemaStringSlice(group), []string{"conversation-id", "open-dingtalk-id"}) {
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Fatalf("%s missing target choice constraint: %#v", kind, groups)
+					}
 				}
 			}
 		})
