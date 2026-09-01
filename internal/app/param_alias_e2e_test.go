@@ -50,6 +50,8 @@ func (c *paramAliasCaptureCaller) CallTool(_ context.Context, server, tool strin
 // complete without falling back to a validation error.
 func (c *paramAliasCaptureCaller) paramAliasResponseForTool(tool string) string {
 	switch tool {
+	case "list_nodes":
+		return `{"success":true,"result":{"nodes":[],"hasMore":false}}`
 	case "list_calendar_events":
 		return `{"success":true,"result":{"events":[],"hasMore":false,"nextCursor":""}}`
 	case "get_calendar_detail":

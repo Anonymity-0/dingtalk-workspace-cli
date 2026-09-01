@@ -39,13 +39,13 @@ var List = shortcut.Shortcut{
 	Service:     "drive",
 	Command:     "+list",
 	Product:     "drive",
-	Description: "严格分页列出钉盘或 alidocs 文档目录的直接子节点",
-	Intent:      "浏览钉盘根目录、普通文件夹或已知 alidocs 文档目录时使用；按父目录元数据选择权威列表接口，并统一返回真实名称和 file/folder 类型。",
+	Description: "严格分页列出钉盘文件和文件夹",
+	Intent:      "浏览钉盘根目录或已知文件夹时使用；服务端明确空数组才表示空目录，缺字段、坏元素或空响应都会失败。",
 	Risk:        shortcut.RiskRead,
 	Safety:      contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
 	Contract: driveContract(
-		"+list", "严格分页列出钉盘或 alidocs 文档目录的直接子节点",
-		"浏览钉盘根目录、普通文件夹或已知 alidocs 文档目录时使用；按父目录元数据选择权威列表接口，并统一返回真实名称和 file/folder 类型。",
+		"+list", "严格分页列出钉盘文件和文件夹",
+		"浏览钉盘根目录或已知文件夹时使用；服务端明确空数组才表示空目录，缺字段、坏元素或空响应都会失败。",
 		[]string{"按关键词定位文件改用 drive +search；查看单个节点详情改用 drive +inspect"},
 		[]string{`dws drive +list --limit 20`, `dws drive +list --folder <dentryUuid> --limit 20`},
 		driveCollectionResult("files", "严格校验并投影的钉盘目录页"), driveCursorPagination(),
@@ -72,118 +72,37 @@ var List = shortcut.Shortcut{
 	Validate:    validateDriveAutoPagination,
 	Constraints: driveAutoPaginationConstraints(),
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		docRoute, err := resolveDriveListDocRoute(rt)
-		if err != nil {
-			return err
-		}
-		if docRoute {
-			if err := validateDriveListDocRouteFlags(rt); err != nil {
-				return err
-			}
-			out, err := collectDrivePages(rt, map[string]any{"folderId": rt.Str("folder")}, drivePageOptions{
-				PageAll:        rt.Bool("page-all"),
-				PageSize:       rt.Int("limit"),
-				MaxPages:       rt.Int("max-pages"),
-				MaxItems:       rt.Int("max-items"),
-				Cursor:         rt.Str("cursor"),
-				Server:         "doc",
-				Tool:           "list_nodes",
-				OutputKey:      "files",
-				PageSizeParam:  "pageSize",
-				CursorParam:    "pageToken",
-				CollectionKeys: []string{"nodes", "items", "files", "entries", "list"},
-				Project: func(items []any) []map[string]any {
-					return projectNormalizedDriveListRows(items, map[string][]string{
-						"name":     {"name", "title", "nodeName", "fileName"},
-						"type":     {"nodeType", "node_type", "docType", "type", "extension"},
-						"nodeId":   {"nodeId", "node_id", "id", "docId", "doc_id"},
-						"dentryId": {"dentryId"},
-						"fileSize": {"fileSize", "size", "byteSize", "length"},
-					})
-				},
-			})
-			if err != nil {
-				return err
-			}
-			return outputDrivePageResult(rt, out)
-		}
-
 		params := map[string]any{}
-		if rt.Changed("space-id") {
-			params["spaceId"] = rt.Str("space-id")
-		}
 		if rt.Changed("folder") {
-			params["parentId"] = rt.Str("folder")
+			params["folderId"] = rt.Str("folder")
 		}
-		if rt.Changed("order-by") {
-			params["orderBy"] = rt.Str("order-by")
-		}
-		if rt.Changed("order") {
-			params["order"] = rt.Str("order")
-		}
-		if rt.Bool("thumbnail") {
-			params["withThumbnail"] = true
-		}
-		options := drivePageOptions{
+		out, err := collectDrivePages(rt, params, drivePageOptions{
 			PageAll:        rt.Bool("page-all"),
 			PageSize:       rt.Int("limit"),
 			MaxPages:       rt.Int("max-pages"),
 			MaxItems:       rt.Int("max-items"),
 			Cursor:         rt.Str("cursor"),
-			Server:         "drive",
-			Tool:           "list_files",
+			Server:         "doc",
+			Tool:           "list_nodes",
 			OutputKey:      "files",
-			PageSizeParam:  "maxResults",
-			CursorParam:    "nextToken",
-			CollectionKeys: []string{"items", "files", "dentries", "entries", "nodes", "list"},
+			PageSizeParam:  "pageSize",
+			CursorParam:    "pageToken",
+			CollectionKeys: []string{"nodes", "items", "files", "entries", "list"},
 			Project: func(items []any) []map[string]any {
-				return projectNormalizedDriveListRows(items, map[string][]string{
-					"name":     {"fileName", "dentryName", "title", "name"},
-					"type":     {"nodeType", "dentryType", "fileType", "type", "spaceType", "extension"},
-					"nodeId":   {"fileId", "dentryUuid", "nodeId", "id"},
+				return projectDriveRows(items, map[string][]string{
+					"name":     {"name", "title", "nodeName", "fileName"},
+					"type":     {"nodeType", "node_type", "docType", "type", "extension"},
+					"nodeId":   {"nodeId", "node_id", "id", "docId", "doc_id"},
 					"dentryId": {"dentryId"},
 					"fileSize": {"fileSize", "size", "byteSize", "length"},
 				})
 			},
-		}
-		out, err := collectDrivePages(rt, params, options)
+		})
 		if err != nil {
 			return err
 		}
 		return outputDrivePageResult(rt, out)
 	},
-}
-
-func resolveDriveListDocRoute(rt *shortcut.RuntimeContext) (bool, error) {
-	folder := strings.TrimSpace(rt.Str("folder"))
-	if folder == "" {
-		return false, nil
-	}
-	if isAliDocsNodeURL(folder) {
-		return true, nil
-	}
-	params := map[string]any{"fileId": folder}
-	if rt.Changed("space-id") {
-		params["spaceId"] = rt.Str("space-id")
-	}
-	data, err := rt.CallMCPData("drive", "get_file_info", params)
-	if err != nil {
-		return false, fmt.Errorf("读取父目录 %s 的存储元信息失败: %w", folder, err)
-	}
-	info, err := requireDriveObject(data, "drive/get_file_info")
-	if err != nil {
-		return false, err
-	}
-	return isAliDocsNodeURL(firstString(info, "docUrl", "docURL", "url")), nil
-}
-
-func validateDriveListDocRouteFlags(rt *shortcut.RuntimeContext) error {
-	for _, flag := range []string{"space-id", "order-by", "order", "thumbnail"} {
-		if rt.Changed(flag) {
-			return fmt.Errorf("--%s 仅适用于普通钉盘目录，不能用于 alidocs 文档目录", flag)
-		}
-	}
-	return nil
 }
 
 // Info → get_file_info

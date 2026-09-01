@@ -117,12 +117,12 @@ func TestCrossPlatformCoverageDriveCollectionsRejectFalseEmptySuccess(t *testing
 		args     []string
 		wantErr  string
 	}{
-		{"list explicit empty", List, "list_files", `{"success":true,"result":{"items":[]}}`, nil, ""},
-		{"list missing collection", List, "list_files", `{"success":true,"result":{"count":0}}`, nil, "缺少声明的业务数组"},
-		{"list malformed collection", List, "list_files", `{"success":true,"result":{"items":{}}}`, nil, "不是数组"},
-		{"list malformed item", List, "list_files", `{"success":true,"result":{"items":["bad"]}}`, nil, "不是对象"},
-		{"list empty tool response", List, "list_files", ``, nil, "空响应"},
-		{"list remote failure", List, "list_files", `{"success":false,"errorMsg":"denied"}`, nil, "denied"},
+		{"list explicit empty", List, "list_nodes", `{"success":true,"result":{"nodes":[]}}`, nil, ""},
+		{"list missing collection", List, "list_nodes", `{"success":true,"result":{"count":0}}`, nil, "缺少声明的业务数组"},
+		{"list malformed collection", List, "list_nodes", `{"success":true,"result":{"nodes":{}}}`, nil, "不是数组"},
+		{"list malformed item", List, "list_nodes", `{"success":true,"result":{"nodes":["bad"]}}`, nil, "不是对象"},
+		{"list empty tool response", List, "list_nodes", ``, nil, "空响应"},
+		{"list remote failure", List, "list_nodes", `{"success":false,"errorMsg":"denied"}`, nil, "denied"},
 		{"search explicit empty", Search, "search_files", `{"success":true,"items":[],"hasMore":false}`, []string{"--query", "none"}, ""},
 		{"search missing collection", Search, "search_files", `{"success":true,"hasMore":false}`, []string{"--query", "none"}, "缺少声明的业务数组"},
 		{"recent nested data", Recent, "get_recent_list", `{"success":true,"result":{"recentItems":[],"hasMore":false}}`, nil, ""},
@@ -230,13 +230,13 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 		sizeParam   string
 	}{
 		{
-			name: "list", declaration: List, tool: "list_files",
+			name: "list", declaration: List, tool: "list_nodes",
 			args: []string{"--limit", "2", "--page-all", "--max-pages", "3", "--max-items", "3"},
 			responses: []string{
-				`{"success":true,"items":[{"fileId":"n1"},{"fileId":"n2"}],"hasMore":true,"nextToken":"c2"}`,
-				`{"success":true,"items":[{"fileId":"n2"},{"fileId":"n3"}],"hasMore":false}`,
+				`{"success":true,"nodes":[{"nodeId":"n1"},{"nodeId":"n2"}],"hasMore":true,"nextPageToken":"c2"}`,
+				`{"success":true,"nodes":[{"nodeId":"n2"},{"nodeId":"n3"}],"hasMore":false}`,
 			},
-			cursorParam: "nextToken", sizeParam: "maxResults",
+			cursorParam: "pageToken", sizeParam: "pageSize",
 		},
 		{
 			name: "search", declaration: Search, tool: "search_files",
@@ -276,9 +276,9 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 	}
 
 	stalled := &driveCoverageCaller{responses: map[string][]string{
-		"list_files": {
-			`{"success":true,"items":[{"fileId":"n1"}],"hasMore":true,"nextToken":"same"}`,
-			`{"success":true,"items":[{"fileId":"n2"}],"hasMore":true,"nextToken":"same"}`,
+		"list_nodes": {
+			`{"success":true,"nodes":[{"nodeId":"n1"}],"hasMore":true,"nextPageToken":"same"}`,
+			`{"success":true,"nodes":[{"nodeId":"n2"}],"hasMore":true,"nextPageToken":"same"}`,
 		},
 	}}
 	err := runDriveCoverage(t, List, stalled, "--limit", "1", "--page-all", "--cursor", "start")
@@ -294,9 +294,9 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 	}
 
 	maxPages := &driveCoverageCaller{responses: map[string][]string{
-		"list_files": {
-			`{"success":true,"items":[{"fileId":"n1"}],"hasMore":true,"nextToken":"c2"}`,
-			`{"success":true,"items":[{"fileId":"n2"}],"hasMore":true,"nextToken":"c3"}`,
+		"list_nodes": {
+			`{"success":true,"nodes":[{"nodeId":"n1"}],"hasMore":true,"nextPageToken":"c2"}`,
+			`{"success":true,"nodes":[{"nodeId":"n2"}],"hasMore":true,"nextPageToken":"c3"}`,
 		},
 	}}
 	if err := runDriveCoverage(t, List, maxPages, "--limit", "1", "--page-all", "--max-pages", "2", "--max-items", "10"); err != nil {
@@ -316,7 +316,7 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 			name: "server exceeds requested page size",
 			args: []string{"--limit", "2", "--page-all", "--max-items", "1"},
 			responses: []string{
-				`{"success":true,"items":[{"fileId":"n1"},{"fileId":"n2"}],"hasMore":false}`,
+				`{"success":true,"nodes":[{"nodeId":"n1"},{"nodeId":"n2"}],"hasMore":false}`,
 			},
 			want: "drive_pagination_page_size_exceeded",
 		},
@@ -324,7 +324,7 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 			name: "pagination cannot be proven",
 			args: []string{"--limit", "1", "--page-all"},
 			responses: []string{
-				`{"success":true,"items":[{"fileId":"n1"}]}`,
+				`{"success":true,"nodes":[{"nodeId":"n1"}]}`,
 			},
 			want: "drive_pagination_pagination_unproven",
 		},
@@ -332,20 +332,20 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 			name: "max items returns a bounded partial result",
 			args: []string{"--limit", "1", "--page-all", "--max-items", "1"},
 			responses: []string{
-				`{"success":true,"items":[{"fileId":"n1"}],"hasMore":true,"nextToken":"c2"}`,
+				`{"success":true,"nodes":[{"nodeId":"n1"}],"hasMore":true,"nextPageToken":"c2"}`,
 			},
 		},
 		{
 			name: "missing continuation cursor",
 			args: []string{"--limit", "1", "--page-all"},
 			responses: []string{
-				`{"success":true,"items":[],"hasMore":true}`,
+				`{"success":true,"nodes":[],"hasMore":true}`,
 			},
 			want: "drive_pagination_missing_next_cursor",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			caller := &driveCoverageCaller{responses: map[string][]string{"list_files": tc.responses}}
+			caller := &driveCoverageCaller{responses: map[string][]string{"list_nodes": tc.responses}}
 			err := runDriveCoverage(t, List, caller, tc.args...)
 			if tc.want == "" && err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -370,11 +370,11 @@ func TestCrossPlatformCoverageDriveUnifiedPaginationContract(t *testing.T) {
 		responses   []string
 	}{
 		{
-			name: "list", declaration: List, tool: "list_files", outputKey: "files",
+			name: "list", declaration: List, tool: "list_nodes", outputKey: "files",
 			args: []string{"--limit", "1", "--page-all"},
 			responses: []string{
-				`{"success":true,"items":[{"fileId":"list-1"}],"hasMore":true,"nextToken":"list-c2"}`,
-				`{"success":true,"items":[{"fileId":"list-2"}],"hasMore":false}`,
+				`{"success":true,"nodes":[{"nodeId":"list-1"}],"hasMore":true,"nextPageToken":"list-c2"}`,
+				`{"success":true,"nodes":[{"nodeId":"list-2"}],"hasMore":false}`,
 			},
 		},
 		{
@@ -428,7 +428,7 @@ func TestCrossPlatformCoverageDriveUnifiedPaginationContract(t *testing.T) {
 	}
 
 	limited := &driveCoverageCaller{responses: map[string][]string{
-		"list_files": {`{"success":true,"items":[{"fileId":"limited-1"}],"hasMore":true,"nextToken":"limited-c2"}`},
+		"list_nodes": {`{"success":true,"nodes":[{"nodeId":"limited-1"}],"hasMore":true,"nextPageToken":"limited-c2"}`},
 	}}
 	raw, err := runDriveCoverageRaw(t, List, limited, "--limit", "1", "--page-all", "--max-pages", "1")
 	if err != nil {
@@ -458,7 +458,7 @@ func TestCrossPlatformCoverageDriveCollectionWireCompatibility(t *testing.T) {
 		args        []string
 		autoPage    bool
 	}{
-		{List, "list_files", "items", "files", nil, true},
+		{List, "list_nodes", "nodes", "files", nil, true},
 		{Search, "search_files", "items", "files", []string{"--query", "synthetic"}, true},
 		{Recent, "get_recent_list", "recentItems", "items", nil, true},
 		{RecycleList, "list_recycle_items", "recycleItems", "items", nil, false},
@@ -536,7 +536,7 @@ func TestCrossPlatformCoverageDrivePaginationErrorOperation(t *testing.T) {
 		inputKey    string
 		args        []string
 	}{
-		{List, "drive", "list_files", "items", nil},
+		{List, "doc", "list_nodes", "nodes", nil},
 		{Search, "drive", "search_files", "items", []string{"--query", "synthetic"}},
 		{Recent, "doc", "get_recent_list", "recentItems", nil},
 	} {
@@ -636,7 +636,7 @@ func TestCrossPlatformCoverageDrivePaginationDefensiveDefaultsAndRecentFilters(t
 
 func TestCrossPlatformCoverageDrivePaginationRejectsContradictionsWithoutUnsafeCursor(t *testing.T) {
 	contradictory := &driveCoverageCaller{responses: map[string][]string{
-		"list_files": {`{"success":true,"items":[],"hasMore":false,"nextToken":"stale"}`},
+		"list_nodes": {`{"success":true,"nodes":[],"hasMore":false,"nextPageToken":"stale"}`},
 	}}
 	err := runDriveCoverage(t, List, contradictory, "--page-all")
 	var typed *apperrors.Error
@@ -648,8 +648,8 @@ func TestCrossPlatformCoverageDrivePaginationRejectsContradictionsWithoutUnsafeC
 	}
 
 	failedSecondPage := &driveCoverageCaller{responses: map[string][]string{
-		"list_files": {
-			`{"success":true,"items":[{"fileId":"first"}],"hasMore":true,"nextToken":"retry-c2"}`,
+		"list_nodes": {
+			`{"success":true,"nodes":[{"nodeId":"first"}],"hasMore":true,"nextPageToken":"retry-c2"}`,
 			`__ERROR__`,
 		},
 	}}
@@ -1531,10 +1531,7 @@ func TestCrossPlatformCoverageDriveInspectAndCollectionOptions(t *testing.T) {
 	if err := runDriveCoverage(t, Inspect, inspect, "--node", "n1", "--space-id", "space", "--include-stats", "--include-publish", "--include-cover"); err != nil {
 		t.Fatal(err)
 	}
-	list := &driveCoverageCaller{responses: map[string][]string{
-		"get_file_info": {`{"success":true,"result":{"fileId":"folder","name":"ordinary-folder","type":"FOLDER"}}`},
-		"list_files":    {`{"success":true,"result":{"items":[{"fileId":"n1","dentryId":"d1","name":"x"}],"nextToken":"c2","hasMore":true}}`},
-	}}
+	list := &driveCoverageCaller{responses: map[string][]string{"list_nodes": {`{"success":true,"result":{"nodes":[{"nodeId":"n1","name":"x","nodeType":"file"}],"nextPageToken":"c2","hasMore":true}}`}}}
 	if err := runDriveCoverage(t, List, list, "--space-id", "space", "--folder", "folder", "--limit", "1", "--cursor", "c1", "--order-by", "name", "--order", "asc", "--thumbnail"); err != nil {
 		t.Fatal(err)
 	}
@@ -1548,11 +1545,11 @@ func TestCrossPlatformCoverageDriveInspectAndCollectionOptions(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageDriveListPrefersDisplayNamesAndNormalizesTypes(t *testing.T) {
+func TestCrossPlatformCoverageDriveListDirectlyUsesDocListNodes(t *testing.T) {
 	caller := &driveCoverageCaller{responses: map[string][]string{
-		"list_files": {`{"success":true,"items":[{"fileId":"doc-1","name":"8095425855","fileName":"level1-test","type":"FOLDER","dentryType":"FILE"},{"fileId":"folder-2","name":"8149695790","dentryName":"Level2","type":"FOLDER"}],"hasMore":false}`},
+		"list_nodes": {`{"success":true,"nodes":[{"name":"level1-test","nodeId":"doc-1","nodeType":"file"},{"name":"Level2","nodeId":"folder-2","nodeType":"folder"}],"hasMore":false}`},
 	}}
-	raw, err := runDriveCoverageRaw(t, List, caller, "--page-all")
+	raw, err := runDriveCoverageRaw(t, List, caller, "--folder", "https://alidocs.dingtalk.com/i/nodes/root-doc-folder", "--page-all")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1564,64 +1561,14 @@ func TestCrossPlatformCoverageDriveListPrefersDisplayNamesAndNormalizesTypes(t *
 	files, _ := data["files"].([]any)
 	first, _ := files[0].(map[string]any)
 	second, _ := files[1].(map[string]any)
-	if first["name"] != "level1-test" || first["type"] != "file" {
-		t.Fatalf("first file = %#v", first)
+	if first["name"] != "level1-test" || first["type"] != "file" || first["nodeId"] != "doc-1" {
+		t.Fatalf("first document row = %#v", first)
 	}
-	if second["name"] != "Level2" || second["type"] != "folder" {
-		t.Fatalf("second file = %#v", second)
+	if second["name"] != "Level2" || second["type"] != "folder" || second["nodeId"] != "folder-2" {
+		t.Fatalf("second document row = %#v", second)
 	}
-}
-
-func TestCrossPlatformCoverageDriveListRoutesDocumentDirectoryOnce(t *testing.T) {
-	const documentURL = "https://alidocs.dingtalk.com/i/nodes/root-doc-folder"
-	for _, tc := range []struct {
-		name        string
-		folder      string
-		responses   map[string][]string
-		wantHistory string
-	}{
-		{
-			name:   "alidocs URL routes directly",
-			folder: documentURL,
-			responses: map[string][]string{
-				"list_nodes": {`{"success":true,"nodes":[{"name":"level1-test","nodeId":"doc-1","nodeType":"file"},{"name":"Level2","nodeId":"folder-2","nodeType":"folder"}],"hasMore":false}`},
-			},
-			wantHistory: "list_nodes",
-		},
-		{
-			name:   "bare id uses one parent preflight",
-			folder: "root-doc-folder",
-			responses: map[string][]string{
-				"get_file_info": {`{"success":true,"result":{"fileId":"root-doc-folder","docUrl":"https://alidocs.dingtalk.com/i/nodes/root-doc-folder","type":"FOLDER"}}`},
-				"list_nodes":    {`{"success":true,"nodes":[{"name":"level1-test","nodeId":"doc-1","nodeType":"file"},{"name":"Level2","nodeId":"folder-2","nodeType":"folder"}],"hasMore":false}`},
-			},
-			wantHistory: "get_file_info,list_nodes",
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			caller := &driveCoverageCaller{responses: tc.responses}
-			raw, err := runDriveCoverageRaw(t, List, caller, "--folder", tc.folder, "--page-all")
-			if err != nil {
-				t.Fatal(err)
-			}
-			var envelope map[string]any
-			if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
-				t.Fatal(err)
-			}
-			data, _ := envelope["data"].(map[string]any)
-			files, _ := data["files"].([]any)
-			first, _ := files[0].(map[string]any)
-			second, _ := files[1].(map[string]any)
-			if first["name"] != "level1-test" || first["type"] != "file" || first["nodeId"] != "doc-1" {
-				t.Fatalf("first document row = %#v", first)
-			}
-			if second["name"] != "Level2" || second["type"] != "folder" || second["nodeId"] != "folder-2" {
-				t.Fatalf("second document row = %#v", second)
-			}
-			if got := strings.Join(caller.history, ","); got != tc.wantHistory {
-				t.Fatalf("history = %q, want %q", got, tc.wantHistory)
-			}
-		})
+	if got := strings.Join(caller.history, ","); got != "list_nodes" {
+		t.Fatalf("history = %q, want list_nodes only", got)
 	}
 }
 

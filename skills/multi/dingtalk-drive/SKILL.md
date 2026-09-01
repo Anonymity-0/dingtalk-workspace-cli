@@ -38,7 +38,7 @@ metadata:
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
 | 全局按名称或关键词找文件 | `dws drive +search --query <关键词> --page-all --max-pages 20 --max-items 500` | 需要完整搜索时自动翻页；只需首批结果时可不加 `--page-all`；多候选停止；在线文档正文搜索走 `doc +search` |
-| 浏览钉盘根目录或已知普通存储文件夹 | `dws drive +list [--folder <dentryUuid>] --page-all --max-pages 20 --max-items 500` | 已知 alidocs 文档目录 URL 浏览子节点走 `doc +list`；其余完整浏览自动翻页 |
+| 浏览根目录或已知文件夹 | `dws drive +list [--folder <dentryUuid>] --page-all --max-pages 20 --max-items 500` | 需要完整浏览时自动翻页；只需首批结果时可不加 `--page-all` |
 | 发现钉盘企业空间或“我的文件”空间 | `dws wiki space list --type <orgSpace\|mySpace> --format json` | Drive 只读前置；orgSpace 按 nextToken 续页，取 spaceId/rootFolderId 后回到 Drive |
 | 查看最近访问/编辑 | `dws drive +recent [--operate-type 1] --limit <N>` | 1=最近编辑；默认最近访问 |
 | 查看节点类型和元数据 | `dws drive +inspect --node <dentryUuid>` | 按需加 stats/publish/cover，不为普通列表强制调用 |
@@ -75,7 +75,7 @@ metadata:
 - 已知 nodeId 的重命名直接 `+rename`，不先 Catalog、Help 或 search；ALIDOC 的逻辑标题由 shortcut 内部文档读回验证。
 - 文件夹方向已明确时直接 `status/pull/push/sync`，不先 status；写操作先用完全相同参数 dry-run，再正式执行。
 - 搜索结果 `type=able` 后按业务动词重路由：结构复制/删除/Base 内操作走 AITable。结构复制按当前 leaf 提供源 Base ID 和真实 `--target-folder-id`；缺少目标 ID 时停止，不猜根 ID或发明 `--target-root`。
-- `+inspect/+download/+list` 只保证 dentryUuid；普通存储对象只有 URL 时先用 `dws drive info --node <URL> --format json` 解析。已知 alidocs 文档目录 URL 的浏览直接交给 `doc +list --folder <URL>`。
+- `+inspect/+download/+list` 只保证 dentryUuid；只有 URL 时先用 `dws drive info --node <URL> --format json` 解析并核对 nodeId。
 
 最短路径不省略类型检查、确认、传输验证或写后校验。
 
