@@ -88,7 +88,7 @@ var List = shortcut.Shortcut{
 		if rt.Bool("thumbnail") {
 			params["withThumbnail"] = true
 		}
-		out, err := collectDrivePages(rt, params, drivePageOptions{
+		options := drivePageOptions{
 			PageAll:        rt.Bool("page-all"),
 			PageSize:       rt.Int("limit"),
 			MaxPages:       rt.Int("max-pages"),
@@ -100,21 +100,49 @@ var List = shortcut.Shortcut{
 			PageSizeParam:  "maxResults",
 			CursorParam:    "nextToken",
 			CollectionKeys: []string{"items", "files", "dentries", "entries", "nodes", "list"},
-			Project: func(items []any) []map[string]any {
-				return projectDriveRows(items, map[string][]string{
-					"name":     {"name", "fileName", "dentryName", "title"},
-					"type":     {"type", "dentryType", "fileType", "spaceType"},
+			ProjectE: func(items []any) ([]map[string]any, error) {
+				return projectDriveListRows(rt, items, map[string][]string{
+					"name":     {"fileName", "dentryName", "title", "name"},
+					"type":     {"nodeType", "dentryType", "fileType", "type", "spaceType", "extension"},
 					"nodeId":   {"fileId", "dentryUuid", "nodeId", "id"},
 					"dentryId": {"dentryId"},
 					"fileSize": {"fileSize", "size", "byteSize", "length"},
 				})
 			},
-		})
+		}
+		out, err := collectDrivePages(rt, params, options)
 		if err != nil {
 			return err
 		}
 		return outputDrivePageResult(rt, out)
 	},
+}
+
+func projectDriveListRows(rt *shortcut.RuntimeContext, items []any, aliases map[string][]string) ([]map[string]any, error) {
+	rows := projectNormalizedDriveListRows(items, aliases)
+	for index, item := range items {
+		source := item.(map[string]any)
+		docURL := firstString(source, "docUrl", "docURL", "url")
+		if !strings.Contains(strings.ToLower(docURL), "alidocs.dingtalk.com/") {
+			continue
+		}
+		nodeID := firstString(source, "fileId", "dentryUuid", "nodeId", "id")
+		if nodeID == "" {
+			return nil, fmt.Errorf("在线文档条目缺少稳定 nodeId，无法解析真实名称和类型")
+		}
+		info, err := rt.CallMCPData("doc", "get_document_info", map[string]any{"nodeId": nodeID})
+		if err != nil {
+			return nil, fmt.Errorf("读取在线文档 %s 的真实元信息失败: %w", nodeID, err)
+		}
+		name := firstString(info, "fileName", "dentryName", "title", "nodeName", "name")
+		nodeType := normalizeDriveListType(firstString(info, "nodeType", "node_type", "docType", "type", "extension"))
+		if name == "" || (nodeType != "file" && nodeType != "folder") {
+			return nil, fmt.Errorf("在线文档 %s 的真实元信息缺少名称或 file/folder 类型", nodeID)
+		}
+		rows[index]["name"] = name
+		rows[index]["type"] = nodeType
+	}
+	return rows, nil
 }
 
 // Info → get_file_info

@@ -216,6 +216,30 @@ func projectDriveRows(items []any, aliases map[string][]string) []map[string]any
 	return rows
 }
 
+func projectNormalizedDriveListRows(items []any, aliases map[string][]string) []map[string]any {
+	rows := projectDriveRows(items, aliases)
+	for _, row := range rows {
+		value, ok := row["type"].(string)
+		if !ok {
+			continue
+		}
+		row["type"] = normalizeDriveListType(value)
+	}
+	return rows
+}
+
+func normalizeDriveListType(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	switch normalized {
+	case "dir", "directory", "folder":
+		return "folder"
+	case "file", "document", "alidoc", "adoc", "axls", "able", "amind", "adraw", "appt":
+		return "file"
+	default:
+		return normalized
+	}
+}
+
 func addDrivePagination(out map[string]any, container map[string]any) {
 	for _, pair := range [][2]string{{"nextCursor", "nextCursor"}, {"nextToken", "nextCursor"}, {"nextPageToken", "nextCursor"}, {"hasMore", "hasMore"}} {
 		if value, ok := container[pair[0]]; ok && value != nil {

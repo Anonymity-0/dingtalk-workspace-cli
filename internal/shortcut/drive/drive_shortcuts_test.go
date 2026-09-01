@@ -1545,6 +1545,61 @@ func TestCrossPlatformCoverageDriveInspectAndCollectionOptions(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageDriveListPrefersDisplayNamesAndNormalizesTypes(t *testing.T) {
+	caller := &driveCoverageCaller{responses: map[string][]string{
+		"list_files": {`{"success":true,"items":[{"fileId":"doc-1","name":"8095425855","fileName":"level1-test","type":"FOLDER","dentryType":"FILE"},{"fileId":"folder-2","name":"8149695790","dentryName":"Level2","type":"FOLDER"}],"hasMore":false}`},
+	}}
+	raw, err := runDriveCoverageRaw(t, List, caller, "--page-all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := envelope["data"].(map[string]any)
+	files, _ := data["files"].([]any)
+	first, _ := files[0].(map[string]any)
+	second, _ := files[1].(map[string]any)
+	if first["name"] != "level1-test" || first["type"] != "file" {
+		t.Fatalf("first file = %#v", first)
+	}
+	if second["name"] != "Level2" || second["type"] != "folder" {
+		t.Fatalf("second file = %#v", second)
+	}
+}
+
+func TestCrossPlatformCoverageDriveListEnrichesDocumentRowsWithoutChangingStorageIdentity(t *testing.T) {
+	caller := &driveCoverageCaller{responses: map[string][]string{
+		"list_files": {`{"success":true,"items":[{"fileId":"storage-doc-1","dentryId":"123","docUrl":"https://alidocs.dingtalk.com/i/nodes/storage-doc-1","name":"8095425855","type":"FOLDER"},{"fileId":"storage-folder-2","dentryId":"456","docUrl":"https://alidocs.dingtalk.com/i/nodes/storage-folder-2","name":"8149695790","type":"FOLDER"}],"hasMore":false}`},
+		"get_document_info": {
+			`{"name":"level1-test","nodeId":"doc-1","nodeType":"file"}`,
+			`{"name":"Level2","nodeId":"folder-2","nodeType":"folder"}`,
+		},
+	}}
+	raw, err := runDriveCoverageRaw(t, List, caller, "--folder", "root", "--page-all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := envelope["data"].(map[string]any)
+	files, _ := data["files"].([]any)
+	first, _ := files[0].(map[string]any)
+	second, _ := files[1].(map[string]any)
+	if first["name"] != "level1-test" || first["type"] != "file" || first["nodeId"] != "storage-doc-1" || first["dentryId"] != "123" {
+		t.Fatalf("first enriched row = %#v", first)
+	}
+	if second["name"] != "Level2" || second["type"] != "folder" || second["nodeId"] != "storage-folder-2" || second["dentryId"] != "456" {
+		t.Fatalf("second enriched row = %#v", second)
+	}
+	if got := strings.Join(caller.history, ","); got != "list_files,get_document_info,get_document_info" {
+		t.Fatalf("history = %q, want storage list followed by selective document enrichment", got)
+	}
+}
+
 func TestCrossPlatformCoverageDriveUploadInputAndExecutionEdges(t *testing.T) {
 	t.Chdir(t.TempDir())
 	if err := os.WriteFile("empty.bin", nil, 0o600); err != nil {

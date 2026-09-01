@@ -23,6 +23,10 @@ func TestDocSkillPinsRequiredShortcutArguments(t *testing.T) {
 	text := string(content)
 
 	for _, required := range []string{
+		"dws doc +list --folder <ID或URL> --page-all",
+		"返回真实 `name/nodeType/nodeId/url`",
+		"`+fetch` 若报目标为目录",
+		"禁止切 `drive +list`",
 		"dws doc +create --name <标题> --content <文本\\|-\\|@文件> [--folder <ID>\\|--workspace <ID>]",
 		"dws doc +import --file <相对路径> [--folder <ID>\\|--workspace <ID>]",
 		"指定位置复用真实 ID，二者互斥",
@@ -34,5 +38,14 @@ func TestDocSkillPinsRequiredShortcutArguments(t *testing.T) {
 		if !strings.Contains(text, required) {
 			t.Errorf("%s missing required shortcut contract %q", path, required)
 		}
+	}
+
+	referencePath := filepath.Join(root, "skills", "multi", "dingtalk-doc", "references", "doc.md")
+	reference, err := os.ReadFile(referencePath)
+	if err != nil {
+		t.Fatalf("read %s: %v", referencePath, err)
+	}
+	if !strings.Contains(string(reference), "dws doc +list --folder <ID或URL> --page-all") {
+		t.Errorf("%s does not preserve the alidocs document-directory route", referencePath)
 	}
 }
