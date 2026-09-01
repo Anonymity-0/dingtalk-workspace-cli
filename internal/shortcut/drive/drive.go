@@ -73,8 +73,20 @@ var List = shortcut.Shortcut{
 	Constraints: driveAutoPaginationConstraints(),
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{}
+		if rt.Changed("space-id") {
+			params["spaceId"] = rt.Str("space-id")
+		}
 		if rt.Changed("folder") {
-			params["folderId"] = rt.Str("folder")
+			params["parentId"] = rt.Str("folder")
+		}
+		if rt.Changed("order-by") {
+			params["orderBy"] = rt.Str("order-by")
+		}
+		if rt.Changed("order") {
+			params["order"] = rt.Str("order")
+		}
+		if rt.Bool("thumbnail") {
+			params["withThumbnail"] = true
 		}
 		out, err := collectDrivePages(rt, params, drivePageOptions{
 			PageAll:        rt.Bool("page-all"),
@@ -82,17 +94,17 @@ var List = shortcut.Shortcut{
 			MaxPages:       rt.Int("max-pages"),
 			MaxItems:       rt.Int("max-items"),
 			Cursor:         rt.Str("cursor"),
-			Server:         "doc",
-			Tool:           "list_nodes",
+			Server:         "drive",
+			Tool:           "list_files",
 			OutputKey:      "files",
-			PageSizeParam:  "pageSize",
-			CursorParam:    "pageToken",
-			CollectionKeys: []string{"nodes", "items", "files", "entries", "list"},
+			PageSizeParam:  "maxResults",
+			CursorParam:    "nextToken",
+			CollectionKeys: []string{"items", "files", "dentries", "entries", "nodes", "list"},
 			Project: func(items []any) []map[string]any {
 				return projectDriveRows(items, map[string][]string{
-					"name":     {"name", "title", "nodeName", "fileName"},
-					"type":     {"nodeType", "node_type", "docType", "type", "extension"},
-					"nodeId":   {"nodeId", "node_id", "id", "docId", "doc_id"},
+					"name":     {"name", "fileName", "dentryName", "title"},
+					"type":     {"type", "dentryType", "fileType", "spaceType"},
+					"nodeId":   {"fileId", "dentryUuid", "nodeId", "id"},
 					"dentryId": {"dentryId"},
 					"fileSize": {"fileSize", "size", "byteSize", "length"},
 				})
