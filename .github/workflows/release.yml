@@ -1249,12 +1249,11 @@ jobs:
           fi
 
           release_id=""
-          if gh release view "$RELEASE_VERSION" >/dev/null 2>&1; then
-            release_id="$(
-              gh release view "$RELEASE_VERSION" \
-                --json databaseId \
-                --jq .databaseId
-            )"
+          if release_id="$(
+            gh api -H 'X-GitHub-Api-Version: 2026-03-10' \
+              "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_VERSION" \
+              --jq .id 2>/dev/null
+          )"; then
             printf '%s\n' "$release_id" | grep -Eq '^[1-9][0-9]*$' || {
               echo "Existing GitHub Release has an invalid database ID: $release_id" >&2
               exit 1
@@ -1342,9 +1341,9 @@ jobs:
               --notes-file "$RUNNER_TEMP/release-notes.md" \
               $prerelease_flag
             release_id="$(
-              gh release view "$RELEASE_VERSION" \
-                --json databaseId \
-                --jq .databaseId
+              gh api -H 'X-GitHub-Api-Version: 2026-03-10' \
+                "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_VERSION" \
+                --jq .id
             )"
           fi
           printf '%s\n' "$release_id" | grep -Eq '^[1-9][0-9]*$' || {
@@ -1406,9 +1405,9 @@ jobs:
             dist/checksums.txt \
             --clobber
           uploaded_release_id="$(
-            gh release view "$RELEASE_VERSION" \
-              --json databaseId \
-              --jq .databaseId
+            gh api -H 'X-GitHub-Api-Version: 2026-03-10' \
+              "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_VERSION" \
+              --jq .id
           )"
           test "$uploaded_release_id" = "$release_id" || {
             echo "GitHub Release identity changed during upload: $release_id -> $uploaded_release_id" >&2
