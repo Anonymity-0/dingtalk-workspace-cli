@@ -15,6 +15,9 @@ streaming 不是任意组件 Schema：
 - flowStatus：1–5；
 - callback：不支持。
 
+`update-card --flow-status` 的 CLI 类型为 string，但仍只接受兼容数字 1–5
+（包括历史 pflag int 支持的 base-0 写法），并向 streaming RPC 发送 integer。
+
 A2UI 原子命令规则：
 
 - `send-a2ui-card` 调用 `im.create_and_send_a2ui_card`。

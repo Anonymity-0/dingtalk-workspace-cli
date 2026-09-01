@@ -2493,7 +2493,7 @@ Flags:
 
 #### 更新卡片内容 — streaming 与 A2UI 独立命令
 
-`update-card` 通过 `im.update_streaming_card` 更新 streaming 卡片，flow-status 取值 1-5。
+`update-card` 通过 `im.update_streaming_card` 更新 streaming 卡片。`--flow-status` 的 CLI 类型为 string，仍只接受兼容数字 1-5，并向 RPC 发送 integer。
 `update-a2ui-card` 通过 `im.update_a2ui_card` 更新 A2UI 卡片，`--content` 必须是 JSON 字符串数组并发送为 `a2uiMessages`，固定附带 `a2uiAnnotations: []`。A2UI `--flow-status` 接受 PROCESSING、INPUTTING、FINISH、EXECUTING、ERROR、ABORTED、TIMEOUT、CONFIRMING、CONFIRMED，也兼容数字 1-9 并映射为对应枚举字符串。
 
 **最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。**
@@ -2508,7 +2508,7 @@ Example:
 Flags:
       --biz-id string    卡片业务 ID (必填)
       --content string   卡片消息内容 (必填)
-      --flow-status int  流式状态 (必填)
+      --flow-status string 流式状态 (必填)
 ```
 
 ## 上下文传递表
