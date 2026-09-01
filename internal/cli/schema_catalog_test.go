@@ -1601,10 +1601,9 @@ func TestDeliveryCatalogChatCardEngineSplitContracts(t *testing.T) {
 				"content":     "msgContent",
 				"flow-status": "flowStatus",
 			},
-			types:          map[string]string{"flow-status": "string"},
-			interfaceTypes: map[string]string{"flow-status": "integer"},
-			required:       map[string]bool{"biz-id": true, "content": true, "flow-status": true},
-			absent:         []string{"card-engine"},
+			types:    map[string]string{"flow-status": "string"},
+			required: map[string]bool{"biz-id": true, "content": true, "flow-status": true},
+			absent:   []string{"card-engine"},
 		},
 		{
 			path:      "chat message update-a2ui-card",

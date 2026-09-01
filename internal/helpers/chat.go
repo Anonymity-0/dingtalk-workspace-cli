@@ -6753,7 +6753,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Parameters: []contract.ParamDecl{
 				{Name: "biz-id", Property: "bizId"},
 				{Name: "content", Property: "msgContent"},
-				{Name: "flow-status", Property: "flowStatus", InterfaceType: "integer"},
+				{Name: "flow-status", Property: "flowStatus"},
 			},
 		},
 	})
