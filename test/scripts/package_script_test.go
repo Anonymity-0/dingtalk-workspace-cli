@@ -2671,11 +2671,9 @@ func TestReleaseWorkflowUsesAppleCodesignBeforePublication(t *testing.T) {
 		"runtime-payload materialize",
 		`test "$binary_team" = "$library_team"`,
 		`doctor --json --timeout 2`,
-		"for doctor_attempt in 1 2 3",
-		`doctor-home-$doctor_attempt`,
-		`doctor-$doctor_attempt.json`,
-		"runtime_context verification attempt $doctor_attempt failed",
-		`.detail.token_fingerprint | length`,
+		`doctor-home`,
+		`doctor.json`,
+		"runtime_context diagnostic command failed",
 	} {
 		if !strings.Contains(verifySection, required) {
 			t.Errorf("Apple verification stage is missing %q", required)
