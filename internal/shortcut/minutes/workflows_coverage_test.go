@@ -385,6 +385,10 @@ func TestCrossPlatformCoverageMinutesArtifactCollectorBranches(t *testing.T) {
 	if len(bundle) != 5 || len(failures) != 1 {
 		t.Fatalf("collector bundle=%#v failures=%#v", bundle, failures)
 	}
+	todos := bundle["todos"].(map[string]any)
+	if todos["state"] != "known_empty" || todos["complete"] != true || todos["itemCount"] != 0 {
+		t.Fatalf("collector todos=%#v", todos)
+	}
 
 	for _, artifact := range []string{"basic", "summary", "keywords", "transcript", "todos"} {
 		t.Run("call "+artifact, func(t *testing.T) {
@@ -399,6 +403,9 @@ func TestCrossPlatformCoverageMinutesArtifactCollectorBranches(t *testing.T) {
 			if len(got) != 0 || len(failed) != 1 {
 				t.Fatalf("got=%#v failed=%#v", got, failed)
 			}
+			if artifact == "todos" && failed[0]["state"] != "failed" {
+				t.Fatalf("todo call state=%#v", failed[0])
+			}
 		})
 		t.Run("parse "+artifact, func(t *testing.T) {
 			tool := map[string]string{
@@ -411,6 +418,9 @@ func TestCrossPlatformCoverageMinutesArtifactCollectorBranches(t *testing.T) {
 			got, failed := collectMinutesArtifactsOnce(rt, "u1", []string{artifact}, 1)
 			if len(got) != 0 || len(failed) != 1 {
 				t.Fatalf("got=%#v failed=%#v", got, failed)
+			}
+			if artifact == "todos" && failed[0]["state"] != "unsupported_shape" {
+				t.Fatalf("todo parse state=%#v", failed[0])
 			}
 		})
 	}
@@ -434,6 +444,12 @@ func TestCrossPlatformCoverageMinutesArtifactWaitAndOutput(t *testing.T) {
 	rt = shortcut.RuntimeContextForTest(&cobra.Command{Use: "wait"}, ExportPack)
 	if _, failures, attempts := waitMinutesArtifacts(rt, "u1", []string{"basic"}, 1, 0, 0); len(failures) != 1 || attempts != 1 {
 		t.Fatalf("timeout failures=%#v attempts=%d", failures, attempts)
+	}
+	unsupported := &minutesE2ECaller{responses: map[string][]string{"minutes/list_minutes_todos": {`{"success":true,"result":{}}`}}}
+	helpers.InitDepsForTest(t, unsupported)
+	rt = shortcut.RuntimeContextForTest(&cobra.Command{Use: "wait"}, ExportPack)
+	if _, failures, attempts := waitMinutesArtifacts(rt, "u1", []string{"todos"}, 1, 2*time.Hour, time.Hour); len(failures) != 1 || attempts != 1 || failures[0]["state"] != "unsupported_shape" {
+		t.Fatalf("terminal todos failures=%#v attempts=%d", failures, attempts)
 	}
 	cancelled := &minutesE2ECaller{responses: map[string][]string{"minutes/get_minutes_basic_info": {`{"success":true,"result":{}}`}}}
 	helpers.InitDepsForTest(t, cancelled)

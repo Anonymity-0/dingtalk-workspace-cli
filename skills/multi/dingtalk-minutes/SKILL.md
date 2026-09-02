@@ -44,7 +44,7 @@ metadata:
 | 看我最新创建的一条 | `dws minutes +latest [--keyword <关键词>]` | 只在用户明确说“最新”时用；不能用它替代具名目标搜索，也不能在录音 start 后拿 latest 猜新录音 ID |
 | 读取基础信息、摘要或关键词 | `dws minutes +detail --id <taskUuid> --artifacts basic,summary,keywords` | 已有 taskUuid 且只读取现有产物时直接使用，不要进入上传 workflow；任一产物失败都按 partial/非零处理，不把缺失项说成空内容 |
 | 读取逐字稿 | `dws minutes +transcript --id <taskUuid> [--direction 1] [--single-page]` | 已有 taskUuid 且只读取逐字稿时直接使用，不要借 `+upload-and-analyze --resume-id` 代读。默认正序并追完分页；倒序必须传 `--direction 1`，用户明确只要第一页时传 `--single-page`，不得随后自动续页。交付前检查 `data.direction/data.complete/data.pages` 与 `meta.pagination` |
-| 读取行动项 | `dws minutes +action-items --id <taskUuid>` | 只有受支持字段明确返回空数组才能说“没有待办”；`unsupported_shape`、字段解析失败或工具失败都不是空结果。需要创建钉钉待办时再切 `dingtalk-todo` |
+| 读取行动项 | `dws minutes +action-items --id <taskUuid>` | 只在 `state=known_empty` 时说“没有待办”；`ready` 才能读取 `items`。`unsupported_shape/failed` 必须非零并保留脱敏 shape 证据，不能翻译为空结果。需要创建钉钉待办时再切 `dingtalk-todo` |
 | 把摘要、关键词、完整逐字稿和行动项归档到本地 | `dws minutes +export-pack --id <taskUuid> --output <新相对目录>` | 要带媒体时加 `--include-media`；必须由 `published/path/manifest/files` 证明落盘，只有建目录、计划或文件名不能称已生成 |
 | 修改或预览标题 | `dws minutes +update --id <taskUuid> --title "<新标题>"` | 真实修改按 Runtime confirmation 执行并读回；用户只要预览时先读 basic，再加 `--dry-run`，展示“当前值 → 目标值”后停止，不追加 `--yes` |
 | 覆盖纪要正文 | `dws minutes +summary --id <taskUuid> --content @<相对文件>` | `content` 是完整目标正文，不是局部 patch；按 Runtime confirmation 执行，并保护图片引用、读回全文 |

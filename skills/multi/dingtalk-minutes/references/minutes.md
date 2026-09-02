@@ -74,11 +74,13 @@ dws minutes <group> <leaf> --help
 | `minutes get summary --id <taskUuid>` | AI 摘要/纪要 | 合法空摘要与调用失败分开 |
 | `minutes get keywords --id <taskUuid>` | 关键词 | 不从空/未知字段编造关键词 |
 | `minutes get transcription --id <taskUuid>` | 单页逐字稿 | 这是单页原子入口；存在下一页时继续传 cursor。需要完整结果优先 `+transcript` |
-| `minutes get todos --id <taskUuid>` | 行动项 | 当前响应可能使用 `actions` 或 `dingtalkTodoList`；失败不能伪装成“暂无待办” |
+| `minutes get todos --id <taskUuid>` | 行动项 | 原子响应可能使用 `actions` 或 `dingtalkTodoList`；优先通过 `+action-items` 读取 typed state，失败不能伪装成“暂无待办” |
 | `minutes get audio --id <taskUuid>` | 临时媒体 URL | URL 敏感且会过期，不长期记录 |
 | `minutes get batch --ids <uuid1,uuid2>` | 多条基础详情 | 批量结果逐项对应 ID，缺项不能算全成功 |
 
 完整逐字稿优先 `+transcript`；它跨页去重，业务完整性位于 `data.complete/data.pages`，续页状态位于 `meta.pagination`，分页中断返回失败信封。`+detail` 适合一次读取多种产物；任何所选产物失败都属于 partial，不把 bundle 说成完整。
+
+`+action-items` 使用稳定状态：`ready` 表示取得明确非空集合，`known_empty` 表示服务端明确返回受支持的空数组；`unsupported_shape` 表示响应存在但不能安全解释，`failed` 表示调用或后端失败。只有前两种状态 `complete=true`；未知 shape 只返回字段名与 JSON 类型，不回显未知字段值，也不得自动重试或改写成空行动项。
 
 需要核对多条命中的 basic 时，不要只抽查第一条：
 

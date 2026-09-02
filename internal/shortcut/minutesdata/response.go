@@ -120,11 +120,7 @@ func ValidateArtifact(name, taskUUID string, data map[string]any) error {
 			return fmt.Errorf("minutes keywords response: %w", err)
 		}
 	case "todos":
-		if _, actionsErr := mapSliceField(result, "actions"); actionsErr != nil {
-			if _, todosErr := mapSliceField(result, "dingtalkTodoList"); todosErr != nil {
-				return fmt.Errorf("minutes todos response has neither actions nor dingtalkTodoList array")
-			}
-		}
+		return InspectTodos(taskUUID, data).Err()
 	default:
 		if len(result) == 0 {
 			return fmt.Errorf("minutes %s response result is empty", name)

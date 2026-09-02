@@ -705,6 +705,7 @@ func collectMinutesArtifactsOnce(rt *shortcut.RuntimeContext, id string, artifac
 	for _, artifact := range artifacts {
 		var value any
 		var err error
+		var failure map[string]any
 		switch artifact {
 		case "basic":
 			var data map[string]any
@@ -738,15 +739,24 @@ func collectMinutesArtifactsOnce(rt *shortcut.RuntimeContext, id string, artifac
 		case "todos":
 			var data map[string]any
 			data, err = rt.CallMCPData("minutes", "list_minutes_todos", map[string]any{"taskUuid": id})
+			fact := minutesdata.FailedTodos(id, err)
 			if err == nil {
-				err = minutesdata.ValidateArtifact("todos", id, data)
-				value = data["result"]
+				fact = minutesdata.InspectTodos(id, data)
+			}
+			err = fact.Err()
+			if err == nil {
+				value = fact.Payload()
+			} else {
+				failure = fact.Ledger()
 			}
 		default:
 			err = fmt.Errorf("unsupported artifact %q", artifact)
 		}
 		if err != nil {
-			failures = append(failures, map[string]any{"artifact": artifact, "error": err.Error()})
+			if failure == nil {
+				failure = map[string]any{"artifact": artifact, "error": err.Error()}
+			}
+			failures = append(failures, failure)
 			continue
 		}
 		bundle[artifact] = value
@@ -760,13 +770,23 @@ func waitMinutesArtifacts(rt *shortcut.RuntimeContext, id string, artifacts []st
 	for {
 		attempts++
 		bundle, failures := collectMinutesArtifactsOnce(rt, id, artifacts, pageLimit)
-		if len(failures) == 0 || minutesPollDeadlineReached(deadline, interval) {
+		if len(failures) == 0 || hasTerminalMinutesArtifactFailure(failures) || minutesPollDeadlineReached(deadline, interval) {
 			return bundle, failures, attempts
 		}
 		if err := waitMinutesInterval(rt, interval); err != nil {
 			return bundle, append(failures, map[string]any{"artifact": "wait", "error": err.Error()}), attempts
 		}
 	}
+}
+
+func hasTerminalMinutesArtifactFailure(failures []map[string]any) bool {
+	for _, failure := range failures {
+		state, _ := failure["state"].(string)
+		if state == string(minutesdata.ArtifactUnsupportedShape) {
+			return true
+		}
+	}
+	return false
 }
 
 func waitMinutesInterval(rt *shortcut.RuntimeContext, interval time.Duration) error {
