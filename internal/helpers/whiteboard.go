@@ -53,7 +53,7 @@ func newWhiteboardCommand() *cobra.Command {
 		},
 		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "创建独立白板，或按 partId 是否提供查询和更新独立/文档内嵌白板",
-			UseWhen:      []string{"用户要读取或写入白板/画布中的 OpenNodes，或使用 checkpoint 创建独立白板时；没有文档内嵌证据时默认独立白板"},
+			UseWhen:      []string{"用户要读取或写入白板/画布中的 OpenNodes，或使用 OpenNodes 初始内容创建独立白板时；没有文档内嵌证据时默认独立白板"},
 			AvoidWhen:    []string{"普通文档正文和块使用 doc；只创建或删除文档内白板卡片使用 doc whiteboard insert / doc block delete"},
 		},
 	})

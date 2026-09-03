@@ -287,17 +287,17 @@ func TestCrossPlatformCoverageWhiteboardStandaloneUpdateRoutesExactCASArgs(t *te
 }
 
 func TestCrossPlatformCoverageWhiteboardCreateWithContentValidatesAndRedactsDryRun(t *testing.T) {
-	contentPath := filepath.Join(t.TempDir(), "checkpoint.txt")
-	if err := os.WriteFile(contentPath, []byte("secret-checkpoint"), 0o600); err != nil {
+	sourcePath := filepath.Join(t.TempDir(), "whiteboard.json")
+	sourceJSON := `{"source":{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[{"id":"secret-node","type":"text"}]}}`
+	if err := os.WriteFile(sourcePath, []byte(sourceJSON), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	caller := &whiteboardTestCaller{
 		format: "json",
 		response: func(whiteboardTestCall, int) string {
-			// Captured from the pre-release whiteboard gateway. The HSF result
-			// declares richer verification fields, but the currently published
-			// projection omits them and serializes revision as a string.
-			return `{"docUrl":"https://pre-alidocs.dingtalk.com/i/nodes/wb-new","folderId":"folder-1","logId":"trace-1","mobileUrl":"https://pre-alidocs.dingtalk.com/i/nodes/wb-new","name":"Board.adraw","nodeId":"wb-new","revision":"0","success":true}`
+			// The gateway may serialize the numeric HSF revision as a string;
+			// requestId is part of the required create receipt.
+			return `{"docUrl":"https://pre-alidocs.dingtalk.com/i/nodes/wb-new","folderId":"folder-1","logId":"trace-1","mobileUrl":"https://pre-alidocs.dingtalk.com/i/nodes/wb-new","name":"Board.adraw","nodeId":"wb-new","requestId":"create-1","revision":"0","success":true}`
 		},
 	}
 	output := installWhiteboardTestCaller(t, caller)
@@ -305,7 +305,7 @@ func TestCrossPlatformCoverageWhiteboardCreateWithContentValidatesAndRedactsDryR
 	ctx, _ := outputpkg.WithResultStore(context.Background())
 	cmd.SetContext(ctx)
 	cmd.SetOut(output)
-	cmd.SetArgs([]string{"create-with-content", "--name", "Board", "--content", contentPath, "--request-id", "create-1"})
+	cmd.SetArgs([]string{"create-with-content", "--name", "Board", "--source", sourcePath, "--request-id", "create-1"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +316,12 @@ func TestCrossPlatformCoverageWhiteboardCreateWithContentValidatesAndRedactsDryR
 	if _, emitted, err := outputpkg.EmitStoredResult(leaf); err != nil || !emitted {
 		t.Fatalf("emit real result: emitted=%v err=%v", emitted, err)
 	}
-	if len(caller.calls) != 1 || caller.calls[0].tool != standaloneWhiteboardCreateTool || caller.calls[0].args["content"] != "secret-checkpoint" {
+	if len(caller.calls) != 1 || caller.calls[0].tool != standaloneWhiteboardCreateTool {
+		t.Fatalf("calls = %#v", caller.calls)
+	}
+	source, _ := caller.calls[0].args["source"].(map[string]any)
+	nodes, _ := source["nodes"].([]any)
+	if source["schemaVersion"] != "1.0" || len(nodes) != 1 {
 		t.Fatalf("calls = %#v", caller.calls)
 	}
 	var created map[string]any
@@ -334,7 +339,7 @@ func TestCrossPlatformCoverageWhiteboardCreateWithContentValidatesAndRedactsDryR
 	ctx, _ = outputpkg.WithResultStore(context.Background())
 	cmd.SetContext(ctx)
 	cmd.SetOut(output)
-	cmd.SetArgs([]string{"create-with-content", "--name", "Board", "--content", contentPath, "--request-id", "create-1"})
+	cmd.SetArgs([]string{"create-with-content", "--name", "Board", "--source", sourcePath, "--request-id", "create-1"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -350,7 +355,8 @@ func TestCrossPlatformCoverageWhiteboardCreateWithContentValidatesAndRedactsDryR
 		t.Fatal(err)
 	}
 	data, _ := preview["data"].(map[string]any)
-	if len(caller.calls) != 0 || strings.Contains(output.String(), "secret-checkpoint") || data["contentBytes"] != float64(17) {
+	if len(caller.calls) != 0 || strings.Contains(output.String(), "secret-node") ||
+		data["nodeCount"] != float64(1) || data["sourceBytes"] == nil {
 		t.Fatalf("dry-run calls=%#v output=%s", caller.calls, output.String())
 	}
 }
@@ -360,16 +366,18 @@ func TestCrossPlatformCoverageWhiteboardCreateReceiptRejectsExplicitContradictio
 		name     string
 		response map[string]any
 	}{
-		{name: "missing node", response: map[string]any{"success": true, "revision": "0"}},
-		{name: "missing revision", response: map[string]any{"success": true, "nodeId": "wb"}},
-		{name: "negative revision", response: map[string]any{"success": true, "nodeId": "wb", "revision": "-1"}},
-		{name: "wrong content type", response: map[string]any{"success": true, "nodeId": "wb", "revision": "0", "contentType": "DOC"}},
-		{name: "content not applied", response: map[string]any{"success": true, "nodeId": "wb", "revision": "0", "requestedContentApplied": false}},
-		{name: "request mismatch", response: map[string]any{"success": true, "nodeId": "wb", "revision": "0", "requestMatched": false}},
+		{name: "missing node", response: map[string]any{"success": true, "requestId": "create-1", "revision": "0"}},
+		{name: "missing request ID", response: map[string]any{"success": true, "nodeId": "wb", "revision": "0"}},
+		{name: "wrong request ID", response: map[string]any{"success": true, "requestId": "other", "nodeId": "wb", "revision": "0"}},
+		{name: "missing revision", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb"}},
+		{name: "negative revision", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "-1"}},
+		{name: "wrong content type", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "0", "contentType": "DOC"}},
+		{name: "content not applied", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "0", "requestedContentApplied": false}},
+		{name: "request mismatch", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "0", "requestMatched": false}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if err := validateStandaloneWhiteboardCreateResponse(test.response); err == nil || !strings.Contains(err.Error(), "成功回执字段不符合约定") {
+			if err := validateStandaloneWhiteboardCreateResponse(test.response, "create-1"); err == nil || !strings.Contains(err.Error(), "成功回执字段不符合约定") {
 				t.Fatalf("error = %v", err)
 			}
 		})
@@ -378,11 +386,11 @@ func TestCrossPlatformCoverageWhiteboardCreateReceiptRejectsExplicitContradictio
 	response := map[string]any{
 		"success": true,
 		"result": map[string]any{
-			"nodeId": "wb", "revision": json.Number("7"), "contentType": "wbd",
+			"requestId": "create-1", "nodeId": "wb", "revision": json.Number("7"), "contentType": "wbd",
 			"requestedContentApplied": true, "requestMatched": true,
 		},
 	}
-	if err := validateStandaloneWhiteboardCreateResponse(response); err != nil {
+	if err := validateStandaloneWhiteboardCreateResponse(response, "create-1"); err != nil {
 		t.Fatal(err)
 	}
 }

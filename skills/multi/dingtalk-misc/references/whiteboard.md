@@ -94,10 +94,14 @@ dws whiteboard +update --node <WHITEBOARD_NODE_ID> \
   --expected-revision <REVISION> --request-id <STABLE_REQUEST_ID> \
   --source @whiteboard.json --format json
 
-# 使用不透明 checkpoint 创建独立白板
+# 使用 OpenNodes V1 初始内容创建独立白板
 dws whiteboard create-with-content --name "<白板名称>" \
-  --content ./checkpoint.txt --request-id <STABLE_REQUEST_ID> --format json
+  --source ./whiteboard.json --request-id <STABLE_REQUEST_ID> --format json
 ```
+
+`create-with-content --source` 使用与原子 `whiteboard update` 相同的本地文件结构：
+`{"source":{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[...]}}`。
+CLI 只向 `create_whiteboard` 发送解析后的 `source` 对象，不接受或暴露 checkpoint。
 
 `--source` 接受 JSON、`@relative-file.json` 或 stdin；本地文件必须加 `@`，裸路径
 会被当作 JSON。白板 shortcut 不支持 `--jq` / `--fields`。

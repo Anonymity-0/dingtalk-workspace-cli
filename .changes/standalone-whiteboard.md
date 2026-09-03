@@ -2,7 +2,7 @@
 category: Added
 ---
 
-- **Standalone whiteboards** — adds `whiteboard create-with-content` and extends
+- **Standalone whiteboards** — adds OpenNodes-based `whiteboard create-with-content` and extends
   the existing `whiteboard query` / `whiteboard update` entry points to operate
   on standalone boards when `--part-id` is omitted, while preserving the
   document-embedded flow when it is explicitly supplied. Standalone reads
