@@ -67,8 +67,8 @@ insert 返回 `whiteboardId` 后直接使用；若为 null，只 fetch 一次并
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
-| `dws whiteboard +query` | read | 严格读取独立白板，或用 partId 读取内嵌白板 |
-| `dws whiteboard +update` | high-risk-write | 确认后更新独立/内嵌白板并按同一稳定目标精确读回 |
+| `dws whiteboard +query` | read | 严格读取文档内嵌或独立白板的 OpenNodes 快照 |
+| `dws whiteboard +update` | high-risk-write | 确认后更新文档内嵌或独立白板并精确读回 |
 <!-- VISIBLE_SHORTCUTS_END -->
 
 ## 定位与调用
