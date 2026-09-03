@@ -18,6 +18,7 @@ import (
 )
 
 func newStandaloneWhiteboardCreateCommand() *cobra.Command {
+	createExampleIndex := 0
 	return NewLeafCommand(LeafSpec{
 		Use:           "create-with-content",
 		Short:         "使用 checkpoint 创建独立白板",
@@ -59,6 +60,13 @@ func newStandaloneWhiteboardCreateCommand() *cobra.Command {
 				UseWhen:      []string{"需要在文件夹、知识库或我的文档中创建一份带初始 checkpoint 内容的独立白板时"},
 				AvoidWhen:    []string{"创建空白独立白板使用现有文档文件创建能力；在文档中插入白板卡片使用 doc whiteboard insert"},
 				Examples:     []string{"dws whiteboard create-with-content --name \"项目方案白板\" --content ./checkpoint.txt --request-id wb-create-001 --format json"},
+				ExampleDispositions: []contract.ExampleDisposition{{
+					Index:      &createExampleIndex,
+					Mode:       contract.ExampleDispositionModeContractOnly,
+					ReasonCode: contract.ExampleDispositionReasonLocalState,
+					Reason:     "运行时需要用户提供可读的非空本地 checkpoint 文件",
+					Reviewed:   true,
+				}},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Property: "name", Required: boolPtr(true)},

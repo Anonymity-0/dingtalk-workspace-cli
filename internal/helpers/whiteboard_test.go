@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	outputpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -60,6 +62,49 @@ func installWhiteboardTestCaller(t *testing.T, caller *whiteboardTestCaller) *by
 	deps.Out.w = output
 	deps.Out.errW = &bytes.Buffer{}
 	return output
+}
+
+func TestWhiteboardLocalFileExamplesAreContractOnly(t *testing.T) {
+	root := newWhiteboardCommand()
+	tests := []struct {
+		path         string
+		exampleCount int
+	}{
+		{path: "create-with-content", exampleCount: 1},
+		{path: "update", exampleCount: 2},
+	}
+	for _, test := range tests {
+		t.Run(test.path, func(t *testing.T) {
+			leaf, _, err := root.Find([]string{test.path})
+			if err != nil || leaf == nil {
+				t.Fatalf("find whiteboard %s: command=%v err=%v", test.path, leaf, err)
+			}
+			final, ok := contractfinal.RuntimeContractFinal(leaf)
+			if !ok || final.Selection == nil {
+				t.Fatalf("whiteboard %s ContractFinal selection = %#v", test.path, final.Selection)
+			}
+			if len(final.Selection.Examples) != test.exampleCount ||
+				len(final.Selection.ExampleDispositions) != test.exampleCount {
+				t.Fatalf("whiteboard %s examples=%d dispositions=%d, want %d each",
+					test.path, len(final.Selection.Examples), len(final.Selection.ExampleDispositions), test.exampleCount)
+			}
+			seen := make(map[int]bool, test.exampleCount)
+			for _, disposition := range final.Selection.ExampleDispositions {
+				if disposition.Index == nil || *disposition.Index < 0 || *disposition.Index >= test.exampleCount {
+					t.Fatalf("whiteboard %s invalid example disposition index: %#v", test.path, disposition)
+				}
+				if disposition.Mode != contract.ExampleDispositionModeContractOnly ||
+					disposition.ReasonCode != contract.ExampleDispositionReasonLocalState ||
+					!disposition.Reviewed || strings.TrimSpace(disposition.Reason) == "" {
+					t.Fatalf("whiteboard %s invalid example disposition: %#v", test.path, disposition)
+				}
+				seen[*disposition.Index] = true
+			}
+			if len(seen) != test.exampleCount {
+				t.Fatalf("whiteboard %s disposition indexes = %#v", test.path, seen)
+			}
+		})
+	}
 }
 
 func TestWhiteboardQueryRoutesAndDecodesResultJSON(t *testing.T) {

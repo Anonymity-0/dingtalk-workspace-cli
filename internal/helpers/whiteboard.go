@@ -190,7 +190,7 @@ func newWhiteboardCommand() *cobra.Command {
 	updateCmd.Flags().Int("expected-revision", 0, "独立白板最新 revision（独立分支必填）")
 	updateCmd.Flags().String("request-id", "", "独立白板稳定幂等请求 ID（独立分支必填）")
 	updateCmd.Flags().Bool("yes", false, "确认写入远端白板")
-	updateExampleIndex := 0
+	updateEmbeddedExampleIndex, updateStandaloneExampleIndex := 0, 1
 	DeclareLeafMetadata(updateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
@@ -219,13 +219,22 @@ func newWhiteboardCommand() *cobra.Command {
 					"dws whiteboard update --node <DOC_ID> --part-id <WHITEBOARD_PART_ID> --source ./whiteboard.json --format json",
 					"dws whiteboard update --node <WHITEBOARD_NODE_ID> --source ./whiteboard.json --expected-revision 12 --request-id wb-update-001 --format json",
 				},
-				ExampleDispositions: []contract.ExampleDisposition{{
-					Index:      &updateExampleIndex,
-					Mode:       contract.ExampleDispositionModeContractOnly,
-					ReasonCode: contract.ExampleDispositionReasonLocalState,
-					Reason:     "运行时需要用户提供可读且通过 OpenNodes V1 校验的本地 JSON 文件",
-					Reviewed:   true,
-				}},
+				ExampleDispositions: []contract.ExampleDisposition{
+					{
+						Index:      &updateEmbeddedExampleIndex,
+						Mode:       contract.ExampleDispositionModeContractOnly,
+						ReasonCode: contract.ExampleDispositionReasonLocalState,
+						Reason:     "运行时需要用户提供可读且通过 OpenNodes V1 校验的本地 JSON 文件",
+						Reviewed:   true,
+					},
+					{
+						Index:      &updateStandaloneExampleIndex,
+						Mode:       contract.ExampleDispositionModeContractOnly,
+						ReasonCode: contract.ExampleDispositionReasonLocalState,
+						Reason:     "运行时需要用户提供可读且通过 OpenNodes V1 校验的本地 JSON 文件",
+						Reviewed:   true,
+					},
+				},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
