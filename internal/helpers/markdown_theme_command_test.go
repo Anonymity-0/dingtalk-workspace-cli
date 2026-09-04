@@ -137,6 +137,7 @@ func TestMarkdownOverwriteThemeIsFullReplacementWithoutRemoteMerge(t *testing.T)
 	caller := &markdownDriveCaller{
 		format: "json",
 		steps: []markdownDriveStep{
+			{text: `{"fileName":"replacement.md"}`},
 			{text: `{"uploadId":"upload-1","resourceUrls":[{"url":"https://upload.test/drive"}]}`},
 			{text: `{"updated":true}`},
 		},
@@ -161,15 +162,16 @@ func TestMarkdownOverwriteThemeIsFullReplacementWithoutRemoteMerge(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(caller.calls) != 2 || caller.calls[0].tool != "get_upload_info" || caller.calls[1].tool != "commit_upload" {
+	if len(caller.calls) != 3 || caller.calls[0].tool != "get_file_info" ||
+		caller.calls[1].tool != "get_upload_info" || caller.calls[2].tool != "commit_upload" {
 		t.Fatalf("overwrite unexpectedly read or merged remote content: %#v", caller.calls)
 	}
 	for _, call := range caller.calls {
 		if _, leaked := call.args["theme"]; leaked {
 			t.Fatalf("theme leaked to downstream args: %#v", call)
 		}
-		if call.args["fileSize"] != float64(len(want)) {
-			t.Fatalf("post-theme fileSize = %#v, want %d", call.args["fileSize"], len(want))
+		if got, ok := call.args["fileSize"].(float64); ok && got != float64(len(want)) {
+			t.Fatalf("post-theme fileSize = %#v, want %d", got, len(want))
 		}
 	}
 	if source, err := os.ReadFile(sourcePath); err != nil || string(source) != sourceText {
@@ -187,7 +189,10 @@ func TestMarkdownOverwriteThemeIsFullReplacementWithoutRemoteMerge(t *testing.T)
 func TestMarkdownOverwriteThemeDryRunShowsFinalAfter(t *testing.T) {
 	caller := &markdownDriveCaller{
 		format: "json",
-		steps:  []markdownDriveStep{{text: `{"downloadUrl":"https://download.test/current.md","fileName":"current.md"}`}},
+		steps: []markdownDriveStep{
+			{text: `{"fileName":"current.md"}`},
+			{text: `{"downloadUrl":"https://download.test/current.md","fileName":"current.md"}`},
+		},
 	}
 	stdout, _ := installMarkdownDriveDeps(t, caller)
 	installMarkdownHTTPGet(t, "---\ntitle: old\n---\nold body")
@@ -210,7 +215,7 @@ func TestMarkdownOverwriteThemeDryRunShowsFinalAfter(t *testing.T) {
 	if preview["after"] != wantAfter || preview["before"] != "---\ntitle: old\n---\nold body" {
 		t.Fatalf("dry-run preview = %#v, want themed final after", preview)
 	}
-	if len(caller.calls) != 1 || caller.calls[0].tool != "download_file" {
+	if len(caller.calls) != 2 || caller.calls[0].tool != "get_file_info" || caller.calls[1].tool != "download_file" {
 		t.Fatalf("dry-run calls = %#v", caller.calls)
 	}
 }

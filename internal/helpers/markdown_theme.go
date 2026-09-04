@@ -16,8 +16,6 @@ package helpers
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
@@ -70,6 +68,22 @@ func markdownThemeFromCommand(cmd *cobra.Command) (markdownThemeSelection, error
 		}
 	}
 	return markdownThemeSelection{}, fmt.Errorf("--theme 取值 %q 不合法（合法值: %s）", themeID, strings.Join(markdownThemeIDs[:], ", "))
+}
+
+func markdownTextFileUploadOptionsFromCommand(cmd *cobra.Command) (textFileUploadOptions, error) {
+	theme, err := markdownThemeFromCommand(cmd)
+	if err != nil {
+		return textFileUploadOptions{}, err
+	}
+	options := textFileUploadOptions{
+		dryRunDetails: map[string]any{"theme": theme.id},
+	}
+	if theme.enabled {
+		options.transform = func(source []byte) []byte {
+			return applyMarkdownTheme(source, theme.id)
+		}
+	}
+	return options, nil
 }
 
 type markdownLineToken struct {
@@ -347,18 +361,4 @@ func applyMarkdownTheme(source []byte, themeID string) []byte {
 		result = append(result, body...)
 	}
 	return result
-}
-
-func writeMarkdownUploadTempFile(prefix, fileName string, content []byte) (string, func(), error) {
-	tmpDir, err := os.MkdirTemp("", prefix)
-	if err != nil {
-		return "", nil, fmt.Errorf("创建临时目录失败: %w", err)
-	}
-	cleanup := func() { _ = os.RemoveAll(tmpDir) }
-	uploadPath := filepath.Join(tmpDir, sanitizeFileName(fileName))
-	if err := os.WriteFile(uploadPath, content, 0o600); err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("写入临时文件失败: %w", err)
-	}
-	return uploadPath, cleanup, nil
 }
