@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestLinuxABIReleaseLibraries(t *testing.T) {
+func TestCrossPlatformCoverageLinuxABIReleaseLibraries(t *testing.T) {
 	for _, arch := range []string{"amd64", "arm64"} {
 		t.Run(arch, func(t *testing.T) {
 			path := filepath.Join("..", "..", "..", "third_party", "runtimepayload", "20260825", "linux", arch, "libx7k2m9p4q1w8.so")
@@ -60,7 +60,7 @@ func TestLinuxABIReleaseLibraries(t *testing.T) {
 	}
 }
 
-func TestLinuxABIVersions(t *testing.T) {
+func TestCrossPlatformCoverageLinuxABIVersions(t *testing.T) {
 	for _, version := range []string{"GLIBC_2.2.5", "GLIBC_2.14", "GLIBC_2.17", "GLIBC_2.17.0"} {
 		if !compatibleGLIBC(version) {
 			t.Errorf("compatible version %s rejected", version)
@@ -73,7 +73,7 @@ func TestLinuxABIVersions(t *testing.T) {
 	}
 }
 
-func TestLinuxABIMainAndInvalidFiles(t *testing.T) {
+func TestCrossPlatformCoverageLinuxABIMainAndInvalidFiles(t *testing.T) {
 	previousArgs, previousExit := os.Args, exitProcess
 	t.Cleanup(func() { os.Args, exitProcess = previousArgs, previousExit })
 	os.Args = []string{"linux-abi"}
