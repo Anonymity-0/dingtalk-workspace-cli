@@ -834,3 +834,22 @@ func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) 
 		t.Fatalf("verified mention overwrite must still succeed: %v", err)
 	}
 }
+
+// The append comparison has three layers: rendered HTML, the layout-tolerant
+// service fingerprint, and mention-aware token pairing. Each needs its own
+// input shape, otherwise a layer silently stops being exercised.
+func TestCrossPlatformCoverageDocMentionSuffixComparisonLayers(t *testing.T) {
+	// Whitespace collapse is layout-only: the rendered-HTML suffix differs, the
+	// service fingerprint does not, so the append still verifies.
+	if !markdownSemanticallyEndsWith("intro\n\ndone   now", "done now") {
+		t.Fatal("layout-only whitespace difference must still match as a suffix")
+	}
+
+	mention := "[@测试甲](alidocs-mcp://doc/mention?openDingTalkId=DEXAMPLEAAAA)"
+	if markdownSemanticallyEndsWith("", mention) {
+		t.Fatal("an empty readback cannot contain an appended mention")
+	}
+	if markdownSemanticallyEndsWith(strings.Repeat("x", docMarkdownVerifyMax+1), mention) {
+		t.Fatal("an oversized readback must not be accepted")
+	}
+}
