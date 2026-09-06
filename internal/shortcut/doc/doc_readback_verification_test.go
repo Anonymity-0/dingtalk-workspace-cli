@@ -730,13 +730,13 @@ func TestCrossPlatformCoverageDocMentionVerificationPairing(t *testing.T) {
 			"见 [钉钉](https://www.dingtalk.com)。", "见 [钉钉](https://example.com)。", "overwrite", false,
 		},
 
-		// Known limit: two same-label mentions whose targets are swapped are
-		// indistinguishable locally, because openDingTalkId and the rewritten
-		// staffId are different values with no local mapping. If this row starts
-		// failing, the service began reporting what it rewrote — tighten the
-		// comparison and update this expectation.
+		// The comparison layer accepts any profile destination at a mention
+		// position — targets are simply not compared, whether there is one mention
+		// or several, same label or not. That is why the envelope reports
+		// mentionTargetsVerified=false instead of claiming target verification;
+		// see TestCrossPlatformCoverageDocMentionTargetsReportedUnverified.
 		{
-			"same-label mentions with swapped targets are not detected (known limit)",
+			"swapped mention targets pass the comparison (targets are not compared)",
 			"[@同名](" + mentionA + ") 与 [@同名](" + mentionB + ")",
 			"[@同名](" + profile2 + ") 与 [@同名](" + profile1 + ")",
 			"overwrite", true,
@@ -749,5 +749,50 @@ func TestCrossPlatformCoverageDocMentionVerificationPairing(t *testing.T) {
 				t.Fatalf("verify = %v, want %v\nexpected=%q\nactual=%q", got, tc.want, tc.expected, tc.actual)
 			}
 		})
+	}
+}
+
+// Readback cannot tell which user a mention resolved to: the service rewrites
+// openDingTalkId into a profile link and the two identifiers have no local
+// mapping. Rather than failing an otherwise correct write, or letting "verified"
+// imply more than it checked, the result says so explicitly.
+func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) {
+	const mention = "alidocs-mcp://doc/mention?openDingTalkId=DEXAMPLEAAAA"
+	const profile = "dingtalk://dingtalkclient/page/profile?corp_id=dingexamplecorpid&staff_id=100001"
+
+	withMention := "请 [@测试甲](" + mention + ") 跟进。"
+	summary := compactDocVerification(
+		map[string]any{"markdown": "请 [@测试甲](" + profile + ") 跟进。"},
+		withMention, "overwrite", "markdown", nil)
+	if summary["verified"] != true {
+		t.Fatalf("a matching write stays verified: %#v", summary)
+	}
+	if summary["mentionTargetsVerified"] != false {
+		t.Fatalf("mention targets must be reported as unverified: %#v", summary)
+	}
+
+	plain := "普通段落，无 @人。"
+	plainSummary := compactDocVerification(
+		map[string]any{"markdown": plain}, plain, "overwrite", "markdown", nil)
+	if _, present := plainSummary["mentionTargetsVerified"]; present {
+		t.Fatalf("a write without mentions must not carry the flag: %#v", plainSummary)
+	}
+
+	warnings := withMentionTargetWarning([]string{"既有告警"}, withMention)
+	if len(warnings) != 2 || warnings[0] != "既有告警" ||
+		!strings.Contains(warnings[1], "目标身份未经回读校验") {
+		t.Fatalf("mention warning must be appended after existing ones: %#v", warnings)
+	}
+	if got := withMentionTargetWarning(nil, plain); got != nil {
+		t.Fatalf("no mention means no warning: %#v", got)
+	}
+
+	// The warning must reach the envelope of a real verified write.
+	caller := &docCoverageCaller{responses: map[string][]map[string]any{
+		"get_document_content": {{"markdown": "请 [@测试甲](" + profile + ") 跟进。"}},
+	}}
+	if err := runDocCoverage(t, Update, caller,
+		"--node", "n", "--command", "overwrite", "--content", withMention, "--yes"); err != nil {
+		t.Fatalf("verified mention overwrite must still succeed: %v", err)
 	}
 }

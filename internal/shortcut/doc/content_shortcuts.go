@@ -191,7 +191,8 @@ var Create = shortcut.Shortcut{
 		if len(contentChunks) > 1 {
 			data["chunkPlan"] = chunkPlan.Summary()
 		}
-		return rt.Output(withDocWarnings(docEnvelope("doc.create", data, steps...), chunkPlan.Warnings()))
+		return rt.Output(withDocWarnings(docEnvelope("doc.create", data, steps...),
+			withMentionTargetWarning(chunkPlan.Warnings(), content)))
 	},
 }
 
@@ -891,7 +892,8 @@ func executeVerifiedDocContentMutation(rt *shortcut.RuntimeContext, firstParams 
 	if len(chunks) > 1 {
 		data["chunkPlan"] = chunkPlan.Summary()
 	}
-	return rt.Output(withDocWarnings(docEnvelope("doc.update", data, steps...), chunkPlan.Warnings()))
+	return rt.Output(withDocWarnings(docEnvelope("doc.update", data, steps...),
+		withMentionTargetWarning(chunkPlan.Warnings(), content)))
 }
 
 const docVerificationExcerptRunes = 160
@@ -906,6 +908,13 @@ func compactDocVerification(value map[string]any, expected, mode, format string,
 		summary["format"] = format
 		summary["mode"] = mode
 		summary["expectedBytes"] = len(expected)
+		if docContentHasMentionLink(expected) {
+			// Readback proves the mention link sits at the authored position with the
+			// authored label, but not which user it resolved to: the service rewrites
+			// openDingTalkId into a profile link and the two identifiers have no local
+			// mapping. Say so rather than letting "verified" imply it.
+			summary["mentionTargetsVerified"] = false
+		}
 		candidate := matchingDocumentContent(value, expected, mode, format)
 		if candidate != "" {
 			normalized := normalizeDocumentContentForVerification(candidate, format)
@@ -1209,6 +1218,22 @@ const (
 
 func docContentHasMentionLink(source string) bool {
 	return strings.Contains(source, docMentionLinkPrefix)
+}
+
+// docMentionTargetUnverifiedWarning states plainly what readback did not cover,
+// so neither an Agent nor a reader treats "verified" as proof that the @ landed
+// on the intended person.
+const docMentionTargetUnverifiedWarning = "@人的目标身份未经回读校验：服务端把 mention 协议改写为个人资料链接，本地无从核对解析到的人员。链接位置、显示文本与其余正文均已校验；若需确认 @ 到的是谁，请人工核对文档中的 @ 链接。"
+
+func withMentionTargetWarning(warnings []string, expected string) []string {
+	if !docContentHasMentionLink(expected) {
+		return warnings
+	}
+	// Copy rather than append in place: the caller's slice may share a backing
+	// array with the chunk plan's own warnings.
+	combined := make([]string, 0, len(warnings)+1)
+	combined = append(combined, warnings...)
+	return append(combined, docMentionTargetUnverifiedWarning)
 }
 
 func isMentionProtocolLinkToken(token string) bool {
