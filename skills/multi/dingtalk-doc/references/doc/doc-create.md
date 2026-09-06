@@ -31,7 +31,7 @@ dws doc +create --name "<文档名>" --content @body.json --doc-format jsonml --
 ## 结果处理
 
 - `status=success` 且 `verified=true`：可以报告创建完成，并保留真实 `nodeId`/URL。
-- `status=success` 且 `verified=false` 带 `unverified=["mention_targets"]`：正文已写入并通过回读，只有 @人 指向的人员本地无法核对；照常报告创建完成，不要重读或重写，把待核对项转述给用户。
+- `status=success` 且 `verified=false` 带 `unverified=["mention_targets"]`（verify 步骤为 `partial`）：正文已写入并通过回读，只有 @人 指向的人员本地无法核对；照常报告创建完成，不要重读或重写，把待核对项转述给用户。
 - `status=partial_success`：文档或部分分片已经创建；按 `steps` 回读现状，禁止重跑整条创建。
 - `status=unknown`：服务端可能已经提交；先定位并读取文档，禁止自动重试。
 - 没有真实 `nodeId` 或写回执时，禁止声称“已创建”。

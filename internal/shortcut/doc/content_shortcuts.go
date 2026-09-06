@@ -1244,6 +1244,11 @@ const docMentionTargetUnverifiedWarning = "@人链接指向的具体人员需用
 const (
 	docVerificationScopePartial = "partial"
 	docUnverifiedMentionTargets = "mention_targets"
+	// docStepStatusPartial keeps a consumer that only switches on
+	// steps[].status from reading an unverifiable mention target as a fully
+	// verified readback. Such a consumer does not know the sibling scope
+	// marker, so the status itself has to stop saying "success".
+	docStepStatusPartial = "partial"
 )
 
 // annotateMentionVerificationScope qualifies the claim at the level it is made.
@@ -1267,6 +1272,7 @@ func annotateMentionVerificationScope(data map[string]any, steps []map[string]an
 	data["unverifiableLocally"] = []string{docUnverifiedMentionTargets}
 	for _, step := range steps {
 		if step["name"] == "verify" {
+			step["status"] = docStepStatusPartial
 			step["scope"] = docVerificationScopePartial
 		}
 	}

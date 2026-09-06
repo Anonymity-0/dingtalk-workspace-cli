@@ -811,8 +811,16 @@ func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) 
 	if steps[1]["scope"] != "partial" {
 		t.Fatalf("verify step must carry the scope: %#v", steps)
 	}
+	// A consumer that only switches on steps[].status must not read this as a
+	// fully verified readback, so the status itself stops saying "success".
+	if steps[1]["status"] != "partial" {
+		t.Fatalf("verify step must not stay success for a mention write: %#v", steps)
+	}
 	if _, present := steps[0]["scope"]; present {
 		t.Fatalf("only the verify step is scoped: %#v", steps[0])
+	}
+	if steps[0]["status"] != "success" {
+		t.Fatalf("the write step keeps its own status: %#v", steps[0])
 	}
 
 	plainData := map[string]any{"verified": true}
@@ -827,6 +835,9 @@ func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) 
 	if _, present := plainSteps[0]["scope"]; present {
 		t.Fatalf("a write without mentions leaves steps untouched: %#v", plainSteps[0])
 	}
+	if plainSteps[0]["status"] != "success" {
+		t.Fatalf("a write without mentions keeps a successful verify: %#v", plainSteps[0])
+	}
 
 	// The warning carries exactly two facts: what the caller must check itself,
 	// and that the rest was verified.
@@ -835,14 +846,92 @@ func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) 
 			t.Fatalf("warning must state %q: %q", fact, docMentionTargetUnverifiedWarning)
 		}
 	}
+}
 
-	// The warning must reach the envelope of a real verified write.
-	caller := &docCoverageCaller{responses: map[string][]map[string]any{
-		"get_document_content": {{"markdown": "请 [@测试甲](" + profile + ") 跟进。"}},
-	}}
-	if err := runDocCoverage(t, Update, caller,
-		"--node", "n", "--command", "overwrite", "--content", withMention, "--yes"); err != nil {
-		t.Fatalf("verified mention overwrite must still succeed: %v", err)
+// The scope disclosure only matters if it survives to what the commands
+// actually publish, so assert the delivered envelope of every content-write
+// path rather than just that execution succeeded.
+func TestCrossPlatformCoverageDocMentionUnverifiedReachesEveryWriteEnvelope(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		declaration shortcut.Shortcut
+		responses   map[string][]map[string]any
+		args        []string
+	}{
+		{
+			name:        "create",
+			declaration: Create,
+			responses: map[string][]map[string]any{
+				"create_document":      {{"nodeId": "created-node"}},
+				"get_document_content": {{"markdown": docMentionServer}},
+			},
+			args: []string{"--name", "周报", "--content", docMentionAuthored, "--yes"},
+		},
+		{
+			name:        "update append",
+			declaration: Update,
+			responses: map[string][]map[string]any{
+				"get_document_content": {{"markdown": "锚点段落\n\n" + docMentionServer}},
+			},
+			args: []string{"--node", "n", "--command", "append", "--content", docMentionAuthored, "--yes"},
+		},
+		{
+			name:        "update overwrite",
+			declaration: Update,
+			responses: map[string][]map[string]any{
+				"get_document_content": {{"markdown": docMentionServer}},
+			},
+			args: []string{"--node", "n", "--command", "overwrite", "--content", docMentionAuthored, "--yes"},
+		},
+		{
+			name:        "checkpoint update",
+			declaration: CheckpointUpdate,
+			responses: map[string][]map[string]any{
+				"save_doc_version":     {{"version": 9.0}},
+				"get_document_content": {{"markdown": docMentionServer}},
+			},
+			args: []string{"--node", "n", "--content", docMentionAuthored, "--yes"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			envelope := runDocCoverageEnvelope(t, tc.declaration,
+				&docCoverageCaller{responses: tc.responses}, tc.args...)
+
+			// The write itself succeeded; only its verification scope is narrower.
+			if envelope["ok"] != true || envelope["status"] != "success" {
+				t.Fatalf("a mention write is still a successful operation: %#v", envelope)
+			}
+			data, _ := envelope["data"].(map[string]any)
+			if data["verified"] != false {
+				t.Fatalf("delivered data must not claim verified: %#v", data)
+			}
+			if data["verificationScope"] != "partial" {
+				t.Fatalf("delivered data must declare a partial scope: %#v", data)
+			}
+
+			steps, _ := envelope["steps"].([]any)
+			var verify map[string]any
+			for _, entry := range steps {
+				step, _ := entry.(map[string]any)
+				if step["name"] == "verify" {
+					verify = step
+				}
+			}
+			if verify == nil {
+				t.Fatalf("every content write publishes a verify step: %#v", steps)
+			}
+			if verify["status"] == "success" {
+				t.Fatalf("delivered verify step must not report success: %#v", verify)
+			}
+			if verify["status"] != "partial" || verify["scope"] != "partial" {
+				t.Fatalf("delivered verify step must be marked partial: %#v", verify)
+			}
+
+			warnings, _ := envelope["warnings"].([]any)
+			if len(warnings) == 0 {
+				t.Fatalf("the caller must be told what to check itself: %#v", envelope)
+			}
+		})
 	}
 }
 
