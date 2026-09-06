@@ -787,6 +787,43 @@ func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) 
 		t.Fatalf("no mention means no warning: %#v", got)
 	}
 
+	// The scope marker sits beside "verified" so the top level qualifies itself,
+	// and the verify step carries the same scope.
+	data := map[string]any{"verified": true}
+	steps := []map[string]any{{"name": "update_document", "status": "success"},
+		{"name": "verify", "status": "success"}}
+	annotateMentionVerificationScope(data, steps, withMention)
+	if data["verificationScope"] != "partial" {
+		t.Fatalf("top level must declare a partial scope: %#v", data)
+	}
+	gaps, _ := data["unverified"].([]string)
+	if len(gaps) != 1 || gaps[0] != "mention_targets" {
+		t.Fatalf("the gap must be named explicitly: %#v", data["unverified"])
+	}
+	if steps[1]["scope"] != "partial" {
+		t.Fatalf("verify step must carry the scope: %#v", steps)
+	}
+	if _, present := steps[0]["scope"]; present {
+		t.Fatalf("only the verify step is scoped: %#v", steps[0])
+	}
+
+	plainData := map[string]any{"verified": true}
+	plainSteps := []map[string]any{{"name": "verify", "status": "success"}}
+	annotateMentionVerificationScope(plainData, plainSteps, plain)
+	if _, present := plainData["verificationScope"]; present {
+		t.Fatalf("a write without mentions stays unqualified: %#v", plainData)
+	}
+	if _, present := plainSteps[0]["scope"]; present {
+		t.Fatalf("a write without mentions leaves steps untouched: %#v", plainSteps[0])
+	}
+
+	// The warning must say re-reading cannot close the gap, otherwise a caller
+	// burns round trips on a check that is impossible locally.
+	if !strings.Contains(docMentionTargetUnverifiedWarning, "无需为此追加验证往返") {
+		t.Fatalf("warning must discourage a pointless verification round trip: %q",
+			docMentionTargetUnverifiedWarning)
+	}
+
 	// The warning must reach the envelope of a real verified write.
 	caller := &docCoverageCaller{responses: map[string][]map[string]any{
 		"get_document_content": {{"markdown": "请 [@测试甲](" + profile + ") 跟进。"}},

@@ -191,6 +191,7 @@ var Create = shortcut.Shortcut{
 		if len(contentChunks) > 1 {
 			data["chunkPlan"] = chunkPlan.Summary()
 		}
+		annotateMentionVerificationScope(data, steps, content)
 		return rt.Output(withDocWarnings(docEnvelope("doc.create", data, steps...),
 			withMentionTargetWarning(chunkPlan.Warnings(), content)))
 	},
@@ -892,6 +893,7 @@ func executeVerifiedDocContentMutation(rt *shortcut.RuntimeContext, firstParams 
 	if len(chunks) > 1 {
 		data["chunkPlan"] = chunkPlan.Summary()
 	}
+	annotateMentionVerificationScope(data, steps, content)
 	return rt.Output(withDocWarnings(docEnvelope("doc.update", data, steps...),
 		withMentionTargetWarning(chunkPlan.Warnings(), content)))
 }
@@ -1220,10 +1222,32 @@ func docContentHasMentionLink(source string) bool {
 	return strings.Contains(source, docMentionLinkPrefix)
 }
 
-// docMentionTargetUnverifiedWarning states plainly what readback did not cover,
-// so neither an Agent nor a reader treats "verified" as proof that the @ landed
-// on the intended person.
-const docMentionTargetUnverifiedWarning = "@人的目标身份未经回读校验：服务端把 mention 协议改写为个人资料链接，本地无从核对解析到的人员。链接位置、显示文本与其余正文均已校验；若需确认 @ 到的是谁，请人工核对文档中的 @ 链接。"
+// docMentionTargetUnverifiedWarning states plainly what readback did not cover.
+// It also says re-reading cannot close the gap, so a caller does not spend round
+// trips chasing a check that is impossible locally.
+const docMentionTargetUnverifiedWarning = "@人的目标身份未经回读校验：服务端把 mention 协议改写为个人资料链接，本地无从核对解析到的人员。链接位置、显示文本与其余正文均已校验；重新读取文档同样无法核验此项，无需为此追加验证往返。若需确认 @ 到的是谁，请人工核对文档中的 @ 链接。"
+
+const (
+	docVerificationScopePartial = "partial"
+	docUnverifiedMentionTargets = "mention_targets"
+)
+
+// annotateMentionVerificationScope qualifies the claim at the level it is made.
+// "verified" stays a boolean so existing consumers keep working, but a sibling
+// scope marker plus an explicit gap list mean the top level no longer reads as
+// "everything was verified".
+func annotateMentionVerificationScope(data map[string]any, steps []map[string]any, expected string) {
+	if !docContentHasMentionLink(expected) {
+		return
+	}
+	data["verificationScope"] = docVerificationScopePartial
+	data["unverified"] = []string{docUnverifiedMentionTargets}
+	for _, step := range steps {
+		if step["name"] == "verify" {
+			step["scope"] = docVerificationScopePartial
+		}
+	}
+}
 
 func withMentionTargetWarning(warnings []string, expected string) []string {
 	if !docContentHasMentionLink(expected) {
