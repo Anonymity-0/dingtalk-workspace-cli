@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+ROOT="$(CDPATH='' cd -- "$SCRIPT_DIR/../.." && pwd)"
 DIST_DIR="${DWS_PACKAGE_DIST_DIR:-$ROOT/dist}"
 VERSION="${1:-${DWS_PACKAGE_VERSION:-}}"
 
@@ -140,6 +140,9 @@ verify_binary_version() {
     printf '%s does not contain its target runtime library\n' "$asset" >&2
     return 1
   }
+  if [ "$target_os" = linux ]; then
+    (cd "$ROOT" && go run ./scripts/build/linux-abi "$binary" "$library") || return 1
+  fi
   manifest_library_sha="$(sed -n 's/.*"library_sha256": "\([0-9a-f]*\)".*/\1/p' "$runtime_root/manifest.json")"
   if command -v sha256sum >/dev/null 2>&1; then
     actual_library_sha="$(sha256sum "$library" | awk '{print $1}')"

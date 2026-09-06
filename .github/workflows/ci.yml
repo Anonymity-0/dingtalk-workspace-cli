@@ -1298,6 +1298,19 @@ jobs:
           GORELEASER_CURRENT_TAG: v0.0.0-test
         run: ./scripts/release/run-goreleaser-cross.sh build --snapshot --clean --parallelism=2
 
+      - name: Verify Linux release ABI and startup
+        if: ${{ needs.lint.outputs.release_sensitive == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./scripts/build/linux-abi dist/*_linux_*/dws
+          for binary in dist/*_linux_amd64*/dws; do
+            docker run --rm --network none --platform linux/amd64 \
+              --volume "$PWD/$binary:/usr/local/bin/dws:ro" \
+              ubuntu:20.04@sha256:8feb4d8ca5354def3d8fce243717141ce31e2c428701f6682bd2fafe15388214 \
+              dws version
+          done
+
   test-cross-platform:
     name: Test (cross-platform compile)
     needs: lint

@@ -39,6 +39,11 @@ if [ "$#" -ge 2 ] && [ "$1" = "version" ] && [ "$2" = "-m" ]; then
   printf '\tbuild\tCGO_ENABLED=1\n'
   exit 0
 fi
+# These archives contain synthetic version markers, not executable ELF files.
+# scripts/build/linux-abi tests the real ELF/version-table rejection paths.
+if [ "$#" -ge 2 ] && [ "$1" = "run" ] && [ "$2" = "./scripts/build/linux-abi" ]; then
+  exit 0
+fi
 exec %q "$@"
 `, realGo)
 	mustWriteFile(t, filepath.Join(shimDir, "go"), []byte(shim), 0o755)

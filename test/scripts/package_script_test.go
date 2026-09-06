@@ -3179,6 +3179,103 @@ func TestReleaseStaysDraftUntilFinalizedAssetDigestsMatch(t *testing.T) {
 	}
 }
 
+func TestLocalBuildHonorsCGOEnabled(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("shell executable shims require a Unix host")
+	}
+
+	source, err := os.ReadFile(filepath.Join("..", "..", "scripts", "dev", "build.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		env  []string
+		want string
+	}{
+		{name: "default", want: "1"},
+		{name: "empty", env: []string{"CGO_ENABLED="}, want: "1"},
+		{name: "stub", env: []string{"CGO_ENABLED=0"}, want: "0"},
+		{name: "native", env: []string{"CGO_ENABLED=1"}, want: "1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			mustWriteFile(t, filepath.Join(root, "scripts", "dev", "build.sh"), source, 0o755)
+			for _, helper := range []string{"policy/check-runtime-payload.sh", "build/attach-runtime-payload.sh"} {
+				mustWriteFile(t, filepath.Join(root, "scripts", filepath.FromSlash(helper)), []byte("#!/bin/sh\nexit 0\n"), 0o755)
+			}
+			binDir := filepath.Join(root, "bin")
+			mustWriteFile(t, filepath.Join(binDir, "go"), []byte("#!/bin/sh\nprintf '%s\\n' \"$CGO_ENABLED\"\n"), 0o755)
+			cmd := exec.Command("sh", filepath.Join(root, "scripts", "dev", "build.sh"))
+			cmd.Dir = root
+			for _, value := range os.Environ() {
+				if !strings.HasPrefix(value, "CGO_ENABLED=") && !strings.HasPrefix(value, "PATH=") {
+					cmd.Env = append(cmd.Env, value)
+				}
+			}
+			cmd.Env = append(cmd.Env, "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+			cmd.Env = append(cmd.Env, tc.env...)
+			output, err := cmd.CombinedOutput()
+			if err != nil || strings.TrimSpace(string(output)) != tc.want {
+				t.Fatalf("build CGO_ENABLED = %q, err = %v; want %s", output, err, tc.want)
+			}
+		})
+	}
+}
+
+func TestCrossReleaseWrapperVerifiesZigBeforeStartingDocker(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" || (runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64") {
+		t.Skip("requires a supported Unix release host")
+	}
+	script, err := filepath.Abs(filepath.Join("..", "..", "scripts", "release", "run-goreleaser-cross.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	cache := filepath.Join(root, "tools")
+	archiveArch := runtime.GOARCH
+	if archiveArch == "amd64" {
+		archiveArch = "x86_64"
+	}
+	mustWriteFile(t, filepath.Join(cache, "goreleaser-2.16.0-linux-"+archiveArch, "goreleaser"), []byte("#!/bin/sh\nexit 0\n"), 0o755)
+	binDir := filepath.Join(root, "bin")
+	mustWriteFile(t, filepath.Join(binDir, "curl"), []byte("#!/bin/sh\nfor arg do target=\"$arg\"; done\nprintf invalid-archive > \"$target\"\n"), 0o755)
+	mustWriteFile(t, filepath.Join(binDir, "docker"), []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$DWS_TEST_DOCKER_LOG\"\n"), 0o755)
+	logPath := filepath.Join(root, "docker.log")
+	run := func() ([]byte, error) {
+		cmd := exec.Command("bash", script, "build", "--snapshot")
+		cmd.Env = append(os.Environ(),
+			"PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+			"DWS_RELEASE_TOOL_CACHE="+cache,
+			"DWS_TEST_DOCKER_LOG="+logPath,
+			"DWS_PACKAGE_VERSION=0.0.0-test",
+		)
+		return cmd.CombinedOutput()
+	}
+	if output, err := run(); err == nil || !strings.Contains(string(output), "Zig archive checksum mismatch") {
+		t.Fatalf("corrupt compiler archive accepted: %v, %s", err, output)
+	}
+	if _, err := os.Stat(logPath); !os.IsNotExist(err) {
+		t.Fatalf("Docker must not start after a checksum failure: %v", err)
+	}
+	zigDir := filepath.Join(cache, "zig-0.15.2-linux-"+runtime.GOARCH)
+	mustWriteFile(t, filepath.Join(zigDir, "zig"), []byte("#!/bin/sh\nexit 0\n"), 0o755)
+	if output, err := run(); err != nil {
+		t.Fatalf("cached compiler invocation failed: %v, %s", err, output)
+	}
+	args, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{zigDir + ":/opt/dws-zig:ro", "linux/" + runtime.GOARCH, "build\n--snapshot\n"} {
+		if !strings.Contains(string(args), want) {
+			t.Fatalf("Docker arguments missing %q: %s", want, args)
+		}
+	}
+}
+
 func TestReleaseBuildsSafeChatBackendByDefaultForEveryPlatform(t *testing.T) {
 	t.Parallel()
 
@@ -3201,8 +3298,8 @@ func TestReleaseBuildsSafeChatBackendByDefaultForEveryPlatform(t *testing.T) {
 		"GOTOOLCHAIN=go1.25.9",
 		"CC_darwin_amd64=o64-clang",
 		"CC_darwin_arm64=oa64-clang",
-		"CC_linux_amd64=x86_64-linux-gnu-gcc",
-		"CC_linux_arm64=aarch64-linux-gnu-gcc",
+		"CC_linux_amd64=/opt/dws-zig/zig cc -target x86_64-linux-gnu.2.17",
+		"CC_linux_arm64=/opt/dws-zig/zig cc -target aarch64-linux-gnu.2.17",
 		"CC_windows_amd64=x86_64-w64-mingw32-gcc",
 		"CC_windows_arm64=/llvm-mingw/bin/aarch64-w64-mingw32-gcc",
 	} {
@@ -3227,14 +3324,18 @@ func TestReleaseBuildsSafeChatBackendByDefaultForEveryPlatform(t *testing.T) {
 	}
 
 	defaultBuild := read("scripts/dev/build.sh")
-	if !strings.Contains(defaultBuild, "CGO_ENABLED=1 go build") || strings.Contains(defaultBuild, "-tags safechat") {
-		t.Fatal("default build must include SafeChat through CGO without a build tag")
+	if strings.Contains(defaultBuild, "-tags safechat") {
+		t.Fatal("default build must not require a SafeChat build tag")
 	}
 
 	wrapper := read("scripts/release/run-goreleaser-cross.sh")
 	for _, required := range []string{
 		"ghcr.io/goreleaser/goreleaser-cross:v1.26.2@sha256:fadba0d4577866eb2588d46ea6b604c73ef45ee55f044acbc17cc49aa435fd04",
 		`GORELEASER_VERSION="2.16.0"`,
+		`ZIG_VERSION="0.15.2"`,
+		`zig_sha="02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239"`,
+		`zig_sha="958ed7d1e00d0ea76590d27666efbf7a932281b3d7ba0c6b01b0ff26498f667f"`,
+		`--volume "$zig_dir:/opt/dws-zig:ro"`,
 		`archive_sha="eaae05b5eba07533bd0f06846b68c808399504784df00c62eb219541fc04e5e2"`,
 		`archive_sha="0102d974373fcdeb77042d1f5897caffa193be36620fdc6c1da43a01ef8e10d3"`,
 		"goreleaser_Linux_${archive_arch}.tar.gz",
@@ -3278,6 +3379,8 @@ func TestReleaseBuildsSafeChatBackendByDefaultForEveryPlatform(t *testing.T) {
 		"filename.startsWith('third_party/safechat-go-sdk/')",
 		"- name: Compile SafeChat release matrix",
 		"./scripts/release/run-goreleaser-cross.sh build --snapshot --clean --parallelism=2",
+		"go run ./scripts/build/linux-abi dist/*_linux_*/dws",
+		"ubuntu:20.04@sha256:8feb4d8ca5354def3d8fce243717141ce31e2c428701f6682bd2fafe15388214",
 		`"C:\mingw64\bin\gcc.exe" --version`,
 	} {
 		if !strings.Contains(ciWorkflow, required) {
@@ -3290,6 +3393,7 @@ func TestReleaseBuildsSafeChatBackendByDefaultForEveryPlatform(t *testing.T) {
 		`go version -m "$binary"`,
 		"CGO_ENABLED=1",
 		"safechat-go-sdk",
+		`go run ./scripts/build/linux-abi "$binary" "$library"`,
 	} {
 		if !strings.Contains(verifier, required) {
 			t.Errorf("release artifact verifier is missing SafeChat assertion %q", required)
