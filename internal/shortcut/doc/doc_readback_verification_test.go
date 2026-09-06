@@ -853,3 +853,62 @@ func TestCrossPlatformCoverageDocMentionSuffixComparisonLayers(t *testing.T) {
 		t.Fatal("an oversized readback must not be accepted")
 	}
 }
+
+// Mention pairing must form a consistent bijection. Neither check needs an
+// identity lookup, so both are enforced locally; a permutation of two distinct
+// targets stays undetectable because the authored side carries no staffId.
+func TestCrossPlatformCoverageDocMentionPairingRequiresBijection(t *testing.T) {
+	const (
+		mentionA = "alidocs-mcp://doc/mention?openDingTalkId=DEXAMPLEAAAA"
+		mentionB = "alidocs-mcp://doc/mention?openDingTalkId=DEXAMPLEBBBB"
+		profile1 = "dingtalk://dingtalkclient/page/profile?corp_id=dingexamplecorpid&staff_id=100001"
+		profile2 = "dingtalk://dingtalkclient/page/profile?corp_id=dingexamplecorpid&staff_id=100002"
+	)
+
+	for _, tc := range []struct {
+		name     string
+		expected string
+		actual   string
+		want     bool
+	}{
+		{
+			"one id resolving to one target twice is accepted",
+			"[@甲](" + mentionA + ") 与 [@甲](" + mentionA + ")",
+			"[@甲](" + profile1 + ") 与 [@甲](" + profile1 + ")",
+			true,
+		},
+		{
+			"the same id resolving to two different targets is rejected",
+			"[@甲](" + mentionA + ") 与 [@甲](" + mentionA + ")",
+			"[@甲](" + profile1 + ") 与 [@甲](" + profile2 + ")",
+			false,
+		},
+		{
+			"two different ids collapsing onto one target is rejected",
+			"[@甲](" + mentionA + ") 与 [@乙](" + mentionB + ")",
+			"[@甲](" + profile1 + ") 与 [@乙](" + profile1 + ")",
+			false,
+		},
+		{
+			"two different ids resolving to two different targets is accepted",
+			"[@甲](" + mentionA + ") 与 [@乙](" + mentionB + ")",
+			"[@甲](" + profile1 + ") 与 [@乙](" + profile2 + ")",
+			true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := verifyUpdatedDocumentContent(
+				map[string]any{"markdown": tc.actual}, tc.expected, "overwrite", "markdown")
+			if got != tc.want {
+				t.Fatalf("verify = %v, want %v\nexpected=%q\nactual=%q", got, tc.want, tc.expected, tc.actual)
+			}
+		})
+	}
+
+	if got := docFingerprintLinkDestination(docFingerprintLinkTokenPrefix + profile1 + "\x00"); got != profile1 {
+		t.Fatalf("destination extraction = %q", got)
+	}
+	if got := docFingerprintLinkDestination("open\x00link:bare"); got != "bare" {
+		t.Fatalf("a token without a title separator must still yield its destination: %q", got)
+	}
+}

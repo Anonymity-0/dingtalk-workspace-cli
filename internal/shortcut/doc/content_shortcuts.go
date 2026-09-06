@@ -1281,13 +1281,37 @@ func isProfileLinkToken(token string) bool {
 	return strings.HasPrefix(token, docFingerprintLinkTokenPrefix+docProfileLinkPrefix)
 }
 
+// docFingerprintLinkDestination extracts the link destination from a fingerprint
+// token shaped "open\x00link:<destination>\x00<title>".
+func docFingerprintLinkDestination(token string) string {
+	rest := strings.TrimPrefix(token, docFingerprintLinkTokenPrefix)
+	if idx := strings.IndexByte(rest, 0); idx >= 0 {
+		return rest[:idx]
+	}
+	return rest
+}
+
 // markdownMentionAwareTokensEqual compares two fingerprint token sequences,
 // tolerating exactly one kind of difference: an authored mention protocol link
 // may appear as a profile link in the readback.
+//
+// Pairs are additionally required to form a consistent bijection: one
+// openDingTalkId must resolve to one profile target throughout the document, and
+// two different openDingTalkIds must not resolve to the same target. Both checks
+// are decidable locally and catch a service that mixed identities up.
+//
+// What remains undetectable is a permutation of two *distinct* targets: the
+// authored side never carries the resolved staffId, so (A→X, B→Y) and
+// (A→Y, B→X) are indistinguishable here. That is missing information, not a
+// weaker implementation — closing it needs the service to report what it
+// rewrote, or a reverse openDingTalkId lookup that the CLI surface does not
+// expose.
 func markdownMentionAwareTokensEqual(actual, expected []string) bool {
 	if len(actual) != len(expected) {
 		return false
 	}
+	resolved := map[string]string{}
+	claimed := map[string]string{}
 	for index := range expected {
 		if actual[index] == expected[index] {
 			continue
@@ -1295,6 +1319,16 @@ func markdownMentionAwareTokensEqual(actual, expected []string) bool {
 		if !isMentionProtocolLinkToken(expected[index]) || !isProfileLinkToken(actual[index]) {
 			return false
 		}
+		mention := docFingerprintLinkDestination(expected[index])
+		target := docFingerprintLinkDestination(actual[index])
+		if previous, seen := resolved[mention]; seen && previous != target {
+			return false
+		}
+		if previous, seen := claimed[target]; seen && previous != mention {
+			return false
+		}
+		resolved[mention] = target
+		claimed[target] = mention
 	}
 	return true
 }
