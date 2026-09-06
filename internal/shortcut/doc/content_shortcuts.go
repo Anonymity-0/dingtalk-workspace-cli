@@ -545,7 +545,9 @@ var CheckpointUpdate = shortcut.Shortcut{
 			data["chunksWritten"] = len(chunks)
 			data["chunkPlan"] = chunkPlan.Summary()
 		}
-		return rt.Output(withDocWarnings(docEnvelope("doc.checkpoint_update", data, steps...), chunkPlan.Warnings()))
+		annotateMentionVerificationScope(data, steps, content)
+		return rt.Output(withDocWarnings(docEnvelope("doc.checkpoint_update", data, steps...),
+			withMentionTargetWarning(chunkPlan.Warnings(), content)))
 	},
 }
 

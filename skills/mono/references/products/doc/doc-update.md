@@ -50,7 +50,7 @@ Flags:
 
 - `openDingTalkId` 取自 `dws aisearch +search-person --query "姓名"` 返回的 `openDingTalkId`（或 `dws contact +search-user`）。
 - `@` 与显示名由你写在方括号里；服务端只替换链接、保留显示文本。
-- 仅 markdown 正文生效：`append` / `overwrite` 有效；`--content-format jsonml` 与 `doc block insert` 不解析 markdown，写进去的协议原文不会被改写。
+- 仅 markdown 正文生效：本命令的 `append` / `overwrite`（`doc create` 初始正文同样生效）；`--content-format jsonml` 与 `doc block insert` 不解析 markdown，写进去的协议原文不会被改写。
 - 回读不校验 @ 到的是谁：结果带 `mentionTargetsVerified=false` 与 warning。
 
 ## JSONML 格式写入
