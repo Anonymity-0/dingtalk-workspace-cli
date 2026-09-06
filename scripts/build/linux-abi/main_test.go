@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func TestCrossPlatformCoverageLinuxABIReleaseLibraries(t *testing.T) {
@@ -74,11 +76,9 @@ func TestCrossPlatformCoverageLinuxABIVersions(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageLinuxABIMainAndInvalidFiles(t *testing.T) {
-	previousArgs, previousExit := os.Args, exitProcess
-	t.Cleanup(func() { os.Args, exitProcess = previousArgs, previousExit })
-	os.Args = []string{"linux-abi"}
+	testseam.Swap(t, &os.Args, []string{"linux-abi"})
 	code := -1
-	exitProcess = func(value int) { code = value }
+	testseam.Swap(t, &exitProcess, func(value int) { code = value })
 	main()
 	if code != 2 {
 		t.Fatalf("missing arguments exit = %d", code)
