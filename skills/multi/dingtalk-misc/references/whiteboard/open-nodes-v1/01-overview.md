@@ -52,7 +52,7 @@ V1 采用严格校验：
 | --- | --- | --- |
 | `dws whiteboard query --node ... [--part-id ...] [--view ...]` | 可查看白板 | 有 partId 读取内嵌单页；无 partId 读取独立白板。 |
 | `dws whiteboard update --node ... [--part-id ...] --source ... --yes` | 可编辑白板 | 有 partId 更新内嵌白板；无 partId 按 revision 更新独立白板。 |
-| `dws whiteboard create-with-content --name ... --source ./whiteboard.json --request-id ...` | 可创建白板 | 使用必填 OpenNodes V1 `source` 带内容创建独立白板；不接受 checkpoint。 |
+| `dws whiteboard create-with-content --name ... --source 'JSON' --request-id ...`（长内容也可用 `--source ./whiteboard.json`） | 可创建白板 | source 是 OpenNodes V1 JSON String 或保存相同 JSON 的文件路径；`nodes: []` 表示空白创建，nodes 不可缺失或为 null；不接受 checkpoint。 |
 
 分流只由 `--part-id` 是否显式提供决定：非空值走内嵌接口，完全省略走独立接口；
 显式空值和纯空白会在本地失败。内嵌分支保持原有单页参数和输出，不接收 pageId。

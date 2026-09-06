@@ -6,6 +6,7 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -26,14 +27,17 @@ func newStandaloneWhiteboardCreateCommand() *cobra.Command {
 		Tool:          standaloneWhiteboardCreateTool,
 		Long: `使用 OpenNodes V1 初始内容创建独立 .adraw 白板。
 
-	--source 指向本地 OpenNodes V1 JSON 文件，结构与 whiteboard update 相同：
-	{"source":{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[...]}}。
+	--source 接受 OpenNodes V1 JSON String，或在内容较长时接受本地 JSON 文件路径。
+	内联 JSON 可直接使用 {"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[...]}；
+	文件可使用该结构，也可使用 {"source":{...}} 包装结构。
+	source.nodes 必须是数组，允许 []，表示创建空白独立白板。
+	CLI 校验后统一向 MCP/HSF 传递 source JSON 字符串。
 	--request-id 是稳定幂等键，同一次逻辑创建的网络重试必须复用相同值。`,
 		Example: `  dws whiteboard create-with-content --name "项目方案白板" --source ./whiteboard.json --request-id wb-create-001 --format json
 	  dws whiteboard create-with-content --name "项目方案白板" --source ./whiteboard.json --folder FOLDER_ID --request-id wb-create-002 --format json`,
 		Flags: []LeafFlag{
 			{Name: "name", Usage: "独立白板名称（必填）", Bind: "name", Required: true, MarkRequired: true, Trim: true},
-			{Name: "source", Usage: "OpenNodes V1 JSON 文件路径（必填）", Bind: "source", Required: true, MarkRequired: true, Trim: true, Transform: loadStandaloneWhiteboardCreateSource},
+			{Name: "source", Usage: "OpenNodes V1 JSON String 或 JSON 文件路径（必填）", Bind: "source", Required: true, MarkRequired: true, Trim: true, Transform: loadStandaloneWhiteboardCreateSource},
 			{Name: "folder", Usage: "目标文件夹节点 ID/URL", Bind: "folderId", Trim: true, OmitEmpty: true},
 			{Name: "workspace", Usage: "目标知识库 ID/URL", Bind: "workspaceId", Trim: true, OmitEmpty: true},
 			{Name: "request-id", Usage: "1-128 字符稳定幂等请求 ID（必填）", Bind: "requestId", Required: true, MarkRequired: true, Trim: true, Transform: validateStandaloneWhiteboardRequestID},
@@ -53,7 +57,7 @@ func newStandaloneWhiteboardCreateCommand() *cobra.Command {
 			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
 				Mode: "composite", Availability: "available",
-				Reason: "CLI 在调用 create_whiteboard 前读取并校验本地 OpenNodes，dry-run 只输出安全摘要，并校验幂等创建结果",
+				Reason: "CLI 在调用 create_whiteboard 前解析并校验内联或文件中的 OpenNodes，dry-run 只输出安全摘要，并校验幂等创建结果",
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "使用调用方提供的 OpenNodes V1 初始内容创建独立 .adraw 白板",
@@ -70,7 +74,7 @@ func newStandaloneWhiteboardCreateCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Property: "name", Required: boolPtr(true)},
-				{Name: "source", Property: "source", Required: boolPtr(true)},
+				{Name: "source", Property: "source", InterfaceType: "string", Required: boolPtr(true)},
 				{Name: "folder", Property: "folderId", Required: boolPtr(false)},
 				{Name: "workspace", Property: "workspaceId", Required: boolPtr(false)},
 				{Name: "request-id", Property: "requestId", Required: boolPtr(true)},
@@ -84,8 +88,33 @@ func newStandaloneWhiteboardCreateCommand() *cobra.Command {
 	})
 }
 
-func loadStandaloneWhiteboardCreateSource(sourcePath string) (any, error) {
-	input, nodesJSON, err := loadWhiteboardUpdateFile(strings.TrimSpace(sourcePath))
+func loadStandaloneWhiteboardCreateSource(sourceValue string) (any, error) {
+	sourceValue = strings.TrimSpace(sourceValue)
+	if sourceValue == "" {
+		return nil, invalidWhiteboardSourceParam("source is required")
+	}
+
+	var data []byte
+	if strings.HasPrefix(sourceValue, "{") {
+		data = []byte(sourceValue)
+	} else {
+		var err error
+		data, err = os.ReadFile(sourceValue)
+		if err != nil {
+			code := CodeInvalidPath
+			if os.IsNotExist(err) {
+				code = CodeFileNotFound
+			}
+			return nil, &CLIError{
+				Code:       code,
+				Message:    fmt.Sprintf("--source 既不是 OpenNodes JSON，也无法读取为文件 %q", sourceValue),
+				Suggestion: "直接传 OpenNodes JSON String，或确认文件路径指向可读的 UTF-8 JSON 文件",
+				Cause:      err,
+			}
+		}
+	}
+
+	input, nodesJSON, err := parseStandaloneWhiteboardCreateJSON(data)
 	if err != nil {
 		return nil, err
 	}
@@ -95,14 +124,37 @@ func loadStandaloneWhiteboardCreateSource(sourcePath string) (any, error) {
 	if err := decoder.Decode(&nodes); err != nil {
 		return nil, invalidWhiteboardSourceJSON(err)
 	}
-	if len(nodes) == 0 {
-		return nil, invalidWhiteboardSourceParam("create requires at least one source.nodes item")
-	}
-	return map[string]any{
+	sourceJSON, err := json.Marshal(map[string]any{
 		"schemaVersion":  input.Source.SchemaVersion,
 		"catalogVersion": input.Source.CatalogVersion,
 		"nodes":          nodes,
-	}, nil
+	})
+	if err != nil {
+		return nil, invalidWhiteboardSourceJSON(err)
+	}
+	return string(sourceJSON), nil
+}
+
+func parseStandaloneWhiteboardCreateJSON(data []byte) (*whiteboardUpdateFile, string, error) {
+	var fields map[string]json.RawMessage
+	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	if err := decoder.Decode(&fields); err != nil {
+		return nil, "", invalidWhiteboardSourceJSON(err)
+	}
+	if err := ensureWhiteboardJSONEOF(decoder); err != nil {
+		return nil, "", invalidWhiteboardSourceJSON(err)
+	}
+	if fields == nil {
+		return nil, "", invalidWhiteboardSourceParam("source must be a JSON object")
+	}
+	if _, wrapped := fields["source"]; wrapped {
+		return parseWhiteboardSourceJSON(data)
+	}
+	wrapper := make([]byte, 0, len(data)+len(`{"source":}`))
+	wrapper = append(wrapper, `{"source":`...)
+	wrapper = append(wrapper, data...)
+	wrapper = append(wrapper, '}')
+	return parseWhiteboardSourceJSON(wrapper)
 }
 
 func validateStandaloneWhiteboardRequestID(requestID string) (any, error) {
@@ -115,12 +167,16 @@ func validateStandaloneWhiteboardRequestID(requestID string) (any, error) {
 
 func callStandaloneWhiteboardCreateResult(cmd *cobra.Command, _ string, args map[string]any) (output.CommandResult, error) {
 	if deps.Caller.DryRun() {
-		source, _ := args["source"].(map[string]any)
-		sourceJSON, _ := json.Marshal(source)
-		nodes, _ := source["nodes"].([]any)
+		sourceJSON, _ := args["source"].(string)
+		var source struct {
+			Nodes []json.RawMessage `json:"nodes"`
+		}
+		if err := json.Unmarshal([]byte(sourceJSON), &source); err != nil {
+			return nil, invalidWhiteboardSourceJSON(err)
+		}
 		preview := map[string]any{
 			"name": args["name"], "requestId": args["requestId"],
-			"sourceBytes": len(sourceJSON), "nodeCount": len(nodes),
+			"sourceBytes": len(sourceJSON), "nodeCount": len(source.Nodes),
 			"executed": false, "dryRun": true,
 		}
 		for _, key := range []string{"folderId", "workspaceId"} {

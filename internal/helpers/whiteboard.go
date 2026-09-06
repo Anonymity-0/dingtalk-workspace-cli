@@ -269,6 +269,17 @@ func rejectWhiteboardOutputFilters(cmd *cobra.Command) error {
 }
 
 func loadWhiteboardUpdateFile(path string) (*whiteboardUpdateFile, string, error) {
+	input, nodesJSON, err := loadWhiteboardSourceFile(path)
+	if err != nil {
+		return nil, "", err
+	}
+	if !input.Overwrite && nodesJSON == "[]" {
+		return nil, "", invalidWhiteboardSourceParam("append requires at least one source.nodes item")
+	}
+	return input, nodesJSON, nil
+}
+
+func loadWhiteboardSourceFile(path string) (*whiteboardUpdateFile, string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		code := CodeInvalidPath
@@ -283,6 +294,10 @@ func loadWhiteboardUpdateFile(path string) (*whiteboardUpdateFile, string, error
 		}
 	}
 
+	return parseWhiteboardSourceJSON(data)
+}
+
+func parseWhiteboardSourceJSON(data []byte) (*whiteboardUpdateFile, string, error) {
 	var input whiteboardUpdateFile
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
@@ -302,12 +317,9 @@ func loadWhiteboardUpdateFile(path string) (*whiteboardUpdateFile, string, error
 		return nil, "", invalidWhiteboardSourceParam(`source.catalogVersion must be "dml-v1"`)
 	}
 
-	nodesJSON, nodeCount, err := validateWhiteboardNodes(input.Source.Nodes)
+	nodesJSON, _, err := validateWhiteboardNodes(input.Source.Nodes)
 	if err != nil {
 		return nil, "", err
-	}
-	if !input.Overwrite && nodeCount == 0 {
-		return nil, "", invalidWhiteboardSourceParam("append requires at least one source.nodes item")
 	}
 	return &input, nodesJSON, nil
 }

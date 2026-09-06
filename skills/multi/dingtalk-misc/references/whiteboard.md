@@ -99,9 +99,12 @@ dws whiteboard create-with-content --name "<白板名称>" \
   --source ./whiteboard.json --request-id <STABLE_REQUEST_ID> --format json
 ```
 
-`create-with-content --source` 使用与原子 `whiteboard update` 相同的本地文件结构：
-`{"source":{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[...]}}`。
-CLI 只向 `create_whiteboard` 发送解析后的 `source` 对象，不接受或暴露 checkpoint。
+`create-with-content --source` 本质是 OpenNodes JSON String 参数。较短内容可直接传
+`'{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[...]}'`；内容较长时可传
+本地文件路径。文件既可直接保存 OpenNodes，也可使用 `{"source":{...}}` 包装结构。
+创建时 `source.nodes` 允许 `[]`，表示创建空白独立白板；字段仍必填，不接受 null。
+这不改变更新规则：append 仍要求至少一个节点。普通空白创建仍优先使用文档创建能力。
+CLI 校验后只向 `create_whiteboard` 发送 `source` JSON 字符串，不接受或暴露 checkpoint。
 
 `--source` 接受 JSON、`@relative-file.json` 或 stdin；本地文件必须加 `@`，裸路径
 会被当作 JSON。白板 shortcut 不支持 `--jq` / `--fields`。

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -17,6 +19,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	outputpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -288,7 +291,7 @@ func TestCrossPlatformCoverageWhiteboardStandaloneUpdateRoutesExactCASArgs(t *te
 
 func TestCrossPlatformCoverageWhiteboardCreateWithContentValidatesAndRedactsDryRun(t *testing.T) {
 	sourcePath := filepath.Join(t.TempDir(), "whiteboard.json")
-	sourceJSON := `{"source":{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[{"id":"secret-node","type":"text"}]}}`
+	sourceJSON := `{"source":{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[{"id":"secret-node","type":"text","x":66,"y":-3.5,"width":96,"height":96,"text":{"padding":[2,4],"blocks":[{"type":"paragraph","runs":[{"text":"00123","marks":{"fontSize":14}}]}]}}]},"overwrite":false}`
 	if err := os.WriteFile(sourcePath, []byte(sourceJSON), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -319,10 +322,59 @@ func TestCrossPlatformCoverageWhiteboardCreateWithContentValidatesAndRedactsDryR
 	if len(caller.calls) != 1 || caller.calls[0].tool != standaloneWhiteboardCreateTool {
 		t.Fatalf("calls = %#v", caller.calls)
 	}
-	source, _ := caller.calls[0].args["source"].(map[string]any)
+	sourceString, ok := caller.calls[0].args["source"].(string)
+	if !ok {
+		t.Fatal("MCP source must be a JSON string")
+	}
+	var source map[string]any
+	sourceDecoder := json.NewDecoder(strings.NewReader(sourceString))
+	sourceDecoder.UseNumber()
+	if err := sourceDecoder.Decode(&source); err != nil {
+		t.Fatal(err)
+	}
 	nodes, _ := source["nodes"].([]any)
 	if source["schemaVersion"] != "1.0" || len(nodes) != 1 {
 		t.Fatalf("calls = %#v", caller.calls)
+	}
+	// The file wrapper is not the MCP source value. Assert the complete
+	// source subtree, then exercise the real transport serialization locally.
+	var fileInput map[string]any
+	inputDecoder := json.NewDecoder(strings.NewReader(sourceJSON))
+	inputDecoder.UseNumber()
+	if err := inputDecoder.Decode(&fileInput); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(source, fileInput["source"]) {
+		t.Fatalf("MCP source must equal file .source, got %#v", source)
+	}
+	wireRequests := make(chan map[string]any, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		wireDecoder := json.NewDecoder(r.Body)
+		wireDecoder.UseNumber()
+		if err := wireDecoder.Decode(&body); err != nil {
+			t.Errorf("decode MCP request: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		wireRequests <- body
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{}"}]}}`)
+	}))
+	defer server.Close()
+	client := transport.NewClient(server.Client())
+	if _, err := client.CallTool(context.Background(), server.URL, standaloneWhiteboardCreateTool, caller.calls[0].args); err != nil {
+		t.Fatal(err)
+	}
+	wire := <-wireRequests
+	params := wire["params"].(map[string]any)
+	wireArgs := params["arguments"].(map[string]any)
+	if wire["method"] != "tools/call" || params["name"] != standaloneWhiteboardCreateTool ||
+		wireArgs["source"] != sourceString {
+		t.Fatalf("unexpected MCP wire request: %#v", wire)
+	}
+	if _, exists := wireArgs["overwrite"]; exists {
+		t.Fatal("file-level overwrite must not be forwarded for create")
 	}
 	var created map[string]any
 	if err := json.Unmarshal(output.Bytes(), &created); err != nil {
@@ -358,6 +410,110 @@ func TestCrossPlatformCoverageWhiteboardCreateWithContentValidatesAndRedactsDryR
 	if len(caller.calls) != 0 || strings.Contains(output.String(), "secret-node") ||
 		data["nodeCount"] != float64(1) || data["sourceBytes"] == nil {
 		t.Fatalf("dry-run calls=%#v output=%s", caller.calls, output.String())
+	}
+}
+
+func TestCrossPlatformCoverageWhiteboardCreateEmptySource(t *testing.T) {
+	for _, tc := range []struct {
+		name, source string
+		valid        bool
+	}{
+		{"empty", `{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[]}`, true},
+		{"missing", `{"schemaVersion":"1.0","catalogVersion":"dml-v1"}`, false},
+		{"null", `{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":null}`, false},
+		{"object", `{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":{}}`, false},
+		{"null item", `{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[null]}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "source.json")
+			if err := os.WriteFile(path, []byte(`{"source":`+tc.source+`}`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			result, err := loadStandaloneWhiteboardCreateSource(path)
+			if (err == nil) != tc.valid {
+				t.Fatalf("result=%#v err=%v", result, err)
+			}
+			if !tc.valid {
+				return
+			}
+			var decoded map[string]any
+			if err := json.Unmarshal([]byte(result.(string)), &decoded); err != nil {
+				t.Fatal(err)
+			}
+			nodes := decoded["nodes"].([]any)
+			if nodes == nil || len(nodes) != 0 {
+				t.Fatalf("nodes=%#v", nodes)
+			}
+			if _, _, err := loadWhiteboardUpdateFile(path); err == nil {
+				t.Fatal("empty append must remain invalid")
+			}
+			caller := &whiteboardTestCaller{format: "json", dry: true}
+			buf := installWhiteboardTestCaller(t, caller)
+			cmd := newWhiteboardCommand()
+			ctx, _ := outputpkg.WithResultStore(context.Background())
+			cmd.SetContext(ctx)
+			cmd.SetOut(buf)
+			cmd.SetArgs([]string{"create-with-content", "--name", "Empty", "--source", path, "--request-id", "empty-1"})
+			if err := cmd.Execute(); err != nil {
+				t.Fatal(err)
+			}
+			leaf, _, _ := cmd.Find([]string{"create-with-content"})
+			if _, emitted, err := outputpkg.EmitStoredResult(leaf); err != nil || !emitted {
+				t.Fatalf("emitted=%v err=%v", emitted, err)
+			}
+			var preview map[string]any
+			if err := json.Unmarshal(buf.Bytes(), &preview); err != nil {
+				t.Fatal(err)
+			}
+			if preview["data"].(map[string]any)["nodeCount"] != float64(0) || len(caller.calls) != 0 {
+				t.Fatalf("preview=%s calls=%#v", buf.String(), caller.calls)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageWhiteboardCreateSourceAcceptsInlineJSONOrFile(t *testing.T) {
+	direct := `{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[{"id":"n1","type":"text","x":1.5}]}`
+	wrapper := `{"source":` + direct + `}`
+	directPath := filepath.Join(t.TempDir(), "direct.json")
+	wrapperPath := filepath.Join(t.TempDir(), "wrapper.json")
+	if err := os.WriteFile(directPath, []byte(direct), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(wrapperPath, []byte(wrapper), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		name, value string
+	}{
+		{"inline direct", direct},
+		{"inline wrapper", wrapper},
+		{"file direct", directPath},
+		{"file wrapper", wrapperPath},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := loadStandaloneWhiteboardCreateSource(tc.value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var source map[string]any
+			decoder := json.NewDecoder(strings.NewReader(result.(string)))
+			decoder.UseNumber()
+			if err := decoder.Decode(&source); err != nil {
+				t.Fatal(err)
+			}
+			node := source["nodes"].([]any)[0].(map[string]any)
+			if node["x"] != json.Number("1.5") {
+				t.Fatalf("source numeric type/value changed: %#v", source)
+			}
+		})
+	}
+
+	for _, invalid := range []string{"", "{", `{"source":"double-encoded"}`, filepath.Join(t.TempDir(), "missing.json")} {
+		if _, err := loadStandaloneWhiteboardCreateSource(invalid); err == nil {
+			t.Fatalf("expected invalid source %q", invalid)
+		}
 	}
 }
 
