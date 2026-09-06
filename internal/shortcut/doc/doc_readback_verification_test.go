@@ -780,7 +780,7 @@ func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) 
 
 	warnings := withMentionTargetWarning([]string{"既有告警"}, withMention)
 	if len(warnings) != 2 || warnings[0] != "既有告警" ||
-		!strings.Contains(warnings[1], "目标身份未经回读校验") {
+		!strings.Contains(warnings[1], "需用户自行核对") {
 		t.Fatalf("mention warning must be appended after existing ones: %#v", warnings)
 	}
 	if got := withMentionTargetWarning(nil, plain); got != nil {
@@ -817,11 +817,12 @@ func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) 
 		t.Fatalf("a write without mentions leaves steps untouched: %#v", plainSteps[0])
 	}
 
-	// The warning must say re-reading cannot close the gap, otherwise a caller
-	// burns round trips on a check that is impossible locally.
-	if !strings.Contains(docMentionTargetUnverifiedWarning, "无需为此追加验证往返") {
-		t.Fatalf("warning must discourage a pointless verification round trip: %q",
-			docMentionTargetUnverifiedWarning)
+	// The warning carries exactly two facts: what the caller must check itself,
+	// and that the rest was verified.
+	for _, fact := range []string{"需用户自行核对", "均已通过回读校验"} {
+		if !strings.Contains(docMentionTargetUnverifiedWarning, fact) {
+			t.Fatalf("warning must state %q: %q", fact, docMentionTargetUnverifiedWarning)
+		}
 	}
 
 	// The warning must reach the envelope of a real verified write.

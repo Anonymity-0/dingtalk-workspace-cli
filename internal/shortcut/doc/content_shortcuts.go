@@ -1222,10 +1222,9 @@ func docContentHasMentionLink(source string) bool {
 	return strings.Contains(source, docMentionLinkPrefix)
 }
 
-// docMentionTargetUnverifiedWarning states plainly what readback did not cover.
-// It also says re-reading cannot close the gap, so a caller does not spend round
-// trips chasing a check that is impossible locally.
-const docMentionTargetUnverifiedWarning = "@人的目标身份未经回读校验：服务端把 mention 协议改写为个人资料链接，本地无从核对解析到的人员。链接位置、显示文本与其余正文均已校验；重新读取文档同样无法核验此项，无需为此追加验证往返。若需确认 @ 到的是谁，请人工核对文档中的 @ 链接。"
+// docMentionTargetUnverifiedWarning states two facts and nothing more: which part
+// the caller has to check itself, and that everything else was verified.
+const docMentionTargetUnverifiedWarning = "@人链接指向的具体人员需用户自行核对；正文其余部分（含该链接的位置与显示文本）均已通过回读校验。"
 
 const (
 	docVerificationScopePartial = "partial"
