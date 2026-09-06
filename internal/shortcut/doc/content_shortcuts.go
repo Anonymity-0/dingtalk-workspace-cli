@@ -928,7 +928,8 @@ func compactDocVerification(value map[string]any, expected, mode, format string,
 			// Readback proves the mention link sits at the authored position with the
 			// authored label, but not which user it resolved to: the service rewrites
 			// openDingTalkId into a profile link and the two identifiers have no local
-			// mapping. Say so rather than letting "verified" imply it.
+			// mapping. The summary says so, and the envelope drops "verified" to false.
+			summary["verified"] = false
 			summary["mentionTargetsVerified"] = false
 		}
 		candidate := matchingDocumentContent(value, expected, mode, format)
@@ -1253,8 +1254,17 @@ func annotateMentionVerificationScope(data map[string]any, steps []map[string]an
 	if !docContentHasMentionLink(expected) {
 		return
 	}
+	// Readback cannot establish which user a mention resolved to, so this write is
+	// not fully verified and must not say it is. "verified" therefore drops to
+	// false while the operation itself still reports success: the content was
+	// written, only one property of it is unverifiable here.
+	data["verified"] = false
 	data["verificationScope"] = docVerificationScopePartial
 	data["unverified"] = []string{docUnverifiedMentionTargets}
+	// The gap is not "not yet checked" but "not checkable from a readback", so
+	// say so next to the flag. A caller that re-reads the document learns nothing
+	// new about the target.
+	data["unverifiableLocally"] = []string{docUnverifiedMentionTargets}
 	for _, step := range steps {
 		if step["name"] == "verify" {
 			step["scope"] = docVerificationScopePartial

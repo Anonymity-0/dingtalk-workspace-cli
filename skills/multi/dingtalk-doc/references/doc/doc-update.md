@@ -81,7 +81,7 @@ dws doc block insert --node <DOC_ID> --heading "发布说明 v1.0" --level 1 --r
 - `openDingTalkId` 取自 `dws aisearch +search-person --query "姓名"` 返回的 `openDingTalkId`（或 `dws contact +search-user`）。
 - `@` 与显示名由你写在方括号里；服务端只替换链接、保留显示文本。
 - 仅 markdown 正文生效：本命令的 `append` / `overwrite`（`+create` 初始正文同样生效）；`--doc-format jsonml` 与 `block_insert_*` / `block_replace` 不解析 markdown，写进去的协议原文不会被改写。
-- 回读不校验 @ 到的是谁：结果带 `mentionTargetsVerified=false` 与 warning。
+- 回读不校验 @ 到的是谁：含 @人 的写入返回 `verified=false`（操作仍 success）与 `unverified=[mention_targets]`，需人工核对。
 
 ## Block ID 生命周期与保真
 

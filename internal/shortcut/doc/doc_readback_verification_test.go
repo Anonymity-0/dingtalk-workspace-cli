@@ -764,8 +764,9 @@ func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) 
 	summary := compactDocVerification(
 		map[string]any{"markdown": "请 [@测试甲](" + profile + ") 跟进。"},
 		withMention, "overwrite", "markdown", nil)
-	if summary["verified"] != true {
-		t.Fatalf("a matching write stays verified: %#v", summary)
+	// A mention write cannot be fully verified, so the summary must not claim it.
+	if summary["verified"] != false {
+		t.Fatalf("a mention write must not report itself as verified: %#v", summary)
 	}
 	if summary["mentionTargetsVerified"] != false {
 		t.Fatalf("mention targets must be reported as unverified: %#v", summary)
@@ -793,8 +794,15 @@ func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) 
 	steps := []map[string]any{{"name": "update_document", "status": "success"},
 		{"name": "verify", "status": "success"}}
 	annotateMentionVerificationScope(data, steps, withMention)
+	if data["verified"] != false {
+		t.Fatalf("top level must not claim verified for a mention write: %#v", data)
+	}
 	if data["verificationScope"] != "partial" {
 		t.Fatalf("top level must declare a partial scope: %#v", data)
+	}
+	local, _ := data["unverifiableLocally"].([]string)
+	if len(local) != 1 || local[0] != "mention_targets" {
+		t.Fatalf("the gap must be marked as not checkable locally: %#v", data["unverifiableLocally"])
 	}
 	gaps, _ := data["unverified"].([]string)
 	if len(gaps) != 1 || gaps[0] != "mention_targets" {
@@ -810,6 +818,9 @@ func TestCrossPlatformCoverageDocMentionTargetsReportedUnverified(t *testing.T) 
 	plainData := map[string]any{"verified": true}
 	plainSteps := []map[string]any{{"name": "verify", "status": "success"}}
 	annotateMentionVerificationScope(plainData, plainSteps, plain)
+	if plainData["verified"] != true {
+		t.Fatalf("a write without mentions stays fully verified: %#v", plainData)
+	}
 	if _, present := plainData["verificationScope"]; present {
 		t.Fatalf("a write without mentions stays unqualified: %#v", plainData)
 	}
