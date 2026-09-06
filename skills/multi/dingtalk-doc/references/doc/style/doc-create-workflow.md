@@ -301,7 +301,7 @@ dws doc +create --name "<文档名>" --content @./drafts/<name>.json --doc-forma
 
 ### 验收
 
-读取 `+create` 返回的 `verified`、`steps`、`nodeId` 和验证结果。只有返回 `verified=false` 或结构化 partial/unknown 错误时，才进入恢复流程；例外是 `verified=false` 同时带 `unverified=["mention_targets"]`，它只表示 @人 指向的人员本地无法核对，正文已通过回读，不进入恢复流程。
+读取 `+create` 返回的 `verified`、`steps`、`nodeId` 和验证结果。只有返回 `verified=false` 或结构化 partial/unknown 错误时，才进入恢复流程。
 
 ---
 
