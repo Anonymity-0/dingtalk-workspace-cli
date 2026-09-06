@@ -1188,23 +1188,53 @@ func verifyUpdatedDocumentContent(value any, expected, mode, format string) bool
 
 // The document service rewrites the private mention protocol into a DingTalk
 // profile link while committing markdown, so the authored destination never
-// survives a readback. Verification compares such links by position and label
-// instead of destination; the resolved identity is the service's contract, not
-// something a write-readback can prove locally (openDingTalkId and the
-// rewritten staff_id are different values).
+// survives a readback.
+//
+// Pairing is positional, not shape-based: only a position where the author wrote
+// the mention protocol may hold a profile link on readback. Every other link —
+// including an ordinary profile link the author wrote themselves — keeps its
+// full destination and must match exactly.
+//
+// Known limit: two mentions carrying the same label whose targets are swapped
+// cannot be told apart locally, because openDingTalkId and the rewritten
+// staffId are different values and neither is derivable from the other without
+// another request. Detecting that would require the service to report what it
+// rewrote.
 const (
 	docMentionLinkPrefix = "alidocs-mcp://doc/mention"
 	docProfileLinkPrefix = "dingtalk://dingtalkclient/page/profile"
-	docMentionLinkToken  = "link:mention"
+
+	docFingerprintLinkTokenPrefix = "open\x00link:"
 )
 
 func docContentHasMentionLink(source string) bool {
 	return strings.Contains(source, docMentionLinkPrefix)
 }
 
-func docMentionLinkDestination(destination string) bool {
-	return strings.HasPrefix(destination, docMentionLinkPrefix) ||
-		strings.HasPrefix(destination, docProfileLinkPrefix)
+func isMentionProtocolLinkToken(token string) bool {
+	return strings.HasPrefix(token, docFingerprintLinkTokenPrefix+docMentionLinkPrefix)
+}
+
+func isProfileLinkToken(token string) bool {
+	return strings.HasPrefix(token, docFingerprintLinkTokenPrefix+docProfileLinkPrefix)
+}
+
+// markdownMentionAwareTokensEqual compares two fingerprint token sequences,
+// tolerating exactly one kind of difference: an authored mention protocol link
+// may appear as a profile link in the readback.
+func markdownMentionAwareTokensEqual(actual, expected []string) bool {
+	if len(actual) != len(expected) {
+		return false
+	}
+	for index := range expected {
+		if actual[index] == expected[index] {
+			continue
+		}
+		if !isMentionProtocolLinkToken(expected[index]) || !isProfileLinkToken(actual[index]) {
+			return false
+		}
+	}
+	return true
 }
 
 func markdownSemanticallyEquivalent(left, right string) bool {
@@ -1218,12 +1248,15 @@ func markdownSemanticallyEquivalent(left, right string) bool {
 	if leftOK && rightOK && leftFingerprint == rightFingerprint {
 		return true
 	}
+	// Cheap short-circuit: with no authored mention there is nothing to pair, so
+	// the token comparison could only repeat the verdict above.
 	if !docContentHasMentionLink(right) {
 		return false
 	}
-	leftFingerprint, leftOK = markdownMentionCanonicalFingerprint(left)
-	rightFingerprint, rightOK = markdownMentionCanonicalFingerprint(right)
-	return leftOK && rightOK && leftFingerprint == rightFingerprint
+	leftTokens, leftTokensOK := markdownServiceSemanticTokens(left)
+	rightTokens, rightTokensOK := markdownServiceSemanticTokens(right)
+	return leftTokensOK && rightTokensOK &&
+		markdownMentionAwareTokensEqual(leftTokens, rightTokens)
 }
 
 func markdownSemanticallyEndsWith(content, suffix string) bool {
@@ -1240,9 +1273,13 @@ func markdownSemanticallyEndsWith(content, suffix string) bool {
 	if !docContentHasMentionLink(suffix) {
 		return false
 	}
-	contentFingerprint, contentOK = markdownMentionCanonicalFingerprint(content)
-	suffixFingerprint, suffixOK = markdownMentionCanonicalFingerprint(suffix)
-	return contentOK && suffixOK && strings.HasSuffix(contentFingerprint, suffixFingerprint)
+	contentTokens, contentTokensOK := markdownServiceSemanticTokens(content)
+	suffixTokens, suffixTokensOK := markdownServiceSemanticTokens(suffix)
+	if !contentTokensOK || !suffixTokensOK || len(contentTokens) < len(suffixTokens) {
+		return false
+	}
+	return markdownMentionAwareTokensEqual(
+		contentTokens[len(contentTokens)-len(suffixTokens):], suffixTokens)
 }
 
 func markdownSemanticFingerprint(source string) (string, bool) {
@@ -1261,21 +1298,22 @@ func markdownSemanticFingerprint(source string) (string, bool) {
 // service, such as hard/soft line breaks, list tightness, and insignificant
 // whitespace. Exact rendered HTML remains the first comparison path above.
 func markdownServiceSemanticFingerprint(source string) (string, bool) {
-	return markdownStructuralFingerprint(source, false)
+	value, _, ok := markdownStructuralFingerprint(source)
+	return value, ok
 }
 
-// markdownMentionCanonicalFingerprint additionally collapses mention links to a
-// destination-agnostic token, so an authored private mention protocol and the
-// profile link the service rewrites it into produce the same fingerprint. Label
-// text and node order stay in the fingerprint, so a dropped or reordered
-// mention is still caught.
-func markdownMentionCanonicalFingerprint(source string) (string, bool) {
-	return markdownStructuralFingerprint(source, true)
+// markdownServiceSemanticTokens exposes the same walk as an ordered token
+// sequence. Positional comparison is what lets mention pairing stay exact: the
+// fingerprint keeps every authored destination, and only the comparison decides
+// which single position may legitimately differ.
+func markdownServiceSemanticTokens(source string) ([]string, bool) {
+	_, tokens, ok := markdownStructuralFingerprint(source)
+	return tokens, ok
 }
 
-func markdownStructuralFingerprint(source string, canonicalizeMentionLinks bool) (string, bool) {
+func markdownStructuralFingerprint(source string) (string, []string, bool) {
 	if len(source) > docMarkdownVerifyMax {
-		return "", false
+		return "", nil, false
 	}
 	sourceBytes := []byte(normalizeDocInputLineEndings(source))
 	document := docMarkdown.Parser().Parse(goldmarktext.NewReader(sourceBytes))
@@ -1338,12 +1376,7 @@ func markdownStructuralFingerprint(source string, canonicalizeMentionLinks bool)
 		case *goldmarkast.Emphasis:
 			builder.token("open", fmt.Sprintf("emphasis:%d", typed.Level))
 		case *goldmarkast.Link:
-			destination := string(typed.Destination)
-			if canonicalizeMentionLinks && docMentionLinkDestination(destination) {
-				builder.token("open", docMentionLinkToken)
-				return goldmarkast.WalkContinue, nil
-			}
-			builder.token("open", "link:"+destination+"\x00"+string(typed.Title))
+			builder.token("open", "link:"+string(typed.Destination)+"\x00"+string(typed.Title))
 		case *goldmarkast.Image:
 			builder.token("open", "image:"+string(typed.Destination)+"\x00"+string(typed.Title))
 		case *extensionast.Table:
@@ -1360,11 +1393,12 @@ func markdownStructuralFingerprint(source string, canonicalizeMentionLinks bool)
 		return goldmarkast.WalkContinue, nil
 	})
 	builder.flushText()
-	return builder.value.String(), true
+	return builder.value.String(), builder.tokens, true
 }
 
 type markdownFingerprintBuilder struct {
 	value       strings.Builder
+	tokens      []string
 	pendingText strings.Builder
 }
 
@@ -1383,6 +1417,7 @@ func (builder *markdownFingerprintBuilder) text(value string) {
 func (builder *markdownFingerprintBuilder) token(kind, value string) {
 	builder.flushText()
 	fmt.Fprintf(&builder.value, "%s:%d:%s;", kind, len(value), value)
+	builder.tokens = append(builder.tokens, kind+"\x00"+value)
 }
 
 func (builder *markdownFingerprintBuilder) flushText() {
@@ -1391,6 +1426,7 @@ func (builder *markdownFingerprintBuilder) flushText() {
 	}
 	value := builder.pendingText.String()
 	fmt.Fprintf(&builder.value, "text:%d:%s;", len(value), value)
+	builder.tokens = append(builder.tokens, "text\x00"+value)
 	builder.pendingText.Reset()
 }
 

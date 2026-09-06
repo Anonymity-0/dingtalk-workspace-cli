@@ -644,13 +644,110 @@ func TestCrossPlatformCoverageDocMentionCanonicalizationScopedToMentionWrites(t 
 		t.Fatalf("non-mention writes must keep strict destination comparison, got %v", err)
 	}
 
-	if _, ok := markdownMentionCanonicalFingerprint(strings.Repeat("x", docMarkdownVerifyMax+1)); ok {
-		t.Fatal("oversized input must not produce a mention fingerprint")
+	if _, ok := markdownServiceSemanticTokens(strings.Repeat("x", docMarkdownVerifyMax+1)); ok {
+		t.Fatal("oversized input must not produce fingerprint tokens")
 	}
 	if docContentHasMentionLink(authored) || !docContentHasMentionLink(docMentionAuthored) {
 		t.Fatal("mention protocol detection failed")
 	}
-	if docMentionLinkDestination("https://www.dingtalk.com") {
-		t.Fatal("ordinary destinations must not be treated as mention links")
+	ordinary := docFingerprintLinkTokenPrefix + "https://www.dingtalk.com"
+	if isMentionProtocolLinkToken(ordinary) || isProfileLinkToken(ordinary) {
+		t.Fatal("ordinary destinations must not be treated as mention or profile links")
+	}
+}
+
+// Mention pairing is positional: only a position where the author wrote the
+// mention protocol may hold a profile link on readback. An earlier revision
+// collapsed every profile-shaped link instead, which silently stopped verifying
+// an ordinary profile link the author wrote themselves.
+func TestCrossPlatformCoverageDocMentionVerificationPairing(t *testing.T) {
+	const (
+		mentionA = "alidocs-mcp://doc/mention?openDingTalkId=DEXAMPLEAAAA"
+		mentionB = "alidocs-mcp://doc/mention?openDingTalkId=DEXAMPLEBBBB"
+		profile1 = "dingtalk://dingtalkclient/page/profile?corp_id=dingexamplecorpid&staff_id=100001"
+		profile2 = "dingtalk://dingtalkclient/page/profile?corp_id=dingexamplecorpid&staff_id=100002"
+	)
+
+	for _, tc := range []struct {
+		name     string
+		expected string
+		actual   string
+		mode     string
+		want     bool
+	}{
+		// Service-side normalization that must stay tolerated, with and without
+		// a mention in the body.
+		{"overwrite tolerates an added document title", "正文段落。", "# 文档标题\n\n正文段落。", "overwrite", true},
+		{
+			"overwrite tolerates an added title alongside a mention",
+			"请 [@测试甲](" + mentionA + ") 跟进。",
+			"# 文档标题\n\n请 [@测试甲](" + profile1 + ") 跟进。",
+			"overwrite", true,
+		},
+		{"append tolerates preceding content", "新增段落。", "旧段落。\n\n新增段落。", "append", true},
+		{
+			"append tolerates preceding content alongside a mention",
+			"追加 [@测试甲](" + mentionA + ") 完。",
+			"旧段落。\n\n追加 [@测试甲](" + profile1 + ") 完。",
+			"append", true,
+		},
+
+		// A mention and an ordinary profile link coexisting: the mention may be
+		// rewritten, the ordinary link may not drift.
+		{
+			"mention rewrite beside an intact ordinary profile link",
+			"请 [@测试甲](" + mentionA + ") 跟进，负责人 [某人](" + profile1 + ")。",
+			"请 [@测试甲](" + profile2 + ") 跟进，负责人 [某人](" + profile1 + ")。",
+			"overwrite", true,
+		},
+		{
+			"ordinary profile link drifting to another target is rejected",
+			"请 [@测试甲](" + mentionA + ") 跟进，负责人 [某人](" + profile1 + ")。",
+			"请 [@测试甲](" + profile2 + ") 跟进，负责人 [某人](" + profile2 + ")。",
+			"overwrite", false,
+		},
+
+		// Drift at the mention position itself.
+		{"dropped mention is rejected", "请 [@测试甲](" + mentionA + ") 跟进。", "请 跟进。", "overwrite", false},
+		{
+			"changed mention label is rejected",
+			"请 [@测试甲](" + mentionA + ") 跟进。",
+			"请 [@测试乙](" + profile1 + ") 跟进。",
+			"overwrite", false,
+		},
+		{
+			"mention degraded to plain text is rejected",
+			"请 [@测试甲](" + mentionA + ") 跟进。", "请 @测试甲 跟进。", "overwrite", false,
+		},
+
+		// Without an authored mention nothing is relaxed.
+		{
+			"profile link drift without any mention is rejected",
+			"负责人 [某人](" + profile1 + ")。", "负责人 [某人](" + profile2 + ")。", "overwrite", false,
+		},
+		{
+			"ordinary link drift without any mention is rejected",
+			"见 [钉钉](https://www.dingtalk.com)。", "见 [钉钉](https://example.com)。", "overwrite", false,
+		},
+
+		// Known limit: two same-label mentions whose targets are swapped are
+		// indistinguishable locally, because openDingTalkId and the rewritten
+		// staffId are different values with no local mapping. If this row starts
+		// failing, the service began reporting what it rewrote — tighten the
+		// comparison and update this expectation.
+		{
+			"same-label mentions with swapped targets are not detected (known limit)",
+			"[@同名](" + mentionA + ") 与 [@同名](" + mentionB + ")",
+			"[@同名](" + profile2 + ") 与 [@同名](" + profile1 + ")",
+			"overwrite", true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := verifyUpdatedDocumentContent(
+				map[string]any{"markdown": tc.actual}, tc.expected, tc.mode, "markdown")
+			if got != tc.want {
+				t.Fatalf("verify = %v, want %v\nexpected=%q\nactual=%q", got, tc.want, tc.expected, tc.actual)
+			}
+		})
 	}
 }
