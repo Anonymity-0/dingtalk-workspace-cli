@@ -187,6 +187,7 @@ func TestCrossPlatformCoverageWhiteboardCommandValidationBranches(t *testing.T) 
 	caller := &whiteboardTestCaller{format: "json"}
 	installWhiteboardTestCaller(t, caller)
 	for _, args := range [][]string{
+		{"query"},
 		{"query", "--node", "n", "--view", "page"},
 		{"query", "--node", "n", "--part-id", ""},
 		{"query", "--node", "n", "--part-id", "p", "--jq", "."},

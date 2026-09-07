@@ -147,9 +147,9 @@ func newWhiteboardCommand() *cobra.Command {
 	更新模式由文件顶层的 overwrite 字段决定。overwrite=false 表示追加，
 	overwrite=true 表示整页重建。显式提供非空 --part-id 时更新文档内嵌白板；未提供时
 	默认更新独立白板，并要求 --expected-revision 和 --request-id。两种模式都会写入
-	远端白板，必须同时传入 --yes。`,
+	远端白板，执行前必须取得用户确认；非交互执行仅在确认后添加 --yes。`,
 		Example: `  dws whiteboard update --node DOC_ID_OR_URL --part-id WHITEBOARD_PART_ID --source ./whiteboard.json --format json
-	  dws whiteboard update --node WHITEBOARD_NODE_ID --source ./whiteboard.json --expected-revision 12 --request-id wb-update-001 --yes --format json`,
+  dws whiteboard update --node WHITEBOARD_NODE_ID --source ./whiteboard.json --expected-revision 12 --request-id wb-update-001 --format json`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := rejectWhiteboardOutputFilters(cmd); err != nil {
 				return err

@@ -84,6 +84,9 @@ func TestCrossPlatformCoverageWhiteboardLocalFileExamplesAreContractOnly(t *test
 			if err != nil || leaf == nil {
 				t.Fatalf("find whiteboard %s: command=%v err=%v", test.path, leaf, err)
 			}
+			if strings.Contains(leaf.Example, "--yes") {
+				t.Fatalf("whiteboard %s public example pre-confirms a write:\n%s", test.path, leaf.Example)
+			}
 			final, ok := contractfinal.RuntimeContractFinal(leaf)
 			if !ok || final.Selection == nil {
 				t.Fatalf("whiteboard %s ContractFinal selection = %#v", test.path, final.Selection)
