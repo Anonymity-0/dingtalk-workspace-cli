@@ -94,9 +94,9 @@ dws whiteboard +update --node <WHITEBOARD_NODE_ID> \
   --expected-revision <REVISION> --request-id <STABLE_REQUEST_ID> \
   --source @whiteboard.json --format json
 
-# 使用不透明 checkpoint 创建独立白板
+# 使用 OpenNodes V1 初始内容创建独立白板
 dws whiteboard create-with-content --name "<白板名称>" \
-  --content ./checkpoint.txt --request-id <STABLE_REQUEST_ID> --format json
+  --source ./whiteboard.json --request-id <STABLE_REQUEST_ID> --format json
 
 # 导出独立白板；--output 是目录，文件名自动使用白板名称
 dws whiteboard export --node <WHITEBOARD_NODE_ID> \
@@ -106,6 +106,13 @@ dws whiteboard export --node <WHITEBOARD_NODE_ID> \
 dws whiteboard export-get --job-id <JOB_ID> \
   --export-format png --output ./exports --format json
 ```
+
+`create-with-content --source` 本质是 OpenNodes JSON String 参数。较短内容可直接传
+`'{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[...]}'`；内容较长时可传
+本地文件路径。文件既可直接保存 OpenNodes，也可使用 `{"source":{...}}` 包装结构。
+创建时 `source.nodes` 允许 `[]`，表示创建空白独立白板；字段仍必填，不接受 null。
+这不改变更新规则：append 仍要求至少一个节点。普通空白创建仍优先使用文档创建能力。
+CLI 校验后只向 `create_whiteboard` 发送 `source` JSON 字符串，不接受或暴露 checkpoint。
 
 `--source` 接受 JSON、`@relative-file.json` 或 stdin；本地文件必须加 `@`，裸路径
 会被当作 JSON。白板 shortcut 不支持 `--jq` / `--fields`。

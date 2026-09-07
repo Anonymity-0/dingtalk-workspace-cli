@@ -53,7 +53,7 @@ func newWhiteboardCommand() *cobra.Command {
 		},
 		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "创建或导出独立白板，或按 partId 是否提供查询和更新独立/文档内嵌白板",
-			UseWhen:      []string{"用户要读取或写入白板/画布中的 OpenNodes、创建独立白板，或将独立白板导出到本地时；没有文档内嵌证据时默认独立白板"},
+			UseWhen:      []string{"用户要读取或写入白板/画布中的 OpenNodes，或使用 OpenNodes 初始内容创建独立白板，或将独立白板导出到本地时；没有文档内嵌证据时默认独立白板"},
 			AvoidWhen:    []string{"普通文档正文和块使用 doc；只创建或删除文档内白板卡片使用 doc whiteboard insert / doc block delete"},
 		},
 	})
@@ -270,6 +270,17 @@ func rejectWhiteboardOutputFilters(cmd *cobra.Command) error {
 }
 
 func loadWhiteboardUpdateFile(path string) (*whiteboardUpdateFile, string, error) {
+	input, nodesJSON, err := loadWhiteboardSourceFile(path)
+	if err != nil {
+		return nil, "", err
+	}
+	if !input.Overwrite && nodesJSON == "[]" {
+		return nil, "", invalidWhiteboardSourceParam("append requires at least one source.nodes item")
+	}
+	return input, nodesJSON, nil
+}
+
+func loadWhiteboardSourceFile(path string) (*whiteboardUpdateFile, string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		code := CodeInvalidPath
@@ -284,6 +295,10 @@ func loadWhiteboardUpdateFile(path string) (*whiteboardUpdateFile, string, error
 		}
 	}
 
+	return parseWhiteboardSourceJSON(data)
+}
+
+func parseWhiteboardSourceJSON(data []byte) (*whiteboardUpdateFile, string, error) {
 	var input whiteboardUpdateFile
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
@@ -303,12 +318,9 @@ func loadWhiteboardUpdateFile(path string) (*whiteboardUpdateFile, string, error
 		return nil, "", invalidWhiteboardSourceParam(`source.catalogVersion must be "dml-v1"`)
 	}
 
-	nodesJSON, nodeCount, err := validateWhiteboardNodes(input.Source.Nodes)
+	nodesJSON, _, err := validateWhiteboardNodes(input.Source.Nodes)
 	if err != nil {
 		return nil, "", err
-	}
-	if !input.Overwrite && nodeCount == 0 {
-		return nil, "", invalidWhiteboardSourceParam("append requires at least one source.nodes item")
 	}
 	return &input, nodesJSON, nil
 }

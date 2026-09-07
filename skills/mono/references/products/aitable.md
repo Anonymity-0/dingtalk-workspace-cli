@@ -10,7 +10,7 @@
 | 模板预览 | `https://docs.dingtalk.com/table/template/{templateId}` |
 
 > **操作后请返回文档 URI**：每次执行 base list/search/create/get 操作后，从返回数据中提取 `baseId`，拼接为 `https://alidocs.dingtalk.com/i/nodes/{baseId}` 返回给用户。
-> 补充：如果 URL 不是来自 `aitable` 命令返回，而是用户直接贴的原始 `alidocs` URL，先按 [链接规范](../url-patterns.md#alidocs-url-类型探测流程) probe，确认是 `able` 后再按 AI 表格处理。
+> 补充：如果 URL/节点 ID 不是来自当前 `aitable` 调用的已验证返回，而是用户直接提供，先按 [链接规范](../url-patterns.md#alidocs-url-类型探测流程) probe；`extension=dlink` 时逐跳消费目标 `linkSourceInfo`，确认最终目标为 `able` 后再按 AI 表格处理。
 
 ## 命令索引表
 
@@ -26,6 +26,23 @@
 | `base create` | 创建 Base | `--name` | 创建后直接用返回的 baseId |
 | `base update` | 更新 Base 名称 | `--base-id` `--name` | — |
 | `base delete` | 删除 Base | `--base-id` | 不可逆 |
+
+### app (应用模式管理)
+
+> 应用模式是 AI 表格面向使用者的 App：一个 Base 只有一个 App，App 下按导航顺序组织 Page，Page 中放置 Widget。应用 Page 的 `pageId` 同时是对应 Dashboard ID，但 `appId`、`pageId`、`widgetId` 不能互换。
+
+| 命令 | 用途 | 必填参数 | 路由提醒 |
+|------|------|----------|----------|
+| `app get` | 获取 App 信息 | `--base-id` | 无 App 时会幂等初始化默认 App，并返回 `created=true` |
+| `app update` | 更新 App 名称、图标、外观、导航或主题 | `--base-id` + 至少一个修改项 | `--icon` 是完整 JSON 对象；主题类字符串按服务端枚举透传 |
+| `app page list/get` | 列出页面 / 获取页面详情 | `--base-id`；get 另需 `--page-id` | list 无 App 时会初始化默认 App；最多 100 个 Page |
+| `app page create` | 创建应用页面及同 ID Dashboard | `--base-id` `--name` | 非幂等，不自动重试；`--before-page-id` 省略时追加到末尾 |
+| `app page update/move` | 更新页面元数据 / 调整导航顺序 | `--base-id` `--page-id` | `--hidden-menu=false` 可明确重新显示；move 省略目标时移到末尾 |
+| `app page delete` | 删除页面及其全部 Widget | `--base-id` `--page-id` `--yes` | 不可逆；保留 App 本体 |
+| `app widget list/get` | 列出 / 获取页面 Widget | `--base-id` `--page-id`；get 另需 `--widget-id` | list 只读已有 App；单页最多返回 1000 个 Widget |
+| `app widget create` | 创建 Widget 并写入页面布局 | `--base-id` `--page-id` `--config` `--layout` | config 需 `chartType`；layout 需 `x/y/w/h`，根布局是 48 列；非幂等，不自动重试 |
+| `app widget update` | 更新 Widget 名称、完整配置或布局 | `--base-id` `--page-id` `--widget-id` + 至少一个修改项 | config/layout 均为全量对象，先 get 再更新 |
+| `app widget delete` | 删除 Widget 及其布局项 | `--base-id` `--page-id` `--widget-id` `--yes` | 不可逆 |
 
 ### table (数据表管理)
 
@@ -288,6 +305,21 @@ dws aitable chart get --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --chart-
 - `chart share get` 稳定返回 `success + data`（含 `enabled`），从未分享时 `enabled=false`，不会 404。
 - `dashboard share update` 开 ORG 分享后 `shareType` 回显 `"[1]"`（服务端已知问题）；`chart share update` 正确回显 `ORG`。详见 [aitable-dashboard-chart.md](./aitable/aitable-dashboard-chart.md)。
 
+### 应用模式（建议顺序）
+
+```bash
+# 1) 获取或初始化 App，再发现 pageId
+dws aitable app get --base-id <BASE_ID> --format json
+dws aitable app page list --base-id <BASE_ID> --format json
+
+# 2) 读取 Page 和 Widget；修改完整 config/layout 前先读回
+dws aitable app page get --base-id <BASE_ID> --page-id <PAGE_ID> --format json
+dws aitable app widget list --base-id <BASE_ID> --page-id <PAGE_ID> --format json
+dws aitable app widget get --base-id <BASE_ID> --page-id <PAGE_ID> --widget-id <WIDGET_ID> --format json
+```
+
+创建 Widget 的最小形状为 `--config '{"chartType":"AI_ANALYZE"}' --layout '{"x":0,"y":0,"w":48,"h":8}'`。创建 Page/Widget 返回状态不明时先 list/get 回读，不能自动重放；删除 Page 会级联删除其中全部 Widget。
+
 ### 导出数据（两阶段轮询）
 
 `export data` 常见为异步任务：首次调用可能只返回 `taskId`，需要继续轮询。
@@ -346,6 +378,8 @@ dws aitable export data --base-id <BASE_ID> --task-id <TASK_ID> --timeout-ms 300
 
 用户说"仪表盘/图表/chart" → 读 [aitable-dashboard-chart.md](./aitable/aitable-dashboard-chart.md)
 
+用户说"应用模式/App 页面/Widget" → `app get` 后按 `app page` / `app widget` 子命令处理；不要混同普通 Base 信息或开放平台应用
+
 用户说"附件/上传文件" → 读 [aitable-attachment.md](./aitable/aitable-attachment.md)
 
 用户说"导入/导出/import/export" → 读 [aitable-export-import.md](./aitable/aitable-export-import.md)
@@ -387,15 +421,16 @@ dws aitable record create --base-id <BASE_ID> --table-id <TABLE_ID> \
 | `record query` | `recordId` | record update/delete；按 ID 反查字段值用 `record get` |
 | `template search` | `templateId` | base create --template-id，拼接模板预览 URI |
 
-## URL → baseId 提取
+## URL/节点 ID → baseId 规范化
 
-用户提供 `https://alidocs.dingtalk.com/i/nodes/{baseId}` 链接时：
-1. 提取 `/nodes/` 后的路径段作为 `baseId`
-2. 去掉尾部的查询参数（`?` 及其后内容）
-3. 传入 `--base-id` 参数
+用户提供 `https://alidocs.dingtalk.com/i/nodes/{id}` 或来源未验证的 nodeId 时：
+1. 先按 [链接规范](../url-patterns.md#alidocs-url-类型探测流程) 执行 `dws drive info`
+2. 若为 `extension=dlink`，执行 `dws doc info` 并逐跳消费目标 `linkSourceInfo`；记录已访问 ID，失败、字段缺失或 ID 重复即停
+3. 只有最终目标 `extension=able` 时，才将最终目标 nodeId 作为 `baseId`
+4. 已确认的 AITable URL 如含 table/view 参数，再解析并复用这些稳定 ID
 
 > 如果该 URL 来自 `dws aitable` 返回或已在当前链路 probe 过，可直接复用；
-> 如果是用户直接提供的原始 `alidocs` URL，则先按 [链接规范](../url-patterns.md#alidocs-url-类型探测流程) probe，确认 `extension=able` 后再继续。
+> 禁止直接把 dlink 快捷方式入口的路径段当作 baseId。明确移动、重命名或删除快捷方式入口本身时才保留顶层 nodeId，并改走对应的 Drive 入口管理命令。
 
 ## 注意事项
 

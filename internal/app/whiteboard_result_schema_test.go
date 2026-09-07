@@ -88,13 +88,21 @@ func TestCrossPlatformCoverageWhiteboardNativeRoutingAndCreateContractsDelivered
 	}
 	createResult, _ := create["result"].(map[string]any)
 	createDataSchema, _ := createResult["data_schema"].(map[string]any)
-	if got := schemaContractStringSlice(createDataSchema["required"]); !reflect.DeepEqual(got, []string{"nodeId", "revision"}) {
+	if got := schemaContractStringSlice(createDataSchema["required"]); !reflect.DeepEqual(got, []string{"requestId", "nodeId", "revision"}) {
 		t.Fatalf("whiteboard create result required=%v, want stable pre-release projection", got)
 	}
 	createParams := schemaContractMap(create["parameters"])
-	for _, name := range []string{"name", "content", "request-id"} {
+	for _, name := range []string{"name", "source", "request-id"} {
 		if required, _ := createParams[name]["required"].(bool); !required {
 			t.Errorf("whiteboard create-with-content --%s required=%v", name, required)
 		}
+	}
+	fullCreate := executeShortcutSchemaQuery(t, "--cli-path", "whiteboard create-with-content")
+	fullParams := schemaContractMap(fullCreate["parameters"])
+	if got := fullParams["source"]["property"]; got != "source" {
+		t.Fatalf("create source property=%v, want source", got)
+	}
+	if got := fullParams["source"]["type"]; got != "string" {
+		t.Fatalf("create source file flag type=%v, want string", got)
 	}
 }

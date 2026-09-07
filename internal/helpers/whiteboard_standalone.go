@@ -21,19 +21,23 @@ func newStandaloneWhiteboardCreateCommand() *cobra.Command {
 	createExampleIndex := 0
 	return NewLeafCommand(LeafSpec{
 		Use:           "create-with-content",
-		Short:         "使用 checkpoint 创建独立白板",
+		Short:         "使用 OpenNodes 创建独立白板",
 		OutputRollout: output.RolloutUnifiedActive,
 		Server:        whiteboardServerID,
 		Tool:          standaloneWhiteboardCreateTool,
-		Long: `使用不透明 checkpoint 内容创建独立 .adraw 白板。
+		Long: `使用 OpenNodes V1 初始内容创建独立 .adraw 白板。
 
-	--content 指向本地 checkpoint 文件；CLI 只校验文件可读且非空，不解析或转换其内容。
+	--source 接受 OpenNodes V1 JSON String，或在内容较长时接受本地 JSON 文件路径。
+	内联 JSON 可直接使用 {"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[...]}；
+	文件可使用该结构，也可使用 {"source":{...}} 包装结构。
+	source.nodes 必须是数组，允许 []，表示创建空白独立白板。
+	CLI 校验后统一向 MCP/HSF 传递 source JSON 字符串。
 	--request-id 是稳定幂等键，同一次逻辑创建的网络重试必须复用相同值。`,
-		Example: `  dws whiteboard create-with-content --name "项目方案白板" --content ./checkpoint.txt --request-id wb-create-001 --format json
-	  dws whiteboard create-with-content --name "项目方案白板" --content ./checkpoint.txt --folder FOLDER_ID --request-id wb-create-002 --format json`,
+		Example: `  dws whiteboard create-with-content --name "项目方案白板" --source ./whiteboard.json --request-id wb-create-001 --format json
+	  dws whiteboard create-with-content --name "项目方案白板" --source ./whiteboard.json --folder FOLDER_ID --request-id wb-create-002 --format json`,
 		Flags: []LeafFlag{
 			{Name: "name", Usage: "独立白板名称（必填）", Bind: "name", Required: true, MarkRequired: true, Trim: true},
-			{Name: "content", Usage: "非空 checkpoint 文件路径（必填）", Bind: "content", Required: true, MarkRequired: true, Trim: true, Transform: loadStandaloneWhiteboardCheckpoint},
+			{Name: "source", Usage: "OpenNodes V1 JSON String 或 JSON 文件路径（必填）", Bind: "source", Required: true, MarkRequired: true, Trim: true, Transform: loadStandaloneWhiteboardCreateSource},
 			{Name: "folder", Usage: "目标文件夹节点 ID/URL", Bind: "folderId", Trim: true, OmitEmpty: true},
 			{Name: "workspace", Usage: "目标知识库 ID/URL", Bind: "workspaceId", Trim: true, OmitEmpty: true},
 			{Name: "request-id", Usage: "1-128 字符稳定幂等请求 ID（必填）", Bind: "requestId", Required: true, MarkRequired: true, Trim: true, Transform: validateStandaloneWhiteboardRequestID},
@@ -49,28 +53,28 @@ func newStandaloneWhiteboardCreateCommand() *cobra.Command {
 				CanonicalPath: "whiteboard.create_with_content",
 				CLIPath:       "whiteboard create-with-content", PrimaryCLIPath: "whiteboard create-with-content",
 			},
-			Description: "使用非空 checkpoint 和稳定 requestId 创建独立白板",
+			Description: "使用 OpenNodes V1 初始内容和稳定 requestId 创建独立白板",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
 				Mode: "composite", Availability: "available",
-				Reason: "CLI 在调用 create_whiteboard 前读取并校验本地 checkpoint，dry-run 只输出安全摘要，并校验幂等创建结果",
+				Reason: "CLI 在调用 create_whiteboard 前解析并校验内联或文件中的 OpenNodes，dry-run 只输出安全摘要，并校验幂等创建结果",
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "使用调用方提供的非空 checkpoint 创建独立 .adraw 白板",
-				UseWhen:      []string{"需要在文件夹、知识库或我的文档中创建一份带初始 checkpoint 内容的独立白板时"},
+				AgentSummary: "使用调用方提供的 OpenNodes V1 初始内容创建独立 .adraw 白板",
+				UseWhen:      []string{"需要在文件夹、知识库或我的文档中创建一份带 OpenNodes 初始内容的独立白板时"},
 				AvoidWhen:    []string{"创建空白独立白板使用现有文档文件创建能力；在文档中插入白板卡片使用 doc whiteboard insert"},
-				Examples:     []string{"dws whiteboard create-with-content --name \"项目方案白板\" --content ./checkpoint.txt --request-id wb-create-001 --format json"},
+				Examples:     []string{"dws whiteboard create-with-content --name \"项目方案白板\" --source ./whiteboard.json --request-id wb-create-001 --format json"},
 				ExampleDispositions: []contract.ExampleDisposition{{
 					Index:      &createExampleIndex,
 					Mode:       contract.ExampleDispositionModeContractOnly,
 					ReasonCode: contract.ExampleDispositionReasonLocalState,
-					Reason:     "运行时需要用户提供可读的非空本地 checkpoint 文件",
+					Reason:     "运行时需要用户提供可读且通过 OpenNodes V1 校验的本地 JSON 文件",
 					Reviewed:   true,
 				}},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Property: "name", Required: boolPtr(true)},
-				{Name: "content", Property: "content", Required: boolPtr(true)},
+				{Name: "source", Property: "source", InterfaceType: "string", Required: boolPtr(true)},
 				{Name: "folder", Property: "folderId", Required: boolPtr(false)},
 				{Name: "workspace", Property: "workspaceId", Required: boolPtr(false)},
 				{Name: "request-id", Property: "requestId", Required: boolPtr(true)},
@@ -84,18 +88,73 @@ func newStandaloneWhiteboardCreateCommand() *cobra.Command {
 	})
 }
 
-func loadStandaloneWhiteboardCheckpoint(contentPath string) (any, error) {
-	content, err := os.ReadFile(strings.TrimSpace(contentPath))
-	if err != nil {
-		return nil, &CLIError{
-			Code: CodeInvalidPath, Message: fmt.Sprintf("无法读取独立白板 checkpoint 文件 %q", contentPath),
-			Suggestion: "确认 --content 指向可读的非空 checkpoint 文件", Cause: err,
+func loadStandaloneWhiteboardCreateSource(sourceValue string) (any, error) {
+	sourceValue = strings.TrimSpace(sourceValue)
+	if sourceValue == "" {
+		return nil, invalidWhiteboardSourceParam("source is required")
+	}
+
+	var data []byte
+	if strings.HasPrefix(sourceValue, "{") {
+		data = []byte(sourceValue)
+	} else {
+		var err error
+		data, err = os.ReadFile(sourceValue)
+		if err != nil {
+			code := CodeInvalidPath
+			if os.IsNotExist(err) {
+				code = CodeFileNotFound
+			}
+			return nil, &CLIError{
+				Code:       code,
+				Message:    fmt.Sprintf("--source 既不是 OpenNodes JSON，也无法读取为文件 %q", sourceValue),
+				Suggestion: "直接传 OpenNodes JSON String，或确认文件路径指向可读的 UTF-8 JSON 文件",
+				Cause:      err,
+			}
 		}
 	}
-	if len(strings.TrimSpace(string(content))) == 0 {
-		return nil, invalidWhiteboardSourceParam("--content checkpoint 文件不能为空")
+
+	input, nodesJSON, err := parseStandaloneWhiteboardCreateJSON(data)
+	if err != nil {
+		return nil, err
 	}
-	return string(content), nil
+	var nodes []any
+	decoder := json.NewDecoder(strings.NewReader(nodesJSON))
+	decoder.UseNumber()
+	if err := decoder.Decode(&nodes); err != nil {
+		return nil, invalidWhiteboardSourceJSON(err)
+	}
+	sourceJSON, err := json.Marshal(map[string]any{
+		"schemaVersion":  input.Source.SchemaVersion,
+		"catalogVersion": input.Source.CatalogVersion,
+		"nodes":          nodes,
+	})
+	if err != nil {
+		return nil, invalidWhiteboardSourceJSON(err)
+	}
+	return string(sourceJSON), nil
+}
+
+func parseStandaloneWhiteboardCreateJSON(data []byte) (*whiteboardUpdateFile, string, error) {
+	var fields map[string]json.RawMessage
+	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	if err := decoder.Decode(&fields); err != nil {
+		return nil, "", invalidWhiteboardSourceJSON(err)
+	}
+	if err := ensureWhiteboardJSONEOF(decoder); err != nil {
+		return nil, "", invalidWhiteboardSourceJSON(err)
+	}
+	if fields == nil {
+		return nil, "", invalidWhiteboardSourceParam("source must be a JSON object")
+	}
+	if _, wrapped := fields["source"]; wrapped {
+		return parseWhiteboardSourceJSON(data)
+	}
+	wrapper := make([]byte, 0, len(data)+len(`{"source":}`))
+	wrapper = append(wrapper, `{"source":`...)
+	wrapper = append(wrapper, data...)
+	wrapper = append(wrapper, '}')
+	return parseWhiteboardSourceJSON(wrapper)
 }
 
 func validateStandaloneWhiteboardRequestID(requestID string) (any, error) {
@@ -108,8 +167,16 @@ func validateStandaloneWhiteboardRequestID(requestID string) (any, error) {
 
 func callStandaloneWhiteboardCreateResult(cmd *cobra.Command, _ string, args map[string]any) (output.CommandResult, error) {
 	if deps.Caller.DryRun() {
+		sourceJSON, _ := args["source"].(string)
+		var source struct {
+			Nodes []json.RawMessage `json:"nodes"`
+		}
+		if err := json.Unmarshal([]byte(sourceJSON), &source); err != nil {
+			return nil, invalidWhiteboardSourceJSON(err)
+		}
 		preview := map[string]any{
-			"name": args["name"], "requestId": args["requestId"], "contentBytes": len(args["content"].(string)),
+			"name": args["name"], "requestId": args["requestId"],
+			"sourceBytes": len(sourceJSON), "nodeCount": len(source.Nodes),
 			"executed": false, "dryRun": true,
 		}
 		for _, key := range []string{"folderId", "workspaceId"} {
@@ -123,13 +190,13 @@ func callStandaloneWhiteboardCreateResult(cmd *cobra.Command, _ string, args map
 	if err != nil {
 		return nil, err
 	}
-	if err := validateStandaloneWhiteboardCreateResponse(response); err != nil {
+	if err := validateStandaloneWhiteboardCreateResponse(response, whiteboardString(args["requestId"])); err != nil {
 		return nil, err
 	}
 	return output.Success(unwrapWhiteboardResult(response)), nil
 }
 
-func validateStandaloneWhiteboardCreateResponse(response map[string]any) error {
+func validateStandaloneWhiteboardCreateResponse(response map[string]any, expectedRequestID string) error {
 	result := unwrapWhiteboardResult(response)
 	if result == nil {
 		return invalidStandaloneWhiteboardCreateReceipt(fmt.Errorf("response must be a JSON object"))
@@ -142,6 +209,14 @@ func validateStandaloneWhiteboardCreateResponse(response map[string]any) error {
 	}
 	if strings.TrimSpace(whiteboardString(result["nodeId"])) == "" {
 		return invalidStandaloneWhiteboardCreateReceipt(fmt.Errorf("response missing nodeId"))
+	}
+	requestID := strings.TrimSpace(whiteboardString(result["requestId"]))
+	if requestID == "" {
+		return invalidStandaloneWhiteboardCreateReceipt(fmt.Errorf("response missing requestId"))
+	}
+	if requestID != expectedRequestID {
+		return invalidStandaloneWhiteboardCreateReceipt(fmt.Errorf(
+			"response requestId %q does not match request %q", requestID, expectedRequestID))
 	}
 	if err := normalizeStandaloneWhiteboardCreateRevision(result); err != nil {
 		return invalidStandaloneWhiteboardCreateReceipt(err)
@@ -234,12 +309,13 @@ func standaloneWhiteboardCreateResultSpec() *contract.ResultSpec {
 				"status":{"type":"string","description":"创建状态"},
 				"initializationMode":{"type":"string","description":"初始化方式"},
 				"revision":{"type":"integer","description":"初始白板 revision"},
-				"requestedContentApplied":{"type":"boolean","description":"网关投影该字段时表示请求 checkpoint 是否已应用"},
+				"requestId":{"type":"string","description":"服务端回显的请求幂等 ID"},
+				"requestedContentApplied":{"type":"boolean","description":"网关投影该字段时表示请求 OpenNodes 初始内容是否已应用"},
 				"idempotentReplay":{"type":"boolean","description":"是否命中幂等重放"},
 				"requestMatched":{"type":"boolean","description":"网关投影该字段时表示历史幂等请求是否与本次参数一致"},
 				"message":{"type":"string","description":"服务端结果说明"}
 			},
-			"required":["nodeId","revision"],
+			"required":["requestId","nodeId","revision"],
 			"additionalProperties":true
 		}`),
 		SensitivePaths: []string{"nodeId", "folderId"},
