@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	stderrors "errors"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -757,6 +758,108 @@ func TestCallToolClassifiesJSONRPCInvalidParamsAsValidationError(t *testing.T) {
 	}
 	if typed.Reason != "tools_call_jsonrpc_invalid_params" {
 		t.Fatalf("reason = %q, want tools_call_jsonrpc_invalid_params", typed.Reason)
+	}
+}
+
+func TestStreamableHTTPCallInitializesSessionAndDecodesSSE(t *testing.T) {
+	t.Parallel()
+
+	var methods []string
+	httpClient := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Fatalf("read request body: %v", err)
+		}
+		var envelope requestEnvelope
+		if err := json.Unmarshal(body, &envelope); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		methods = append(methods, envelope.Method)
+		if got := req.Header.Get("Accept"); got != "application/json, text/event-stream" {
+			t.Fatalf("Accept = %q", got)
+		}
+
+		header := make(http.Header)
+		status := http.StatusOK
+		responseBody := `{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-03-26","capabilities":{},"serverInfo":{}}}`
+		switch envelope.Method {
+		case "initialize":
+			header.Set(HeaderMCPSessionID, "session-1")
+		case "notifications/initialized":
+			if got := req.Header.Get(HeaderMCPSessionID); got != "session-1" {
+				t.Fatalf("initialized session ID = %q", got)
+			}
+			status = http.StatusAccepted
+			responseBody = ""
+		case "tools/call":
+			if got := req.Header.Get(HeaderMCPSessionID); got != "session-1" {
+				t.Fatalf("tools/call session ID = %q", got)
+			}
+			header.Set("Content-Type", "text/event-stream")
+			responseBody = "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"ok\"}]}}\n\n"
+		}
+		return &http.Response{StatusCode: status, Header: header, Body: io.NopCloser(strings.NewReader(responseBody))}, nil
+	})}
+	client := NewClient(httpClient)
+	client.MaxRetries = 0
+	productionEndpoint := requireAITableProductionEndpoint(t)
+
+	result, err := client.CallTool(context.Background(),
+		productionEndpoint+"?uid=123&orgId=456", "otable_pg_list_tables", map[string]any{"baseId": "base"})
+	if err != nil {
+		t.Fatalf("CallTool: %v", err)
+	}
+	if len(result.Blocks) != 1 || result.Blocks[0].Text != "ok" {
+		t.Fatalf("result = %#v", result)
+	}
+	wantMethods := []string{"initialize", "notifications/initialized", "tools/call"}
+	if !reflect.DeepEqual(methods, wantMethods) {
+		t.Fatalf("methods = %#v, want %#v", methods, wantMethods)
+	}
+}
+
+func requireAITableProductionEndpoint(t *testing.T) string {
+	t.Helper()
+	endpoint, ok := aitableProductionEndpoint()
+	if !ok {
+		t.Fatal("AI 表格生产 MCP endpoint is missing from syncdata.StaticServers")
+	}
+	return endpoint
+}
+
+func TestRequiresStreamableHTTPSessionOnlyForProductionAITableEndpoint(t *testing.T) {
+	t.Parallel()
+	productionEndpoint := requireAITableProductionEndpoint(t)
+
+	cases := []struct {
+		name     string
+		endpoint string
+		want     bool
+	}{
+		{
+			name:     "production aitable",
+			endpoint: productionEndpoint + "?uid=123",
+			want:     true,
+		},
+		{
+			name:     "other production gateway service",
+			endpoint: "https://mcp-gw.dingtalk.com/server/other-service",
+			want:     false,
+		},
+		{
+			name:     "non https",
+			endpoint: strings.Replace(productionEndpoint, "https://", "http://", 1),
+			want:     false,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := requiresStreamableHTTPSession(tt.endpoint); got != tt.want {
+				t.Fatalf("requiresStreamableHTTPSession(%q) = %t, want %t", tt.endpoint, got, tt.want)
+			}
+		})
 	}
 }
 
