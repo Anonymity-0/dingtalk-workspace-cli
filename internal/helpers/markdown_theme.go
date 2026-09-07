@@ -217,9 +217,6 @@ func parseMarkdownFrontmatterEnvelope(source []byte) *markdownFrontmatterEnvelop
 		if markdownLineHasTopLevelMapping(line.content) {
 			hasTopLevelMapping = true
 		}
-		if line.end == cursor {
-			break
-		}
 		cursor = line.end
 	}
 	return nil
@@ -228,14 +225,9 @@ func parseMarkdownFrontmatterEnvelope(source []byte) *markdownFrontmatterEnvelop
 func tokenizeMarkdownLines(source []byte) []markdownLineToken {
 	tokens := make([]markdownLineToken, 0)
 	for cursor := 0; cursor < len(source); {
-		line, ok := readMarkdownBoundedLine(source, cursor, len(source)-cursor)
-		if !ok {
-			break
-		}
+		// The full non-empty remainder always yields a line and advances cursor.
+		line, _ := readMarkdownBoundedLine(source, cursor, len(source)-cursor)
 		tokens = append(tokens, line)
-		if line.end == cursor {
-			break
-		}
 		cursor = line.end
 	}
 	return tokens

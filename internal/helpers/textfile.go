@@ -25,8 +25,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// textLocalReadFile is the injection seam for the overwrite --dry-run local
-// content read; tests use it to force the read failure portably because
+// textLocalReadFile is the injection seam for local upload preparation and
+// overwrite --dry-run reads; tests force read failures portably because
 // chmod-based unreadability does not affect reads on Windows.
 var textLocalReadFile = os.ReadFile
 
@@ -159,7 +159,7 @@ func runTextFileCreateWithOptions(cmd *cobra.Command, spec textFileSpec, options
 			nameFlag = filepath.Base(fileFlag)
 		}
 		if options.transform != nil {
-			source, err := os.ReadFile(fileFlag)
+			source, err := textLocalReadFile(fileFlag)
 			if err != nil {
 				return fmt.Errorf("无法读取文件 %s: %w", fileFlag, err)
 			}
@@ -528,7 +528,7 @@ func runTextFileOverwriteWithOptions(cmd *cobra.Command, spec textFileSpec, opti
 			return err
 		}
 	} else if options.transform != nil {
-		source, err := os.ReadFile(fileFlag)
+		source, err := textLocalReadFile(fileFlag)
 		if err != nil {
 			return fmt.Errorf("无法读取文件 %s: %w", fileFlag, err)
 		}

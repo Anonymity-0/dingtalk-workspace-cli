@@ -196,3 +196,42 @@ func suffixForFailure(value string) string {
 	}
 	return fmt.Sprintf("...%s (%d bytes)", value[len(value)-160:], len(value))
 }
+
+func TestMarkdownThemeRejectsWrongFlagType(t *testing.T) {
+	cmd := &cobra.Command{Use: "theme"}
+	cmd.Flags().Bool("theme", false, "wrong declaration")
+	if err := cmd.Flags().Set("theme", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := markdownThemeFromCommand(cmd); err == nil || !strings.Contains(err.Error(), "读取 --theme 失败") {
+		t.Fatalf("wrong flag type error = %v", err)
+	}
+}
+
+func TestMarkdownBoundedLineRejectsInvalidBounds(t *testing.T) {
+	for _, test := range []struct{ start, budget int }{{0, 0}, {0, -1}, {-1, 3}, {4, 3}} {
+		if _, ok := readMarkdownBoundedLine([]byte("abc"), test.start, test.budget); ok {
+			t.Fatalf("invalid bounds accepted: %#v", test)
+		}
+	}
+	if markdownRuneIsSpace(nil) {
+		t.Fatal("empty input is not whitespace")
+	}
+	line, ok := readMarkdownBoundedLine([]byte("abc"), 0, 3)
+	if !ok || string(line.content) != "abc" || line.end != 3 || len(line.ending) != 0 {
+		t.Fatalf("unterminated final line = %#v, %v", line, ok)
+	}
+}
+
+func TestMarkdownThemeFieldNormalizesUnterminatedPayload(t *testing.T) {
+	for _, test := range []struct{ name, payload, want string }{
+		{"insert", "title: example", "title: example\nx-we-markdown-theme: qingya\n"},
+		{"replace", "x-we-markdown-theme: default", "x-we-markdown-theme: qingya\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := string(updateMarkdownThemeField([]byte(test.payload), []byte("\n"), "qingya")); got != test.want {
+				t.Fatalf("normalized payload = %q, want %q", got, test.want)
+			}
+		})
+	}
+}

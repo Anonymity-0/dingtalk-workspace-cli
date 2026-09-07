@@ -16,9 +16,13 @@ package helpers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func TestMarkdownCreateThemeUploadCopyAndFinalSize(t *testing.T) {
@@ -280,5 +284,68 @@ func TestMarkdownInvalidThemeFailsBeforeAnyRemoteOrUploadCall(t *testing.T) {
 				t.Fatalf("invalid theme made remote calls: %#v", caller.calls)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageMarkdownThemeFilePreparationFailures(t *testing.T) {
+	for _, operation := range []string{"create", "overwrite"} {
+		for _, failure := range []string{"read", "temporary directory"} {
+			t.Run(operation+"/"+failure, func(t *testing.T) {
+				caller := &markdownDriveCaller{format: "json"}
+				wantCalls := 0
+				if operation == "overwrite" {
+					caller.steps = []markdownDriveStep{{text: `{"fileName":"source.md"}`}}
+					wantCalls = 1
+				}
+				installMarkdownDriveDeps(t, caller)
+				source := writeMarkdownDriveFixture(t, "source.md", "# unchanged")
+				wantError := "创建临时目录失败"
+				if failure == "read" {
+					wantError = "无法读取文件"
+					testseam.Swap(t, &textLocalReadFile, func(path string) ([]byte, error) {
+						if path != source {
+							t.Fatalf("read path = %q, want %q", path, source)
+						}
+						return nil, errors.New("source read failed")
+					})
+				} else {
+					setMarkdownCIMissingTempDir(t, filepath.Join(t.TempDir(), "missing"))
+				}
+				testseam.Swap(t, &httpPutFile, func(context.Context, string, map[string]string, string, int64) error {
+					t.Fatal("preparation failure must not upload a file")
+					return nil
+				})
+				args := []string{"markdown", operation, "--file", source, "--theme", "qingya", "--space-id", "space-1"}
+				if operation == "overwrite" {
+					args = append(args, "--node", "file-1", "--yes")
+				}
+				err := executeMarkdownDriveCommand(t, newMarkdownCommand(), nil, args...)
+				if err == nil || !strings.Contains(err.Error(), wantError) {
+					t.Fatalf("error = %v, want %q", err, wantError)
+				}
+				if len(caller.calls) != wantCalls {
+					t.Fatalf("calls = %#v, want only %d metadata calls", caller.calls, wantCalls)
+				}
+				if content, err := os.ReadFile(source); err != nil || string(content) != "# unchanged" {
+					t.Fatalf("source changed: %q, %v", content, err)
+				}
+			})
+		}
+	}
+}
+
+func TestMarkdownThemeTextDryRunShowsSelection(t *testing.T) {
+	caller := &markdownDriveCaller{format: "table"}
+	stdout, _ := installMarkdownDriveDeps(t, caller)
+	err := executeMarkdownGlobalDryRun(t, newMarkdownCommand(),
+		"markdown", "create", "--name", "preview.md", "--content", "# preview", "--theme", "qingya")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "主题") || !strings.Contains(stdout.String(), "qingya") {
+		t.Fatalf("text preview omits theme: %q", stdout.String())
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("preview made remote calls: %#v", caller.calls)
 	}
 }
