@@ -73,21 +73,20 @@ func activeConversationsResultSchema() json.RawMessage {
 		},
 		"required": []string{"total", "succeeded", "failed", "unknown"}, "additionalProperties": false,
 	}
-	schema, err := json.Marshal(map[string]any{
+	// This declaration contains only fixed JSON-safe maps, slices and scalar
+	// values. NormalizeResultSpec still validates the complete result contract.
+	schema, _ := json.Marshal(map[string]any{
 		"type":        "object",
 		"description": "正常返回时间窗内的去重会话；后续页面失败时保留已验证页面的聚合批次及失败信息",
 		"oneOf":       []any{activeConversationAggregateSchema(false), partial},
 	})
-	if err != nil {
-		panic("marshal static active conversations result schema: " + err.Error())
-	}
 	return schema
 }
 
 func activeConversationAggregateSchema(partial bool) map[string]any {
 	properties := map[string]any{
-		"start":            map[string]any{"type": "string", "format": "date-time", "description": "规范化后的查询开始时间（包含）；续页时保持不变"},
-		"end":              map[string]any{"type": "string", "format": "date-time", "description": "本次固定的查询结束时间（不包含）；续页时保持不变"},
+		"start":            map[string]any{"type": "string", "format": "date-time", "description": "整秒精度的查询开始时间（包含）；续页时保持不变"},
+		"end":              map[string]any{"type": "string", "format": "date-time", "description": "整秒精度的固定查询结束时间（不包含）；默认将本次执行开始时间向下取整到当前秒；续页时保持不变"},
 		"rangeSemantics":   map[string]any{"type": "string", "enum": []string{"[start,end)"}, "description": "查询时间范围为左闭右开区间"},
 		"count":            map[string]any{"type": "integer", "minimum": 0, "description": "按 openConversationId 去重后的会话数量"},
 		"complete":         map[string]any{"type": "boolean", "description": "是否从首页开始并已观察到服务端分页耗尽；续页和部分失败批次始终为 false"},
@@ -103,7 +102,7 @@ func activeConversationAggregateSchema(partial bool) map[string]any {
 					"name":              map[string]any{"type": "string", "description": "下层返回的会话显示名称；未知时为空字符串"},
 					"nameKnown":         map[string]any{"type": "boolean", "description": "下层是否返回了非空会话名称"},
 					"type":              map[string]any{"type": "string", "enum": []string{"direct", "group", "unknown"}, "description": "规范化会话类型；缺失 singleChat 时为 unknown"},
-					"latestMessageTime": map[string]any{"type": "string", "format": "date-time", "description": "本批次已读取消息中，该会话在查询时间窗内的最大创建时间"},
+					"latestMessageTime": map[string]any{"type": "string", "format": "date-time", "description": "本批次已读取消息中，该会话在查询时间窗内的最大创建时间；保留消息时间的原始精度"},
 				},
 				"required": []string{"conversationId", "name", "nameKnown", "type", "latestMessageTime"}, "additionalProperties": false,
 			},

@@ -123,6 +123,12 @@ func TestCrossPlatformCoverageActiveConversationsPageErrorClassification(t *test
 			wantType: "api",
 		},
 		{
+			name: "discovery", err: fmt.Errorf("resolve message search: %w", apperrors.NewDiscovery(
+				"message search tool unavailable", apperrors.WithHint("refresh MCP discovery before resuming"),
+			)),
+			wantType: "discovery", wantHint: "refresh MCP discovery before resuming",
+		},
+		{
 			name: "deadline", err: fmt.Errorf("read timeout: %w", context.DeadlineExceeded), wantType: "internal",
 		},
 	}
@@ -176,6 +182,13 @@ func TestCrossPlatformCoverageActiveConversationsResultSchemaBranches(t *testing
 	if err := json.Unmarshal(normalized.DataSchema, &schema); err != nil {
 		t.Fatal(err)
 	}
+	var declaredSchema map[string]any
+	if err := json.Unmarshal(activeConversationsResultSchema(), &declaredSchema); err != nil {
+		t.Fatalf("static result declaration is not valid JSON: %v", err)
+	}
+	if !reflect.DeepEqual(schema, declaredSchema) {
+		t.Fatal("result normalization changed or discarded part of the static schema")
+	}
 	branches, ok := schema["oneOf"].([]any)
 	if schema["type"] != "object" || !ok || len(branches) != 2 {
 		t.Fatalf("success/partial data must have distinct object branches: %#v", schema)
@@ -203,10 +216,23 @@ func TestCrossPlatformCoverageActiveConversationsResultSchemaBranches(t *testing
 		t.Fatalf("partial batch must identify incomplete preserved pages: %#v", batchProperties)
 	}
 	for name, aggregate := range map[string]map[string]any{"success": success, "partial batch": batch} {
-		row := aggregate["properties"].(map[string]any)["conversations"].(map[string]any)["items"].(map[string]any)
+		aggregateProperties := aggregate["properties"].(map[string]any)
+		for _, field := range []string{"start", "end"} {
+			if !strings.Contains(aggregateProperties[field].(map[string]any)["description"].(string), "整秒") {
+				t.Fatalf("%s %s must explain the query's whole-second precision", name, field)
+			}
+		}
+		if !strings.Contains(aggregateProperties["end"].(map[string]any)["description"].(string), "向下取整") {
+			t.Fatalf("%s end must explain how the default upper bound is fixed", name)
+		}
+		row := aggregateProperties["conversations"].(map[string]any)["items"].(map[string]any)
 		assertActiveConversationSchemaRequiredForTest(t, row, "conversationId", "name", "nameKnown", "type", "latestMessageTime")
 		if row["additionalProperties"] != false {
 			t.Fatalf("%s row lacks strict return shape: %#v", name, row)
+		}
+		latest := row["properties"].(map[string]any)["latestMessageTime"].(map[string]any)
+		if !strings.Contains(latest["description"].(string), "原始精度") {
+			t.Fatalf("%s latest message time must retain message precision", name)
 		}
 	}
 	failedItem := failed["items"].(map[string]any)

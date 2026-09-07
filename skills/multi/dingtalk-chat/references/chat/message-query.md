@@ -21,11 +21,16 @@ Favorite、Pin 和 reaction。只读任务优先使用 Shortcut；只有 Shortcu
 `+chat-messages` 是指定会话的粗粒度读取；`+search-msg` 是目标条件明确的单/跨会话检索。
 不要先读完整会话再补跑搜索，也不要把群名或姓名直接填入只接受稳定 ID 的参数。
 
-`+active-conversations` 不返回消息正文。它将本次执行开始时间固定为默认 `--end`，自动沿
-`nextCursor` 翻页，按 `openConversationId` 去重，并返回 `conversationId`、`name`、
+`+active-conversations` 不返回消息正文。它自动沿 `nextCursor` 翻页，按 `openConversationId`
+去重，并返回 `conversationId`、`name`、
 `nameKnown`、`direct/group/unknown` 类型及时间窗内的最大消息时间。名称未知时仍返回
 `name=""`、`nameKnown=false`。正常调用只需 `--start`；
 `--page-delay` 默认 200ms，范围 0–60000ms，分页等待可被取消。
+
+查询边界 `--start/--end` 仅支持整秒；显式传入非零小数秒会在参数校验时失败。省略
+`--end` 时，将本次查询取到的当前时间向下取整秒后固定，因此不包含当前尚未结束的
+这一秒。最终有效整秒区间必须满足 `end > start`；同一 `end` 用于所有页请求、结果返回
+和续查。该限制只作用于查询边界，消息 `latestMessageTime` 仍保留毫秒精度。
 
 成功时会话摘要位于 `data`，其中 `pageSize` 记录本次 `--limit`。达到 `--page-limit` 仍有
 下一页时，保留 `data.complete=false` 和 `meta.pagination.next_token`。后续页失败时返回

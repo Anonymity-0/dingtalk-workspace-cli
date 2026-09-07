@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,6 +34,10 @@ const (
 )
 
 var activeConversationsLocation = time.FixedZone("Asia/Shanghai", 8*60*60)
+
+// Inspect the original fraction: time.Parse silently truncates digits beyond
+// nanoseconds, which must not make a nonzero subsecond boundary look integral.
+var activeConversationsNonzeroFraction = regexp.MustCompile(`[.,]0*[1-9]`)
 
 // ActiveConversations returns the distinct direct and group conversations
 // that contain at least one message in a requested time range. The lower API
@@ -96,8 +101,8 @@ var ActiveConversations = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "start", Type: shortcut.FlagString, Required: true, Desc: "开始时间（包含），支持 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD；--start 不能为空白；--end 必须晚于 --start"},
-		{Name: "end", Type: shortcut.FlagString, Desc: "结束时间（不包含），格式同 --start；不传时固定为本次执行开始时间；--end 必须晚于 --start；使用非首页 --cursor 时必须显式复用原查询的 --end"},
+		{Name: "start", Type: shortcut.FlagString, Required: true, Desc: "开始时间（包含），支持 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD；查询时间边界仅支持整秒，拒绝非零小数秒；--start 不能为空白；--end 必须晚于 --start"},
+		{Name: "end", Type: shortcut.FlagString, Desc: "结束时间（不包含），格式同 --start；查询时间边界仅支持整秒，拒绝非零小数秒；不传时固定为本次查询当前时间向下取整秒，不包含当前未结束秒；有效整秒区间的 --end 必须晚于 --start；使用非首页 --cursor 时必须显式复用原查询的 --end"},
 		{Name: "limit", Type: shortcut.FlagInt, Default: strconv.Itoa(activeConversationsDefaultLimit), Desc: "底层每页消息数量；--limit 必须在 1-100 之间"},
 		{Name: "cursor", Type: shortcut.FlagString, Default: "0", Desc: "续页游标；使用非首页 --cursor 时必须显式复用原查询的 --end；续页应保持同一 profile、--start、--end 和 --limit（结果 pageSize）；续页批次不包含此前结果，complete 始终为 false"},
 		{Name: "page-limit", Type: shortcut.FlagInt, Default: strconv.Itoa(activeConversationsDefaultPages), Desc: "自动分页安全上限；--page-limit 必须在 1-500 之间；达到上限仍有下一页时返回 complete=false 和 next_token"},
@@ -106,6 +111,7 @@ var ActiveConversations = shortcut.Shortcut{
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"start"}, Description: "--start 不能为空白"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "--end 必须晚于 --start"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "查询时间边界仅支持整秒，拒绝非零小数秒"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须在 1-100 之间"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-limit"}, Description: "--page-limit 必须在 1-500 之间"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-delay"}, Description: "--page-delay 必须在 0-60000 之间"},
@@ -126,6 +132,8 @@ type activeConversationRange struct {
 	end   time.Time
 }
 
+type activeConversationRangeContextKey struct{}
+
 type activeConversationState struct {
 	conversationID   string
 	name             string
@@ -134,7 +142,8 @@ type activeConversationState struct {
 }
 
 func validateActiveConversations(rt *shortcut.RuntimeContext) error {
-	if _, err := activeConversationTimeRange(rt); err != nil {
+	queryRange, err := activeConversationTimeRange(rt)
+	if err != nil {
 		return err
 	}
 	if limit := rt.Int("limit"); limit < 1 || limit > activeConversationsMaxLimit {
@@ -149,11 +158,18 @@ func validateActiveConversations(rt *shortcut.RuntimeContext) error {
 	if cursor := strings.TrimSpace(rt.Str("cursor")); cursor != "" && cursor != "0" && (!rt.Changed("end") || strings.TrimSpace(rt.Str("end")) == "") {
 		return apperrors.NewValidation("使用非首页 --cursor 时必须显式传入上次结果中的同一 --end")
 	}
+	// Keep the validated default end unchanged through execution and all pages.
+	// Each validation replaces it, including when a Cobra command is reused.
+	ctx := rt.Command().Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	rt.Command().SetContext(context.WithValue(ctx, activeConversationRangeContextKey{}, queryRange))
 	return nil
 }
 
 func executeActiveConversations(rt *shortcut.RuntimeContext) error {
-	queryRange, err := activeConversationTimeRange(rt)
+	queryRange, err := activeConversationExecutionRange(rt)
 	if err != nil {
 		return err
 	}
@@ -296,25 +312,50 @@ func mergeActiveConversationPage(states map[string]*activeConversationState, gro
 }
 
 func activeConversationTimeRange(rt *shortcut.RuntimeContext) (activeConversationRange, error) {
-	startRaw := strings.TrimSpace(rt.Str("start"))
+	return resolveActiveConversationTimeRange(rt.Str("start"), rt.Str("end"), time.Now())
+}
+
+func activeConversationExecutionRange(rt *shortcut.RuntimeContext) (activeConversationRange, error) {
+	if ctx := rt.Command().Context(); ctx != nil {
+		if queryRange, ok := ctx.Value(activeConversationRangeContextKey{}).(activeConversationRange); ok {
+			return queryRange, nil
+		}
+	}
+	// Standalone Execute callers still receive the same strict validation.
+	return activeConversationTimeRange(rt)
+}
+
+func resolveActiveConversationTimeRange(startRaw, endRaw string, now time.Time) (activeConversationRange, error) {
+	startRaw = strings.TrimSpace(startRaw)
 	if startRaw == "" {
 		return activeConversationRange{}, apperrors.NewValidation("--start 不能为空白")
 	}
-	start, err := parseActiveConversationTime(startRaw)
+	start, err := parseActiveConversationBoundary(startRaw, "--start")
 	if err != nil {
-		return activeConversationRange{}, apperrors.NewValidation("--start 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD")
+		return activeConversationRange{}, err
 	}
-	end := time.Now()
-	if endRaw := strings.TrimSpace(rt.Str("end")); endRaw != "" {
-		end, err = parseActiveConversationTime(endRaw)
+	end := now.Truncate(time.Second)
+	if endRaw = strings.TrimSpace(endRaw); endRaw != "" {
+		end, err = parseActiveConversationBoundary(endRaw, "--end")
 		if err != nil {
-			return activeConversationRange{}, apperrors.NewValidation("--end 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD")
+			return activeConversationRange{}, err
 		}
 	}
 	if !end.After(start) {
 		return activeConversationRange{}, apperrors.NewValidation("--end 必须晚于 --start")
 	}
 	return activeConversationRange{start: start, end: end}, nil
+}
+
+func parseActiveConversationBoundary(value, flag string) (time.Time, error) {
+	parsed, err := parseActiveConversationTime(value)
+	if err != nil {
+		return time.Time{}, apperrors.NewValidation(flag + " 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD")
+	}
+	if activeConversationsNonzeroFraction.MatchString(value) {
+		return time.Time{}, apperrors.NewValidation(flag + " 仅支持整秒，不能包含非零小数秒")
+	}
+	return parsed, nil
 }
 
 func parseActiveConversationTime(value string) (time.Time, error) {

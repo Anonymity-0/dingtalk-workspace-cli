@@ -83,6 +83,11 @@ func TestCrossPlatformCoverageChatActiveConversationsResultDeliveredInFullAndCom
 			if !strings.Contains(delay.Description, "0-60000") {
 				t.Fatalf("page-delay range is not discoverable: %q", delay.Description)
 			}
+			if !strings.Contains(payload.Parameters["start"].Description, "整秒") ||
+				!strings.Contains(payload.Parameters["start"].Description, "非零小数秒") ||
+				!strings.Contains(payload.Parameters["end"].Description, "向下取整秒") {
+				t.Fatalf("query time precision is not discoverable: start=%q end=%q", payload.Parameters["start"].Description, payload.Parameters["end"].Description)
+			}
 
 			partialSupported := false
 			for _, outcome := range gotResult.Outcomes {

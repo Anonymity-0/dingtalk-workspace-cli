@@ -23,6 +23,7 @@
 - `+messages-send` 会自动规范化并补齐 @ 占位符。user 使用 `<@id>` / `<@all>`；bot/webhook 使用 `@id` / `@手机号` / `@all`。声明 `--at-*` / `--at-all` 即可，不要为统一 Shortcut 手工拼 `@10`。
 - `+search-msg --page-all` 连续翻页并默认按消息 ID 批量富化；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger。
 - `+active-conversations` 最少只需 `--start`，会固定默认结束时间、自动翻页并按 `openConversationId` 去重；`--page-delay` 默认 200ms（0–60000ms，等待可取消）。会话总有 `name` 和 `nameKnown`，未知名称为 `""` / `false`。成功及页数上限结果在 `data`，需检查 `complete` 和 `meta.pagination`；`pageSize` 记录 `--limit`。
+- `+active-conversations` 的 `--start/--end` 仅支持整秒，显式传入非零小数秒会在参数校验时失败。默认 `end` 是本次查询取到的当前时间向下取整秒，不包含当前尚未结束的这一秒；最终有效区间必须满足 `end > start`。同一 `end` 用于所有页请求、结果返回和续查；消息 `latestMessageTime` 仍保留毫秒精度。
 - `+active-conversations` 后续页失败返回 `partial_failure`（退出码 7）：已成功页面摘要在 `data.succeeded[0]`（`id=completed-pages`，`complete=false`），失败项在 `data.failed[0]`（`id=page:N`，其 `error.details.failedPage/failedCursor` 保留失败位置），`meta.pagination.next_token` 指向失败页输入游标；首个请求页失败返回普通 `failure`。先排查错误，不自动重试。续查必须使用同一 profile，并复用摘要中的 `start/end/pageSize` 作为 `--start/--end/--limit`；前后批次按 `conversationId` 合并、保留更大的 `latestMessageTime`。续页批次自身不标记全量完整；只有从首页起无遗漏地接续所有批次、处理完失败页且 endpoint 耗尽，才能报告全量结果。
 - `+at-me`、`+chat-messages`、`+messages-mget`、`+search-msg`、`+thread-replies` 可用 `--download-resources` 下载资源。引用、回复、合并转发中的资源使用结果 `resourceRefs` 自带的子消息 `messageId`；仅当子消息缺会话 ID 时继承父消息 `openConversationId`。
 - 上述五个查询 Shortcut 与 `+messages-resource-download` 都沿用安全本地下载的 `read/not_required` 契约，不应添加 `--yes` 或触发交互确认。下载只允许工作目录内相对路径、默认不覆盖并原子落盘；需要覆盖时必须由用户显式传 `--overwrite`。
