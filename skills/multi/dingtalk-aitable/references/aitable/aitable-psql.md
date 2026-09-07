@@ -12,6 +12,17 @@
 
 普通的“查几条记录”“按字段筛选记录”仍使用 `record query`。读取字段配置、选项、公式配置时仍使用 `field get`；只有用户关心 SQL 可查询列及 PostgreSQL 类型时才使用 `psql -t`。
 
+## 查询路由与降级
+
+| 查询需求 | 首选接口 | 原因 |
+|---|---|---|
+| 一张表内按 recordId、关键词或已解析字段条件读取记录，并需要字段投影或 cursor 分页 | `record query` | 直接返回记录模型，保留字段类型解析和分页语义。 |
+| 单张表完整读取、导出或逐条处理所有记录 | `dws aitable record query --all --page-limit 0` | 由 CLI 统一处理完整扫描，不手写 cursor 循环。 |
+| 关联两张或以上表、跨表分析 | `psql` | 先核对表和列，再用一条 `SELECT ... JOIN ...` 获取关联结果，禁止拆成多次 `record query` 后由 Agent 自行拼接。 |
+| SQL 聚合、分组、窗口函数、复杂排序或需要 PostgreSQL 类型语义 | `psql` | 使用数据库侧计算，避免多次读取后在 Agent 侧推导。 |
+
+只要需求包含多表关联或跨表分析，即使用户没有明确说 SQL，也优先使用 `psql`。`psql` 因技术或服务错误无法执行时，先保留真实错误；仅当原需求能不丢失语义地降为单表记录读取时，才明确告知用户后改用 `record query`。不得静默降级，不得用 `record query` 拆分或模拟 JOIN、SQL 聚合、分组或窗口计算。
+
 ## 命令模式
 
 `-l`、`-t`、`-c` 三种模式互斥。`-t` 仅用于查看表结构；执行 SQL 时表由 `FROM` / `JOIN` 自动解析，无需传 `-t`。
@@ -49,8 +60,8 @@ dws aitable psql -d <BASE_ID> \
 | “这个 AI 表格里有哪些可查询的数据表” | `psql -d <baseId> -l` |
 | “数据表1有哪些 SQL 字段和类型” | 先 `-l` 解析真实 `tableId`，再 `psql -d <baseId> -t <tableId>` |
 | “查询数据表1前 10 条”且上下文明确要求 SQL | 先核对逻辑表结构，再执行 `SELECT * ... LIMIT 10` |
-| “把数据表1、数据表2和数据表3关联起来” | 先列出表并查看每张表的结构，再生成多表 JOIN SQL；表由 SQL 自动解析 |
-| “按业务状态统计数量”或明确要求 SQL 聚合 | 先查看逻辑结构，再生成使用 `COUNT/SUM/AVG/MIN/MAX` 的分组或聚合 SQL |
+| “把数据表1、数据表2和数据表3关联起来”或“分析不同表之间的关系” | 优先使用 psql：先列出表并查看每张表的结构，再生成一条多表 JOIN SQL；表由 SQL 自动解析 |
+| “按业务状态统计数量”或明确要求 SQL 聚合 | 优先使用 psql：先查看逻辑结构，再生成使用 `COUNT/SUM/AVG/MIN/MAX` 的分组或聚合 SQL |
 | “按分组排名/生成行号” | 先查看逻辑结构，再生成使用 `ROW_NUMBER/RANK/DENSE_RANK ... OVER (...)` 的 SQL |
 
 用户只给表名时，必须先用 `psql -l` 获取真实 `tableId`；零命中或重名时要求用户消歧，禁止猜测。编写 SQL 前必须用 `psql -t` 核对实际逻辑列名和 PostgreSQL 类型。
