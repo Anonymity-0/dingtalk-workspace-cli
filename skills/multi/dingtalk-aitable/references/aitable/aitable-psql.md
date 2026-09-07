@@ -53,6 +53,13 @@ dws aitable psql -d <BASE_ID> \
 
 `psql` 输出是面向用户的 PostgreSQL 表格文本，不支持也不添加全局 `--format json`。这是 AI 表格 Skill 中“结构化读取使用 `--format json`”规则的明确例外。
 
+## 返回模型与类型边界
+
+- `psql` 的 `SELECT` 结果是 PostgreSQL 列/行投影后渲染出的表格文本；复杂值可能被展示为 JSON 文本。SQL 列名、别名、PostgreSQL 类型和输出行均不等同于 `record query` 的 `fieldId`、`recordId`、`cells`、`status` 或 `nextCursor`。
+- `record query` 返回结构化记录模型及分页元数据，字段和值遵循 AI 表格字段类型和记录语义；它不是 PostgreSQL 行集，也不能直接作为 SQL 表名、列名、类型或 JOIN 条件。
+- 同一次业务查询只能选择一个结果模型：禁止把 `psql` 的表格值、列名或别名拼入 `record query` 的参数或响应；也禁止把 `record query` 的记录、cells 或 cursor 当作 `psql` 的 SQL 输入或结果继续处理。
+- 后续步骤确实需要另一种模型时，必须从原始用户意图重新发起对应查询，并明确说明切换原因和结果来源；不得合并两类结果后再做关联、聚合、类型推导或权限判断。需要 SQL 列和类型时先执行 `psql -t`；需要记录 ID、字段 ID、cells、status 或 cursor 时使用 `record query` / `field get`。
+
 ## 自然语言路由
 
 | 用户意图 | 执行方式 |

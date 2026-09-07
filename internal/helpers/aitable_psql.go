@@ -53,7 +53,7 @@ func newAitablePsqlCommand() *cobra.Command {
 			Selection: contract.SelectionSpec{
 				AgentSummary: "使用 PostgreSQL 语法进行多表关联和分析查询。",
 				UseWhen:      []string{"需要查看逻辑表结构，或关联两张及以上表、跨表分析、SQL 聚合、分组、窗口计算、复杂排序和 PostgreSQL 类型语义时；多表需求即使未明确提及 SQL 也优先使用本命令，通过一条 SELECT/JOIN 获取结果。"},
-				AvoidWhen:    []string{"单张表按 recordId、关键词或已解析字段条件读取记录，以及字段投影或 cursor 分页时使用 record query；需要新增、更新、删除记录或执行 DDL 时不可使用。本命令因技术或服务错误失败后，仅在需求可等价降为单表记录读取时，明确告知用户后改用 record query；不得静默降级或用 record query 模拟 JOIN、SQL 聚合、分组或窗口计算。"},
+				AvoidWhen:    []string{"单张表按 recordId、关键词或已解析字段条件读取记录，以及字段投影或 cursor 分页时使用 record query；需要新增、更新、删除记录或执行 DDL 时不可使用。本命令因技术或服务错误失败后，仅在需求可等价降为单表记录读取时，明确告知用户后改用 record query；不得静默降级或用 record query 模拟 JOIN、SQL 聚合、分组或窗口计算。psql 的 PostgreSQL 列/行表格文本和类型与 record query 的 fieldId、recordId、cells、status、nextCursor 不可混用；不得把任一方的值、标识或分页状态直接作为另一方的输入或结果，切换时从原始意图重新查询并标明来源。"},
 				Examples:     []string{"dws aitable psql -d <BASE_ID> -l", "dws aitable psql -d <BASE_ID> -c 'SELECT * FROM 表名'"},
 			},
 		},

@@ -680,7 +680,7 @@ var RecordQuery = shortcut.Shortcut{
 	Command:     "+record-query",
 	Product:     serverMain,
 	Description: "查询单表记录（按 ID / 条件 / 关键词，并支持字段投影和分页）",
-	Intent:      "用于单张表的单页行数据读取；可按 recordId 精确取、按已归一化条件筛选、按关键词搜索，并用 fieldIds 只返回所需字段和用 nextCursor 显式续页；filters 中字段和值必须先按字段类型解析。完整读取全表时不要使用本 Shortcut，改用 dws aitable record query --all --page-limit 0；服务端未返回的计算字段不会由 CLI 本地补算。需要关联两张或以上表、跨表分析，或以 SQL 完成聚合、分组、窗口计算时，优先使用 dws aitable psql，通过一次 SELECT/JOIN 获取结果。psql 因技术或服务错误无法执行时，仅当需求可等价降为单表记录读取，才明确告知后改用 record query；不得静默降级，也不得用 record query 拆分或模拟 JOIN、SQL 聚合或窗口计算。",
+	Intent:      "用于单张表的单页行数据读取；可按 recordId 精确取、按已归一化条件筛选、按关键词搜索，并用 fieldIds 只返回所需字段和用 nextCursor 显式续页；filters 中字段和值必须先按字段类型解析。完整读取全表时不要使用本 Shortcut，改用 dws aitable record query --all --page-limit 0；服务端未返回的计算字段不会由 CLI 本地补算。需要关联两张或以上表、跨表分析，或以 SQL 完成聚合、分组、窗口计算时，优先使用 dws aitable psql，通过一次 SELECT/JOIN 获取结果。psql 因技术或服务错误无法执行时，仅当需求可等价降为单表记录读取，才明确告知后改用 record query；不得静默降级，也不得用 record query 拆分或模拟 JOIN、SQL 聚合或窗口计算。record query 的结构化记录、fieldId、recordId、cells、status、nextCursor 与 psql 的 PostgreSQL 列/行表格文本和类型不是同一结果模型，禁止相互拼接、转换或混合推导；需要切换时从原始意图重新查询并标明来源。",
 	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
@@ -702,7 +702,7 @@ var RecordQuery = shortcut.Shortcut{
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "查询单表记录（按 ID / 条件 / 关键词，并支持字段投影和分页）",
-			UseWhen:      []string{"用于单张表的单页行数据读取；可按 recordId 精确取、按已归一化条件筛选、按关键词搜索，并用 fieldIds 只返回所需字段和用 nextCursor 显式续页；filters 中字段和值必须先按字段类型解析。完整读取全表时不要使用本 Shortcut，改用 dws aitable record query --all --page-limit 0；服务端未返回的计算字段不会由 CLI 本地补算。需要关联两张或以上表、跨表分析，或以 SQL 完成聚合、分组、窗口计算时，优先使用 dws aitable psql，通过一次 SELECT/JOIN 获取结果。psql 因技术或服务错误无法执行时，仅当需求可等价降为单表记录读取，才明确告知后改用 record query；不得静默降级，也不得用 record query 拆分或模拟 JOIN、SQL 聚合或窗口计算。"},
+			UseWhen:      []string{"用于单张表的单页行数据读取；可按 recordId 精确取、按已归一化条件筛选、按关键词搜索，并用 fieldIds 只返回所需字段和用 nextCursor 显式续页；filters 中字段和值必须先按字段类型解析。完整读取全表时不要使用本 Shortcut，改用 dws aitable record query --all --page-limit 0；服务端未返回的计算字段不会由 CLI 本地补算。需要关联两张或以上表、跨表分析，或以 SQL 完成聚合、分组、窗口计算时，优先使用 dws aitable psql，通过一次 SELECT/JOIN 获取结果。psql 因技术或服务错误无法执行时，仅当需求可等价降为单表记录读取，才明确告知后改用 record query；不得静默降级，也不得用 record query 拆分或模拟 JOIN、SQL 聚合或窗口计算。record query 的结构化记录、fieldId、recordId、cells、status、nextCursor 与 psql 的 PostgreSQL 列/行表格文本和类型不是同一结果模型，禁止相互拼接、转换或混合推导；需要切换时从原始意图重新查询并标明来源。"},
 			AvoidWhen:    []string{"需要关联两张或以上表、跨表分析，或以 SQL 完成聚合、分组、窗口计算时，使用 dws aitable psql；需要全部、完整、汇总、统计、导出或逐条处理全表数据且不涉及 SQL 聚合、分组或窗口计算时，改用 dws aitable record query --all --page-limit 0；不要手写 cursor 循环或把当前页当全量"},
 			Examples: []string{
 				"dws aitable +record-query --base-id B --table-id T --query \"关键词\" --limit 50",
