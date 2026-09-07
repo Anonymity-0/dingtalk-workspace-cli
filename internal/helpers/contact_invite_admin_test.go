@@ -187,3 +187,49 @@ func TestContactApplyListSafetyProjectionMatchesBehavior(t *testing.T) {
 		t.Fatalf("apply-list args = %#v, want %#v", call.args, want)
 	}
 }
+
+// TestContactApplyRemoveSafetyProjectionMatchesBehavior 是 apply-remove 安全语义的
+// 包内回归（CI coverage gate 只统计包内覆盖）：删除申请记录不可恢复，最终
+// 投影必须声明 Effect=destructive、Confirmation=user_required；运行侧未确认
+// 必须被门禁拦截，确认后精确调用 remove_org_apply。
+func TestContactApplyRemoveSafetyProjectionMatchesBehavior(t *testing.T) {
+	root := newContactCommand()
+	applyRemove := requireWukongSyncCommand(t, root, "org", "apply-remove")
+	payload, ok := contractfinal.RuntimeContractFinal(applyRemove)
+	if !ok {
+		t.Fatal("apply-remove has no runtime contract final payload")
+	}
+	if payload.Safety == nil {
+		t.Fatal("apply-remove payload has no safety declaration")
+	}
+	if got := payload.Safety; got.Effect != "destructive" || got.Risk != "high" ||
+		got.Confirmation != "user_required" || got.Idempotency != "non_idempotent" {
+		t.Fatalf("apply-remove safety = %+v, want destructive/high/user_required/non_idempotent", got)
+	}
+	if !strings.Contains(payload.Description, "不可恢复") {
+		t.Fatalf("apply-remove description %q must disclose non-recoverable deletion", payload.Description)
+	}
+	if payload.Selection == nil || !strings.Contains(payload.Selection.AgentSummary, "不可恢复") {
+		t.Fatalf("apply-remove selection must disclose non-recoverable deletion: %+v", payload.Selection)
+	}
+
+	// 运行行为与声明一致：user_required 必须显式 --yes 才执行。
+	if _, err := runContactEnterpriseCommand(t, "org", "apply-remove", "--id", "123"); err == nil {
+		t.Fatal("apply-remove without --yes must be rejected by confirmation gate")
+	}
+
+	caller, err := runContactEnterpriseCommand(t, "org", "apply-remove", "--id", "123", "--yes")
+	if err != nil {
+		t.Fatalf("apply-remove with --yes failed: %v", err)
+	}
+	if len(caller.calls) != 1 {
+		t.Fatalf("apply-remove want exactly 1 MCP call, got %d: %+v", len(caller.calls), caller.calls)
+	}
+	call := caller.calls[0]
+	if call.productID != "contact" || call.toolName != "remove_org_apply" {
+		t.Fatalf("apply-remove call = %s/%s, want contact/remove_org_apply", call.productID, call.toolName)
+	}
+	if want := map[string]any{"id": int64(123)}; !reflect.DeepEqual(call.args, want) {
+		t.Fatalf("apply-remove args = %#v, want %#v", call.args, want)
+	}
+}

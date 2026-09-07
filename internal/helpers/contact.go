@@ -3184,8 +3184,11 @@ contact user profile fields 获取可用字段列表。
 		risk: "high", aliases: []string{"remove", "apply-delete"},
 	})
 	DeclareLeafMetadata(contactOrgApplyRemoveCmd, LeafSpec{
+		// Safety：apply-remove 删除的申请记录不可恢复，因此 Effect 必须声明为
+		// destructive，让依赖 Effect 做风险分级的 Agent/消费者正确识别其破坏
+		// 性；保留 user_required 确认门禁与 non_idempotent 幂等语义。
 		Safety: contract.SafetySpec{
-			Effect: "write", Risk: "high",
+			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
@@ -3207,7 +3210,7 @@ contact user profile fields 获取可用字段列表。
 				Ref:          &contract.InterfaceRefSpec{ProductID: "contact", RPCName: "remove_org_apply"},
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "删除指定的「申请加入企业」记录",
+				AgentSummary: "删除指定的「申请加入企业」记录（删除后不可恢复）",
 				UseWhen:      []string{"用户明确要求删除某条申请记录且已理解删除后不可恢复"},
 				AvoidWhen:    []string{"正常审批用 apply-approve / apply-reject；删除不可恢复，优先考虑拒绝或屏蔽"},
 				Examples:     []string{"dws contact org apply-remove --id 12345"},

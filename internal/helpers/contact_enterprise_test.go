@@ -56,6 +56,9 @@ func runContactEnterpriseCommand(t *testing.T, args ...string) (*contactEnterpri
 	cmd := newContactCommand()
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
+	// --yes 是 root 的 persistent flag，在 helpers 包内脱离完整 root 单测时
+	// 补注册以等价用户显式确认，使 user_required 命令的确认路径可被覆盖。
+	cmd.PersistentFlags().Bool("yes", false, "")
 	cmd.SetArgs(args)
 	return caller, cmd.Execute()
 }

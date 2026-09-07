@@ -127,6 +127,7 @@ func TestLeafHelpRendersSelectionSafetyAndReferences(t *testing.T) {
 		{path: "contract record list", wantEffect: "read", wantConfirm: "not_required", wantSkill: "dingtalk-misc", wantDocument: "references/contract.md"},
 		{path: "contract subject delete", wantEffect: "destructive", wantConfirm: "user_required", wantSkill: "dingtalk-misc", wantDocument: "references/contract.md"},
 		{path: "contact org apply-list", wantEffect: "write", wantConfirm: "not_required", wantSkill: "dingtalk-contact", wantDocument: "references/contact.md"},
+		{path: "contact org apply-remove", wantEffect: "destructive", wantConfirm: "user_required", wantSkill: "dingtalk-contact", wantDocument: "references/contact.md"},
 	} {
 		t.Run(strings.ReplaceAll(tc.path, " ", "_"), func(t *testing.T) {
 			root := NewRootCommand()
@@ -995,6 +996,60 @@ func TestContactApplyListSchemaProjectionMatchesRuntimeBehavior(t *testing.T) {
 		}
 		if want := map[string]any{"status": int64(1), "size": int64(20)}; !reflect.DeepEqual(call.args, want) {
 			t.Fatalf("apply-list args = %#v, want %#v", call.args, want)
+		}
+	})
+}
+
+// TestContactApplyRemoveSchemaProjectionMatchesRuntimeBehavior 是 apply-remove
+// 安全语义的回归：删除申请记录不可恢复，最终 Schema 投影必须声明
+// Effect=destructive；必须保留 user_required 确认门禁，未确认不得调用 MCP，
+// 确认后精确调用 remove_org_apply。投影与运行行为任一侧回归都会被拦截。
+func TestContactApplyRemoveSchemaProjectionMatchesRuntimeBehavior(t *testing.T) {
+	t.Run("schema projection discloses non-recoverable deletion", func(t *testing.T) {
+		meta, ok := cli.ResolveMeta("contact org apply-remove")
+		if !ok {
+			t.Fatal("ResolveMeta(contact org apply-remove) missing")
+		}
+		if meta.Safety.Effect != "destructive" {
+			t.Fatalf("apply-remove effect = %q, want destructive (record deletion is not recoverable)", meta.Safety.Effect)
+		}
+		if meta.Safety.Risk != "high" || meta.Safety.Confirmation != "user_required" || meta.Safety.Idempotency != "non_idempotent" {
+			t.Fatalf("apply-remove safety = %+v, want high/user_required/non_idempotent", meta.Safety)
+		}
+		if !strings.Contains(meta.Selection.AgentSummary, "不可恢复") {
+			t.Fatalf("apply-remove agent summary %q must disclose non-recoverable deletion", meta.Selection.AgentSummary)
+		}
+	})
+
+	t.Run("user_required projection rejects until explicitly confirmed", func(t *testing.T) {
+		recorder := &contactWriteOpsRecorder{}
+		err := executeContactWriteOp(t, recorder, []string{"contact", "org", "apply-remove", "--id", "123"})
+		if err == nil {
+			t.Fatal("apply-remove without --yes must be rejected")
+		}
+		if !apperrors.IsConfirmationRequired(err) {
+			t.Fatalf("apply-remove error = %v, want reason confirmation_required", err)
+		}
+		if len(recorder.calls) != 0 {
+			t.Fatalf("apply-remove must not reach MCP before confirmation, got calls: %+v", recorder.calls)
+		}
+	})
+
+	t.Run("explicit yes executes exactly remove_org_apply", func(t *testing.T) {
+		recorder := &contactWriteOpsRecorder{}
+		err := executeContactWriteOp(t, recorder, []string{"contact", "org", "apply-remove", "--id", "123", "--yes"})
+		if err != nil {
+			t.Fatalf("apply-remove with --yes failed: %v", err)
+		}
+		if len(recorder.calls) != 1 {
+			t.Fatalf("apply-remove with --yes want exactly 1 MCP call, got %d: %+v", len(recorder.calls), recorder.calls)
+		}
+		call := recorder.calls[0]
+		if call.server != "contact" || call.tool != "remove_org_apply" {
+			t.Fatalf("apply-remove call = %s/%s, want contact/remove_org_apply", call.server, call.tool)
+		}
+		if want := map[string]any{"id": int64(123)}; !reflect.DeepEqual(call.args, want) {
+			t.Fatalf("apply-remove args = %#v, want %#v", call.args, want)
 		}
 	})
 }
