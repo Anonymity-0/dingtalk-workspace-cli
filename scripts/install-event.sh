@@ -78,6 +78,19 @@ detect_arch() {
   esac
 }
 
+# The Linux release binaries are CGO builds linked against glibc, so they need
+# the glibc dynamic loader. musl cannot load them, and the failure would only
+# surface after install as an opaque loader error, so refuse up front.
+require_glibc_on_linux() {
+  [ "$os" = "linux" ] || return 0
+  if ls /lib/ld-musl-*.so.1 >/dev/null 2>&1; then
+    err "This Linux distribution uses musl libc, but ${BIN_NAME} release binaries are built against glibc and cannot run here. Use a glibc-based distribution."
+  fi
+  if command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi musl; then
+    err "This Linux distribution uses musl libc, but ${BIN_NAME} release binaries are built against glibc and cannot run here. Use a glibc-based distribution."
+  fi
+}
+
 extract_zip() {
   archive="$1"
   dest="$2"
@@ -655,6 +668,7 @@ install_skills_from_bundle() {
 install_binary() {
   os="$(detect_os)"
   arch="$(detect_arch)"
+  require_glibc_on_linux
   if [ "$os" = "windows" ]; then
     asset="${BIN_NAME}-windows-${arch}.zip"
     binname="${BIN_NAME}.exe"

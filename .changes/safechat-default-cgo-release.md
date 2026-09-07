@@ -9,3 +9,8 @@ category: Fixed
   `CGO_ENABLED=0` 的 stub 构建选择。
 - Linux 官方构建显式使用 glibc 2.17 链接目标，并校验 ELF 符号版本，
   防止交叉编译镜像升级隐式提高 Linux 系统要求。
+- `install.sh` / `install-event.sh` / `install-devapp.sh` 在下载前识别 musl
+  发行版（如 Alpine）并明确中止。Linux 产物依赖 glibc 动态加载器，此前这类环境
+  会安装成功但连 `dws version` 都无法启动。
+- SafeChat cipher 关闭时会等待进行中的加解密结束，不再与 `Close` 并发访问
+  vendor client 的初始化状态（`go test -race` 下可复现的数据竞态）。

@@ -789,6 +789,19 @@ detect_arch() {
   esac
 }
 
+# The Linux release binaries are CGO builds linked against glibc, so they need
+# the glibc dynamic loader. musl cannot load them, and the failure would only
+# surface after install as an opaque loader error, so refuse up front.
+require_glibc_on_linux() {
+  [ "$os" = "linux" ] || return 0
+  if ls /lib/ld-musl-*.so.1 >/dev/null 2>&1; then
+    err "This Linux distribution uses musl libc, but ${BIN_NAME} release binaries are built against glibc and cannot run here. Use a glibc-based distribution."
+  fi
+  if command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi musl; then
+    err "This Linux distribution uses musl libc, but ${BIN_NAME} release binaries are built against glibc and cannot run here. Use a glibc-based distribution."
+  fi
+}
+
 # Decide the download source. An explicit DWS_GITEE_REPO always wins. Otherwise
 # probe GitHub Releases; if it is unreachable (typical in mainland China), switch
 # GITEE_REPO to the mirror so every subsequent resolve/download uses Gitee.
@@ -1546,6 +1559,7 @@ _copy_skill() {
 install_binary() {
   os="$(detect_os)"
   arch="$(detect_arch)"
+  require_glibc_on_linux
   resolve_version
 
   archive_name="${BIN_NAME}-${os}-${arch}.tar.gz"

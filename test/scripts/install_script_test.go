@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -4971,5 +4972,95 @@ func mustWriteFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 	}
 	if err := os.WriteFile(path, data, mode); err != nil {
 		t.Fatalf("WriteFile(%s) error = %v", path, err)
+	}
+}
+
+// TestInstallScriptRefusesMuslLinux pins that every installer that fetches the
+// glibc-linked dws release asset rejects musl-based Linux before downloading.
+func TestInstallScriptRefusesMuslLinux(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell semantics are unavailable")
+	}
+
+	for _, installer := range []struct {
+		script      string
+		entry       string
+		downloadsAt string
+	}{
+		{script: "install.sh", entry: "install_binary", downloadsAt: "resolve_version"},
+		{script: "install-event.sh", entry: "install_binary", downloadsAt: "releases/download"},
+		{script: "install-devapp.sh", entry: "main", downloadsAt: "releases/download"},
+	} {
+		t.Run(installer.script, func(t *testing.T) {
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", installer.script))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			body := extractShellFunction(t, scriptPath, "require_glibc_on_linux")
+			// The loader probe covers musl distributions whose ldd does not
+			// report a version, notably Alpine where BusyBox ldd only forwards
+			// to the loader.
+			if !strings.Contains(body, "/lib/ld-musl-") {
+				t.Error("musl detection does not probe the musl dynamic loader")
+			}
+
+			entry := extractShellFunction(t, scriptPath, installer.entry)
+			guardAt := strings.Index(entry, "require_glibc_on_linux")
+			downloadAt := strings.Index(entry, installer.downloadsAt)
+			if guardAt < 0 {
+				t.Fatalf("%s does not call require_glibc_on_linux", installer.entry)
+			}
+			if downloadAt < 0 || guardAt > downloadAt {
+				t.Errorf("%s must run require_glibc_on_linux before %q (guard=%d, download=%d)",
+					installer.entry, installer.downloadsAt, guardAt, downloadAt)
+			}
+
+			run := func(t *testing.T, targetOS, lddOutput string) (string, error) {
+				t.Helper()
+				binDir := filepath.Join(t.TempDir(), "bin")
+				mustWriteFile(t, filepath.Join(binDir, "ldd"),
+					[]byte(fmt.Sprintf("#!/bin/sh\nprintf '%%s\\n' %q\n", lddOutput)), 0o755)
+				harness := fmt.Sprintf(`err() { printf '%%s\n' "$@" >&2; exit 1; }
+BIN_NAME=dws
+os=%q
+%s
+require_glibc_on_linux
+printf 'accepted\n'
+`, targetOS, body)
+				cmd := exec.Command("sh", "-c", harness)
+				cmd.Env = append(os.Environ(), "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+				output, err := cmd.CombinedOutput()
+				return string(output), err
+			}
+
+			for _, tc := range []struct {
+				name       string
+				targetOS   string
+				lddOutput  string
+				wantAccept bool
+			}{
+				{name: "glibc linux", targetOS: "linux", lddOutput: "ldd (GNU libc) 2.31", wantAccept: true},
+				{name: "musl linux", targetOS: "linux", lddOutput: "musl libc 1.2.5", wantAccept: false},
+				{name: "darwin skips the probe", targetOS: "darwin", lddOutput: "musl libc 1.2.5", wantAccept: true},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					output, err := run(t, tc.targetOS, tc.lddOutput)
+					if tc.wantAccept {
+						if err != nil {
+							t.Fatalf("require_glibc_on_linux rejected %s: %v\noutput:\n%s", tc.name, err, output)
+						}
+						return
+					}
+					if err == nil {
+						t.Fatalf("require_glibc_on_linux accepted %s:\n%s", tc.name, output)
+					}
+					if !strings.Contains(output, "musl libc") {
+						t.Fatalf("rejection output does not name musl libc:\n%s", output)
+					}
+				})
+			}
+		})
 	}
 }

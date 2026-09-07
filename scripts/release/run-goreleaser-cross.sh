@@ -15,6 +15,87 @@ sha256_file() {
   shasum -a 256 "$1" | awk '{print $1}'
 }
 
+# A cache hit is only trusted when the marker records the pinned archive digest
+# and the executable still hashes to the digest captured at install time. An
+# executable alone proves nothing: a truncated or replaced tool would otherwise
+# be reused as if it had been verified.
+verify_cached_tool() {
+  local cached_dir="$1"
+  local cached_exe="$2"
+  local want_archive_sha="$3"
+  local marker="$1/.dws-verified"
+  local recorded_exe_sha
+  [ -x "$cached_dir/$cached_exe" ] || return 1
+  [ -f "$marker" ] || return 1
+  [ "$(sed -n 's/^archive_sha256=//p' "$marker")" = "$want_archive_sha" ] || return 1
+  recorded_exe_sha="$(sed -n 's/^exe_sha256=//p' "$marker")"
+  [ -n "$recorded_exe_sha" ] || return 1
+  [ "$(sha256_file "$cached_dir/$cached_exe")" = "$recorded_exe_sha" ] || return 1
+  return 0
+}
+
+# Download, verify, and publish one pinned tool.
+#
+# Everything happens in a staging directory that is renamed into place only
+# after the executable verifies, so an interrupted download or extraction can
+# never leave a half-installed tool behind. The mkdir lock serialises
+# concurrent `make package` runs, which would otherwise extract over each
+# other. Remaining arguments are passed to tar after the archive.
+install_pinned_tool() {
+  local tool_label="$1"
+  local tool_dir="$2"
+  local tool_exe="$3"
+  local archive_url="$4"
+  local pinned_sha="$5"
+  local tar_args=("${@:6}")
+  local lock_dir="$2.lock"
+  local lock_attempts=0
+  local stage actual_sha
+
+  mkdir -p "$TOOL_CACHE"
+  until mkdir "$lock_dir" 2>/dev/null; do
+    lock_attempts=$((lock_attempts + 1))
+    if [ "$lock_attempts" -ge 300 ]; then
+      printf 'timed out waiting for another release to finish installing %s\n' "$tool_label" >&2
+      exit 1
+    fi
+    sleep 1
+  done
+  trap 'rmdir "$lock_dir" 2>/dev/null || true' EXIT HUP INT TERM
+
+  if verify_cached_tool "$tool_dir" "$tool_exe" "$pinned_sha"; then
+    rmdir "$lock_dir"
+    trap - EXIT HUP INT TERM
+    return 0
+  fi
+
+  stage="$(mktemp -d "$TOOL_CACHE/.stage.XXXXXX")"
+  trap 'rm -rf "$stage"; rmdir "$lock_dir" 2>/dev/null || true' EXIT HUP INT TERM
+
+  curl -fsSL "$archive_url" -o "$stage/archive"
+  actual_sha="$(sha256_file "$stage/archive")"
+  if [ "$actual_sha" != "$pinned_sha" ]; then
+    printf '%s archive checksum mismatch: got %s, want %s\n' "$tool_label" "$actual_sha" "$pinned_sha" >&2
+    exit 1
+  fi
+  tar -xf "$stage/archive" -C "$stage" "${tar_args[@]}"
+  rm -f "$stage/archive"
+  chmod 0755 "$stage/$tool_exe"
+  if [ ! -x "$stage/$tool_exe" ]; then
+    printf '%s archive did not contain an executable %s\n' "$tool_label" "$tool_exe" >&2
+    exit 1
+  fi
+  printf 'archive_sha256=%s\nexe_sha256=%s\n' \
+    "$pinned_sha" "$(sha256_file "$stage/$tool_exe")" >"$stage/.dws-verified"
+
+  # Publish by rename so readers see either the previous tool or the complete
+  # new one, never a directory that is still being filled.
+  rm -rf "$tool_dir"
+  mv "$stage" "$tool_dir"
+  rmdir "$lock_dir"
+  trap - EXIT HUP INT TERM
+}
+
 case "$(uname -m)" in
   x86_64|amd64)
     docker_arch="amd64"
@@ -47,43 +128,18 @@ command -v docker >/dev/null 2>&1 || {
 
 tool_dir="$TOOL_CACHE/goreleaser-$GORELEASER_VERSION-linux-$archive_arch"
 goreleaser_bin="$tool_dir/goreleaser"
-if [ ! -x "$goreleaser_bin" ]; then
-  mkdir -p "$tool_dir"
-  archive="$(mktemp "$tool_dir/goreleaser.XXXXXX.tar.gz")"
-  trap 'rm -f "$archive"' EXIT HUP INT TERM
-  curl -fsSL \
-    "https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/goreleaser_Linux_${archive_arch}.tar.gz" \
-    -o "$archive"
-  actual_sha="$(sha256_file "$archive")"
-  if [ "$actual_sha" != "$archive_sha" ]; then
-    printf 'GoReleaser archive checksum mismatch: got %s, want %s\n' "$actual_sha" "$archive_sha" >&2
-    exit 1
-  fi
-  tar -xzf "$archive" -C "$tool_dir" goreleaser
-  chmod 0755 "$goreleaser_bin"
-  rm -f "$archive"
-  trap - EXIT HUP INT TERM
-fi
+install_pinned_tool "GoReleaser" "$tool_dir" goreleaser \
+  "https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/goreleaser_Linux_${archive_arch}.tar.gz" \
+  "$archive_sha" \
+  -z goreleaser
 
 # Zig supplies a versioned Linux libc sysroot instead of inheriting the
 # cross image's (newer) glibc. Keep Darwin and Windows on the image toolchains.
 zig_dir="$TOOL_CACHE/zig-$ZIG_VERSION-linux-$docker_arch"
-if [ ! -x "$zig_dir/zig" ]; then
-  mkdir -p "$zig_dir"
-  archive="$(mktemp "$zig_dir/zig.XXXXXX.tar.xz")"
-  trap 'rm -f "$archive"' EXIT HUP INT TERM
-  curl -fsSL \
-    "https://ziglang.org/download/$ZIG_VERSION/zig-$zig_arch-linux-$ZIG_VERSION.tar.xz" \
-    -o "$archive"
-  actual_sha="$(sha256_file "$archive")"
-  if [ "$actual_sha" != "$zig_sha" ]; then
-    printf 'Zig archive checksum mismatch: got %s, want %s\n' "$actual_sha" "$zig_sha" >&2
-    exit 1
-  fi
-  tar -xJf "$archive" -C "$zig_dir" --strip-components=1
-  rm -f "$archive"
-  trap - EXIT HUP INT TERM
-fi
+install_pinned_tool "Zig" "$zig_dir" zig \
+  "https://ziglang.org/download/$ZIG_VERSION/zig-$zig_arch-linux-$ZIG_VERSION.tar.xz" \
+  "$zig_sha" \
+  -J --strip-components=1
 
 mounts=(
   --volume "$ROOT:$ROOT"

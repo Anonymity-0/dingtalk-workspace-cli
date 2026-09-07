@@ -237,6 +237,8 @@ func Open(ctx context.Context, cfg Config) (Cipher, error) {
 }
 
 // trackedCipher releases the process-wide slot when the wrapped backend closes.
+// The mutex is held for the whole backend call, so Close waits for in-flight
+// operations instead of tearing down the backend underneath them.
 type trackedCipher struct {
 	mu      sync.Mutex
 	backend Cipher
@@ -244,50 +246,49 @@ type trackedCipher struct {
 
 // EncryptMessage validates the payload and delegates to the backend.
 func (c *trackedCipher) EncryptMessage(ctx context.Context, corpID, staffID string, plaintext []byte) ([]byte, error) {
-	backend, err := c.live(corpID, plaintext)
-	if err != nil {
+	if err := checkPayload(corpID, plaintext); err != nil {
 		return nil, err
-	}
-	return backend.EncryptMessage(ctx, corpID, staffID, plaintext)
-}
-
-// DecryptMessage validates the payload and delegates to the backend.
-func (c *trackedCipher) DecryptMessage(ctx context.Context, corpID, staffID string, ciphertext []byte) ([]byte, error) {
-	backend, err := c.live(corpID, ciphertext)
-	if err != nil {
-		return nil, err
-	}
-	return backend.DecryptMessage(ctx, corpID, staffID, ciphertext)
-}
-
-// live returns the backend after checking the cipher is open and the arguments
-// are usable.
-func (c *trackedCipher) live(corpID string, payload []byte) (Cipher, error) {
-	if corpID == "" {
-		return nil, ErrNoCorpID
-	}
-	if len(payload) == 0 {
-		return nil, ErrEmptyPayload
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.backend == nil {
 		return nil, ErrClosed
 	}
-	return c.backend, nil
+	return c.backend.EncryptMessage(ctx, corpID, staffID, plaintext)
+}
+
+// DecryptMessage validates the payload and delegates to the backend.
+func (c *trackedCipher) DecryptMessage(ctx context.Context, corpID, staffID string, ciphertext []byte) ([]byte, error) {
+	if err := checkPayload(corpID, ciphertext); err != nil {
+		return nil, err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.backend == nil {
+		return nil, ErrClosed
+	}
+	return c.backend.DecryptMessage(ctx, corpID, staffID, ciphertext)
+}
+
+func checkPayload(corpID string, payload []byte) error {
+	if corpID == "" {
+		return ErrNoCorpID
+	}
+	if len(payload) == 0 {
+		return ErrEmptyPayload
+	}
+	return nil
 }
 
 // Close closes the backend once and releases the process-wide slot.
 func (c *trackedCipher) Close() error {
 	c.mu.Lock()
-	backend := c.backend
-	c.backend = nil
-	c.mu.Unlock()
-	if backend == nil {
+	defer c.mu.Unlock()
+	if c.backend == nil {
 		return nil
 	}
-
-	err := backend.Close()
+	err := c.backend.Close()
+	c.backend = nil
 
 	process.mu.Lock()
 	process.open = false

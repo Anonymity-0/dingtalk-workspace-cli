@@ -13,12 +13,15 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 var expectedPackagedSkillTargets = []string{
@@ -3224,46 +3227,132 @@ func TestLocalBuildHonorsCGOEnabled(t *testing.T) {
 	}
 }
 
+// pinnedArchiveDigests reads the archive checksums the wrapper pins for the
+// host architecture. The arch case lists amd64 first, then arm64.
+func pinnedArchiveDigests(t *testing.T, script string) (goreleaser, zig string) {
+	t.Helper()
+	digest := regexp.MustCompile(`^[0-9a-f]{64}$`)
+	collect := func(prefix string) []string {
+		var values []string
+		for _, line := range strings.Split(script, "\n") {
+			value, ok := strings.CutPrefix(strings.TrimSpace(line), prefix)
+			if !ok {
+				continue
+			}
+			value = strings.TrimSuffix(value, "\"")
+			if !digest.MatchString(value) {
+				t.Fatalf("pinned digest %q for %s is not a sha256 hex value", value, prefix)
+			}
+			values = append(values, value)
+		}
+		return values
+	}
+	archiveShas := collect("archive_sha=\"")
+	zigShas := collect("zig_sha=\"")
+	if len(archiveShas) < 2 || len(zigShas) < 2 {
+		t.Fatalf("wrapper does not pin both architectures: %v %v", archiveShas, zigShas)
+	}
+	index := 0
+	if runtime.GOARCH == "arm64" {
+		index = 1
+	}
+	return archiveShas[index], zigShas[index]
+}
+
+// seedVerifiedTool writes an executable plus the marker the wrapper records
+// after a successful pinned install, reproducing a legitimately cached tool.
+func seedVerifiedTool(t *testing.T, dir, exe, archiveSha string) {
+	t.Helper()
+	body := []byte("#!/bin/sh\nexit 0\n")
+	mustWriteFile(t, filepath.Join(dir, exe), body, 0o755)
+	sum := sha256.Sum256(body)
+	marker := fmt.Sprintf("archive_sha256=%s\nexe_sha256=%x\n", archiveSha, sum)
+	mustWriteFile(t, filepath.Join(dir, ".dws-verified"), []byte(marker), 0o644)
+}
+
 func TestCrossReleaseWrapperVerifiesZigBeforeStartingDocker(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" || (runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64") {
 		t.Skip("requires a supported Unix release host")
 	}
-	script, err := filepath.Abs(filepath.Join("..", "..", "scripts", "release", "run-goreleaser-cross.sh"))
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "release", "run-goreleaser-cross.sh"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	scriptData, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", scriptPath, err)
+	}
+	goreleaserSha, zigSha := pinnedArchiveDigests(t, string(scriptData))
+
 	root := t.TempDir()
 	cache := filepath.Join(root, "tools")
 	archiveArch := runtime.GOARCH
 	if archiveArch == "amd64" {
 		archiveArch = "x86_64"
 	}
-	mustWriteFile(t, filepath.Join(cache, "goreleaser-2.16.0-linux-"+archiveArch, "goreleaser"), []byte("#!/bin/sh\nexit 0\n"), 0o755)
+	goreleaserDir := filepath.Join(cache, "goreleaser-2.16.0-linux-"+archiveArch)
+	zigDir := filepath.Join(cache, "zig-0.15.2-linux-"+runtime.GOARCH)
+
 	binDir := filepath.Join(root, "bin")
-	mustWriteFile(t, filepath.Join(binDir, "curl"), []byte("#!/bin/sh\nfor arg do target=\"$arg\"; done\nprintf invalid-archive > \"$target\"\n"), 0o755)
+	curlLog := filepath.Join(root, "curl.log")
+	mustWriteFile(t, filepath.Join(binDir, "curl"), []byte(
+		"#!/bin/sh\nfor arg do target=\"$arg\"; done\nprintf 'call\\n' >> \"$DWS_TEST_CURL_LOG\"\nprintf invalid-archive > \"$target\"\n"), 0o755)
 	mustWriteFile(t, filepath.Join(binDir, "docker"), []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$DWS_TEST_DOCKER_LOG\"\n"), 0o755)
 	logPath := filepath.Join(root, "docker.log")
 	run := func() ([]byte, error) {
-		cmd := exec.Command("bash", script, "build", "--snapshot")
+		cmd := exec.Command("bash", scriptPath, "build", "--snapshot")
 		cmd.Env = append(os.Environ(),
 			"PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"),
 			"DWS_RELEASE_TOOL_CACHE="+cache,
+			"DWS_TEST_CURL_LOG="+curlLog,
 			"DWS_TEST_DOCKER_LOG="+logPath,
 			"DWS_PACKAGE_VERSION=0.0.0-test",
 		)
 		return cmd.CombinedOutput()
 	}
-	if output, err := run(); err == nil || !strings.Contains(string(output), "Zig archive checksum mismatch") {
-		t.Fatalf("corrupt compiler archive accepted: %v, %s", err, output)
+	downloads := func() int {
+		data, readErr := os.ReadFile(curlLog)
+		if readErr != nil {
+			return 0
+		}
+		return strings.Count(string(data), "call")
 	}
-	if _, err := os.Stat(logPath); !os.IsNotExist(err) {
-		t.Fatalf("Docker must not start after a checksum failure: %v", err)
+	assertBlocked := func(output []byte, runErr error, want string) {
+		t.Helper()
+		if runErr == nil || !strings.Contains(string(output), want) {
+			t.Fatalf("wrapper did not fail with %q: %v, %s", want, runErr, output)
+		}
+		if _, statErr := os.Stat(logPath); !os.IsNotExist(statErr) {
+			t.Fatalf("Docker must not start after a checksum failure: %v", statErr)
+		}
 	}
-	zigDir := filepath.Join(cache, "zig-0.15.2-linux-"+runtime.GOARCH)
-	mustWriteFile(t, filepath.Join(zigDir, "zig"), []byte("#!/bin/sh\nexit 0\n"), 0o755)
-	if output, err := run(); err != nil {
+
+	// A bare executable proves nothing: without the marker the wrapper must
+	// download and verify again instead of reusing whatever is on disk.
+	mustWriteFile(t, filepath.Join(goreleaserDir, "goreleaser"), []byte("#!/bin/sh\nexit 0\n"), 0o755)
+	output, err := run()
+	assertBlocked(output, err, "GoReleaser archive checksum mismatch")
+
+	seedVerifiedTool(t, goreleaserDir, "goreleaser", goreleaserSha)
+	output, err = run()
+	assertBlocked(output, err, "Zig archive checksum mismatch")
+
+	// A present marker is not enough either: the executable digest must still
+	// match, so a replaced or truncated tool is rejected on a cache hit.
+	seedVerifiedTool(t, zigDir, "zig", zigSha)
+	mustWriteFile(t, filepath.Join(zigDir, "zig"), []byte("#!/bin/sh\necho tampered\n"), 0o755)
+	output, err = run()
+	assertBlocked(output, err, "Zig archive checksum mismatch")
+
+	seedVerifiedTool(t, zigDir, "zig", zigSha)
+	before := downloads()
+	output, err = run()
+	if err != nil {
 		t.Fatalf("cached compiler invocation failed: %v, %s", err, output)
+	}
+	if after := downloads(); after != before {
+		t.Fatalf("verified cache downloaded %d more archives, want a pure cache hit", after-before)
 	}
 	args, err := os.ReadFile(logPath)
 	if err != nil {
@@ -3397,6 +3486,62 @@ func TestReleaseBuildsSafeChatBackendByDefaultForEveryPlatform(t *testing.T) {
 	} {
 		if !strings.Contains(verifier, required) {
 			t.Errorf("release artifact verifier is missing SafeChat assertion %q", required)
+		}
+	}
+}
+
+// TestReleaseCrossCompilerEnvCoversEveryTarget pins that the CC/CXX templates
+// resolve to a real compiler for every target in the release matrix. They read
+// CC_<os>_<arch> out of the same env list, so a target added without its
+// compiler entries would resolve to an empty CC and silently fall back to the
+// host toolchain under CGO.
+func TestReleaseCrossCompilerEnvCoversEveryTarget(t *testing.T) {
+	t.Parallel()
+
+	configPath, err := filepath.Abs(filepath.Join("..", "..", ".goreleaser.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", configPath, err)
+	}
+	var config struct {
+		Builds []struct {
+			Env    []string `yaml:"env"`
+			Goos   []string `yaml:"goos"`
+			Goarch []string `yaml:"goarch"`
+		} `yaml:"builds"`
+	}
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		t.Fatalf("parse .goreleaser.yaml: %v", err)
+	}
+	if len(config.Builds) != 1 {
+		t.Fatalf("expected exactly one build, got %d", len(config.Builds))
+	}
+	build := config.Builds[0]
+
+	for _, want := range []string{
+		`CC={{ index .Env (print "CC_" .Os "_" .Arch) }}`,
+		`CXX={{ index .Env (print "CXX_" .Os "_" .Arch) }}`,
+	} {
+		if !slices.Contains(build.Env, want) {
+			t.Errorf("build env is missing the per-target compiler template %q", want)
+		}
+	}
+
+	declared := make(map[string]bool, len(build.Env))
+	for _, entry := range build.Env {
+		name, _, _ := strings.Cut(entry, "=")
+		declared[name] = true
+	}
+	for _, goos := range build.Goos {
+		for _, goarch := range build.Goarch {
+			for _, prefix := range []string{"CC_", "CXX_"} {
+				if name := prefix + goos + "_" + goarch; !declared[name] {
+					t.Errorf("build env does not declare %s, so %s/%s resolves to an empty compiler", name, goos, goarch)
+				}
+			}
 		}
 	}
 }

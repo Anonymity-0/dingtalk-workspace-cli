@@ -154,7 +154,7 @@ fragment，写入唯一版本章节后移动到 `.changes/released/<version>/`�
 - tag 必须由云端 seal job 创建为 annotated tag；封板提交必须已通过 PR 合入并包含在远端 `main` 历史中。流水线允许其后 `main` 继续前进，但始终要求封板提交位于 `main` 历史中。
 - 日常 CI 和发布前都会对比“最新已交付正式版”的完整 CLI 与 Schema 契约；若长时间预检期间该 baseline 发生变化，会针对新的 baseline 重新比较。
 - GoReleaser 只构建；官方构建固定使用 digest 锁定的 `goreleaser-cross` 镜像和校验过的 GoReleaser `2.16.0`，以 CGO 交叉链接 Darwin、Linux、Windows 的 amd64/arm64 SafeChat 后端。Darwin 重签、checksums 重算和 npm 安装验证通过后，才统一上传 GitHub Release 的最终产物。
-- Linux 的 C/C++ 编译固定使用校验过的 Zig `0.15.2`，显式以 glibc `2.17` 为目标，与现有内嵌运行库的 glibc 要求对齐。产物验证读取 Linux CLI 和运行库的 ELF 符号版本，拒绝更高或未知的 glibc 要求；发布敏感 PR CI 还会在固定的 Ubuntu 20.04 容器中验证 Linux amd64 CLI 启动。
+- Linux 的 C/C++ 编译固定使用校验过的 Zig `0.15.2`，显式以 glibc `2.17` 为目标，与现有内嵌运行库的 glibc 要求对齐。产物验证读取 Linux CLI 和运行库的 ELF 符号版本，拒绝更高或未知的 glibc 要求；发布敏感 PR CI 还会在固定的 Ubuntu 20.04 容器中验证 Linux amd64 CLI 启动。产物因此依赖 glibc 动态加载器，不支持 musl 发行版（如 Alpine）：vendor 只交付 glibc 版 `libsafechat.a`，没有 musl 产物可发布，`scripts/install.sh` 会在下载前识别 musl 并明确中止。
 - 六个平台归档会逐个解包并核验二进制内嵌版本、`CGO_ENABLED=1` 和 `safechat-go-sdk` 依赖；公开资产集合、checksums 集合和 npm tarball integrity 都必须精确一致。npm tarball 固定由 npm `10.9.2` 打包，避免重跑时因 runner 自带 npm 漂移产生不同字节。
 - stable 发布到 npm `latest`；prerelease 发布到 npm `beta`。启用 `ENABLE_OSS_MIRROR=true` 后，stable 同步 OSS `latest.txt` 和共享安装脚本，prerelease 只同步 OSS `beta.txt`，不会覆盖稳定入口。
 - Release workflow 使用一个最多容纳 100 个 pending run 的串行 publication queue；版本规划、云端封板、发布、恢复、修复和撤回共享同一发布锁。

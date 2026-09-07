@@ -487,6 +487,19 @@ detect_arch() {
   esac
 }
 
+# The Linux release binaries are CGO builds linked against glibc, so they need
+# the glibc dynamic loader. musl cannot load them, and the failure would only
+# surface after install as an opaque loader error, so refuse up front.
+require_glibc_on_linux() {
+  [ "$os" = "linux" ] || return 0
+  if ls /lib/ld-musl-*.so.1 >/dev/null 2>&1; then
+    err "This Linux distribution uses musl libc, but dws release binaries are built against glibc and cannot run here. Use a glibc-based distribution."
+  fi
+  if command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi musl; then
+    err "This Linux distribution uses musl libc, but dws release binaries are built against glibc and cannot run here. Use a glibc-based distribution."
+  fi
+}
+
 # Read the releases list (newest first) and take the top tag, so this also works
 # if a release is ever published as a prerelease (which /releases/latest skips).
 # Prefer `gh` CLI (authenticated, 5 000 req/h) over raw curl (60 req/h, easily rate-limited).
@@ -566,6 +579,7 @@ install_skill() {
 main() {
   resolve_version
   os="$(detect_os)"; arch="$(detect_arch)"
+  require_glibc_on_linux
   tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT INT TERM
 
   printf '\n'

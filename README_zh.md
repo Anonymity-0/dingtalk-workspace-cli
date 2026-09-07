@@ -57,6 +57,8 @@
 curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/main/scripts/install.sh | sh
 ```
 
+> Linux 产物链接 glibc（基线 2.17）。不支持 musl 发行版（如 Alpine），安装脚本会识别并提前中止，而不是装上一个无法启动的二进制。
+
 **Windows（PowerShell）：**
 
 ```powershell
