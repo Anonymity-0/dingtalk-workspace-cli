@@ -611,9 +611,10 @@ func (p *OAuthProvider) Login(ctx context.Context, force bool) (*TokenData, erro
 	// responses: a stale cached page or /api/status response would keep
 	// showing the apply form even after the server reports hasDwsApply.
 	//
-	// NOTE: all static resources (CSS, JS, images) are currently inlined,
-	// so no-store is safe. If external resources are added in the future,
-	// use a more nuanced strategy (no-store for API/dynamic pages,
+	// NOTE: no route on this server serves a static asset; the pages' only
+	// external images come from a CDN and are unaffected by this header.
+	// If this server starts serving static assets in the future, use a more
+	// nuanced strategy (no-store for API/dynamic pages,
 	// public + max-age for static assets).
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
