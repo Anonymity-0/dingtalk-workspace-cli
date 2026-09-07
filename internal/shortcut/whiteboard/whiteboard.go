@@ -216,7 +216,7 @@ var Query = shortcut.Shortcut{
 		queryResultSpec(), nil,
 		[]contract.ParamDecl{
 			{Name: "node", Property: "nodeId"},
-			{Name: "part-id", Property: "partId", RequiredWhen: "操作文档内嵌白板时；显式提供即选择内嵌分支"},
+			{Name: "part-id", Property: "partId"},
 			{Name: "view", Property: "view", Enum: []string{"summary", "page", "all"}},
 			{Name: "page-id", Property: "pageId", RequiredWhen: "独立白板且 view=page 时"},
 		},
@@ -226,7 +226,7 @@ var Query = shortcut.Shortcut{
 	),
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "承载文档或独立白板的节点 ID/URL；--node 去除空白后不能为空", Required: true},
-		{Name: "part-id", Type: shortcut.FlagString, Desc: "文档内白板 part ID；显式提供时选择内嵌分支。显式非空 --part-id 选择内嵌白板并禁止 view/page-id；未提供时默认独立白板，view=page 必须提供 page-id", RequiredWhen: "操作文档内嵌白板时"},
+		{Name: "part-id", Type: shortcut.FlagString, Desc: "文档内白板 part ID；显式提供时选择内嵌分支。显式非空 --part-id 选择内嵌白板并禁止 view/page-id；未提供时默认独立白板，view=page 必须提供 page-id"},
 		{Name: "view", Type: shortcut.FlagString, Default: "summary", Enum: []string{"summary", "page", "all"}, Desc: "独立白板查询视图，默认 summary。显式非空 --part-id 选择内嵌白板并禁止 view/page-id；未提供时默认独立白板，view=page 必须提供 page-id"},
 		{Name: "page-id", Type: shortcut.FlagString, Desc: "独立白板页面 ID；view=page 时必填。显式非空 --part-id 选择内嵌白板并禁止 view/page-id；未提供时默认独立白板，view=page 必须提供 page-id", RequiredWhen: "独立白板且 view=page 时"},
 	},
@@ -280,7 +280,7 @@ var Update = shortcut.Shortcut{
 		updateResultSpec(), &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewRequest, RemoteReads: false},
 		[]contract.ParamDecl{
 			{Name: "node", Property: "nodeId"},
-			{Name: "part-id", Property: "partId", RequiredWhen: "操作文档内嵌白板时；显式提供即选择内嵌分支"},
+			{Name: "part-id", Property: "partId"},
 			{Name: "source", Property: "source"},
 			{Name: "page-id", Property: "pageId", RequiredWhen: "独立白板 overwrite 时"},
 			{Name: "expected-revision", Property: "expectedRevision", RequiredWhen: "操作独立白板时"},
@@ -292,7 +292,7 @@ var Update = shortcut.Shortcut{
 	),
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "承载文档或独立白板的节点 ID/URL；--node 去除空白后不能为空", Required: true},
-		{Name: "part-id", Type: shortcut.FlagString, Desc: "文档内白板 part ID；显式提供时选择内嵌分支。显式非空 part-id 选择内嵌分支并禁止 revision/requestId；未提供 part-id 时独立分支要求 expected-revision/request-id，overwrite 还要求 page-id", RequiredWhen: "操作文档内嵌白板时"},
+		{Name: "part-id", Type: shortcut.FlagString, Desc: "文档内白板 part ID；显式提供时选择内嵌分支。显式非空 part-id 选择内嵌分支并禁止 revision/requestId；未提供 part-id 时独立分支要求 expected-revision/request-id，overwrite 还要求 page-id"},
 		{Name: "source", Type: shortcut.FlagString, Desc: "OpenNodes V1 JSON，不能为空；支持字面量、@相对文件或 - 从 stdin 读取", Required: true, Input: []string{"file", "stdin"}},
 		{Name: "page-id", Type: shortcut.FlagString, Desc: "目标页面 ID；独立白板 overwrite 时必填。显式非空 part-id 选择内嵌分支并禁止 revision/requestId；未提供 part-id 时独立分支要求 expected-revision/request-id，overwrite 还要求 page-id", RequiredWhen: "独立白板 overwrite 时"},
 		{Name: "expected-revision", Type: shortcut.FlagInt, Desc: "独立白板最新 revision；必须为非负整数。显式非空 part-id 选择内嵌分支并禁止 revision/requestId；未提供 part-id 时独立分支要求 expected-revision/request-id，overwrite 还要求 page-id", RequiredWhen: "操作独立白板时"},

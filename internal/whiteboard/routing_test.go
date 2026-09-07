@@ -51,7 +51,9 @@ func TestCrossPlatformCoverageWhiteboardBuildQueryCallRoutesExactlyOnce(t *testi
 		t.Fatalf("page = %#v err=%v", page, err)
 	}
 	for _, options := range []QueryOptions{
+		{Target: Target{NodeID: "  "}},
 		{Target: Target{NodeID: "doc", PartID: "part", PartIDChanged: true}, View: "all", ViewChanged: true},
+		{Target: Target{NodeID: "wb"}, ViewChanged: true},
 		{Target: Target{NodeID: "wb"}, View: "page", ViewChanged: true},
 		{Target: Target{NodeID: "wb"}, PageID: "p", PageIDChanged: true},
 		{Target: Target{NodeID: "wb"}, View: "bad", ViewChanged: true},
@@ -88,14 +90,30 @@ func TestCrossPlatformCoverageWhiteboardBuildUpdateCallPreservesOldArgsAndValida
 		t.Fatalf("standalone = %#v", standalone)
 	}
 	for _, options := range []UpdateOptions{
+		{Target: Target{NodeID: "  "}, Mode: "append", NodesJSON: "[]"},
+		{Target: Target{NodeID: "wb"}, Mode: "invalid", NodesJSON: "[]"},
+		{Target: Target{NodeID: "wb"}, Mode: "append"},
+		{Target: Target{NodeID: "wb"}, Mode: "append", NodesJSON: "[]", PageIDChanged: true},
 		{Target: Target{NodeID: "doc", PartID: "part", PartIDChanged: true}, Mode: "append", NodesJSON: "[]", ExpectedRevisionChanged: true},
 		{Target: Target{NodeID: "doc", PartID: "part", PartIDChanged: true}, Mode: "overwrite", NodesJSON: "[]", PageID: "page", PageIDChanged: true},
 		{Target: Target{NodeID: "wb"}, Mode: "append", NodesJSON: "[]", RequestID: "r", RequestIDChanged: true},
+		{Target: Target{NodeID: "wb"}, Mode: "append", NodesJSON: "[]", ExpectedRevision: -1, ExpectedRevisionChanged: true},
+		{Target: Target{NodeID: "wb"}, Mode: "append", NodesJSON: "[]", ExpectedRevisionChanged: true, RequestIDChanged: true},
 		{Target: Target{NodeID: "wb"}, Mode: "append", NodesJSON: "[]", ExpectedRevisionChanged: true, RequestID: "bad space", RequestIDChanged: true},
 		{Target: Target{NodeID: "wb"}, Mode: "overwrite", NodesJSON: "[]", ExpectedRevisionChanged: true, RequestID: "r", RequestIDChanged: true},
 	} {
 		if _, err := BuildUpdateCall(options); err == nil {
 			t.Fatalf("options %#v unexpectedly succeeded", options)
+		}
+	}
+	for _, requestID := range []string{"request-1", " request_2 "} {
+		if err := ValidateCreateRequestID(requestID); err != nil {
+			t.Fatalf("ValidateCreateRequestID(%q): %v", requestID, err)
+		}
+	}
+	for _, requestID := range []string{"", "bad request", string(make([]byte, 129))} {
+		if err := ValidateCreateRequestID(requestID); err == nil {
+			t.Fatalf("ValidateCreateRequestID(%q) unexpectedly succeeded", requestID)
 		}
 	}
 }

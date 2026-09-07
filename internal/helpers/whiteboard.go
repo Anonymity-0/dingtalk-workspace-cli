@@ -132,7 +132,7 @@ func newWhiteboardCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
-				{Name: "part-id", Property: "partId", Required: boolPtr(false), RequiredWhen: "操作文档内嵌白板时；显式提供即选择内嵌分支"},
+				{Name: "part-id", Property: "partId", Required: boolPtr(false)},
 				{Name: "view", Property: "view", Required: boolPtr(false), Enum: []string{"summary", "page", "all"}},
 				{Name: "page-id", Property: "pageId", Required: boolPtr(false), RequiredWhen: "独立白板且 view=page 时"},
 			},
@@ -238,7 +238,7 @@ func newWhiteboardCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
-				{Name: "part-id", Property: "partId", Required: boolPtr(false), RequiredWhen: "操作文档内嵌白板时；显式提供即选择内嵌分支"},
+				{Name: "part-id", Property: "partId", Required: boolPtr(false)},
 				{Name: "source", Required: boolPtr(true)},
 				{Name: "page-id", Property: "pageId", Required: boolPtr(false), RequiredWhen: "独立白板 overwrite 时"},
 				{Name: "expected-revision", Property: "expectedRevision", Required: boolPtr(false), RequiredWhen: "操作独立白板时"},

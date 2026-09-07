@@ -60,6 +60,9 @@ func TestCrossPlatformCoverageWhiteboardNativeRoutingAndCreateContractsDelivered
 	if required, _ := queryParams["part-id"]["required"].(bool); required {
 		t.Fatalf("whiteboard query --part-id required=%v, want compatibility routing", required)
 	}
+	if got := schemaContractString(queryParams["part-id"]["required_when"]); got != "" {
+		t.Fatalf("whiteboard query --part-id required_when=%q, want compatibility-safe omission", got)
+	}
 	if got := schemaContractStringSlice(queryParams["view"]["enum"]); !reflect.DeepEqual(got, []string{"summary", "page", "all"}) {
 		t.Fatalf("whiteboard query --view enum=%v", got)
 	}
@@ -69,6 +72,9 @@ func TestCrossPlatformCoverageWhiteboardNativeRoutingAndCreateContractsDelivered
 
 	update := executeShortcutSchemaQuery(t, "--cli-path", "whiteboard update")
 	updateParams := schemaContractMap(update["parameters"])
+	if got := schemaContractString(updateParams["part-id"]["required_when"]); got != "" {
+		t.Fatalf("whiteboard update --part-id required_when=%q, want compatibility-safe omission", got)
+	}
 	for name, property := range map[string]string{
 		"expected-revision": "expectedRevision",
 		"request-id":        "requestId",

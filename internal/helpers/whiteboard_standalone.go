@@ -118,21 +118,14 @@ func loadStandaloneWhiteboardCreateSource(sourceValue string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	var nodes []any
-	decoder := json.NewDecoder(strings.NewReader(nodesJSON))
-	decoder.UseNumber()
-	if err := decoder.Decode(&nodes); err != nil {
-		return nil, invalidWhiteboardSourceJSON(err)
-	}
-	sourceJSON, err := json.Marshal(map[string]any{
-		"schemaVersion":  input.Source.SchemaVersion,
-		"catalogVersion": input.Source.CatalogVersion,
-		"nodes":          nodes,
-	})
-	if err != nil {
-		return nil, invalidWhiteboardSourceJSON(err)
-	}
-	return string(sourceJSON), nil
+	// parseStandaloneWhiteboardCreateJSON has already validated both fixed
+	// version fields and the complete nodes array. Assemble the service string
+	// from those validated fragments so JSON numbers remain numbers and there is
+	// no second lossy decode/encode pass.
+	return fmt.Sprintf(`{"schemaVersion":%s,"catalogVersion":%s,"nodes":%s}`,
+		strconv.Quote(input.Source.SchemaVersion),
+		strconv.Quote(input.Source.CatalogVersion),
+		nodesJSON), nil
 }
 
 func parseStandaloneWhiteboardCreateJSON(data []byte) (*whiteboardUpdateFile, string, error) {
