@@ -680,7 +680,7 @@ var RecordQuery = shortcut.Shortcut{
 	Command:     "+record-query",
 	Product:     serverMain,
 	Description: "查询表格记录（按 ID / 条件 / 关键词，并支持字段投影和分页）",
-	Intent:      "读取单页行数据；可按 recordId 精确取、按已归一化条件筛选、按关键词搜索，并用 fieldIds 只返回所需字段和用 nextCursor 显式续页。完整读取全表时不要使用本 Shortcut，改用 dws aitable record query --all --page-limit 0；服务端未返回的计算字段不会由 CLI 本地补算。",
+	Intent:      "读取单页行数据；可按 recordId 精确取、按已归一化条件筛选、按关键词搜索，并用 fieldIds 只返回所需字段和用 nextCursor 显式续页；filters 中字段和值必须先按字段类型解析。完整读取全表时不要使用本 Shortcut，改用 dws aitable record query --all --page-limit 0；服务端未返回的计算字段不会由 CLI 本地补算。",
 	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
@@ -701,8 +701,8 @@ var RecordQuery = shortcut.Shortcut{
 			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
 		Selection: contract.SelectionSpec{
-			AgentSummary: "查询表格当前页记录（按 ID / 条件 / 关键词，并支持字段投影和 nextCursor 显式续页）",
-			UseWhen:      []string{"读取单页数据、按 recordId 精确取数，或将上一页 nextCursor 原样传回续页；filters 中字段和值必须先按字段类型解析，fieldIds 可投影所需字段。"},
+			AgentSummary: "查询表格记录（按 ID / 条件 / 关键词，并支持字段投影和分页）",
+			UseWhen:      []string{"读取单页行数据；可按 recordId 精确取、按已归一化条件筛选、按关键词搜索，并用 fieldIds 只返回所需字段和用 nextCursor 显式续页；filters 中字段和值必须先按字段类型解析。完整读取全表时不要使用本 Shortcut，改用 dws aitable record query --all --page-limit 0；服务端未返回的计算字段不会由 CLI 本地补算。"},
 			AvoidWhen:    []string{"需要全部、完整、汇总、统计、导出或逐条处理全表数据时，改用 dws aitable record query --all --page-limit 0；不要手写 cursor 循环或把当前页当全量"},
 			Examples: []string{
 				"dws aitable +record-query --base-id B --table-id T --query \"关键词\" --limit 50",
