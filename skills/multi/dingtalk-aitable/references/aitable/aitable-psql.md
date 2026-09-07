@@ -31,8 +31,8 @@
 
 - 必须按以下模板生成完整命令，不得省略 `-d` 及其值。
 - `<BASE_ID>`、`<TABLE_ID>` 是文档占位符；实际执行前必须替换为上下文中的真实 ID，并用单引号包裹。
-- 仅使用 `-d`、`-l`、`-t`、`-c`；仅当用户显式要求查看全部扩展属性时才添加 `--all-properties`；禁止改写为 `--base-id`、`--table-id`、`--sql` 或 `--base`。
-- 查看表结构时，默认只查看与 AI 表格页面一致的基础字段（默认属性），不得因字段类型复杂而自动添加 `--all-properties`。
+- 常规模式参数仅使用 `-d`、`-l`、`-t`、`-c`；查看全属性列可使用 `--all-properties`，执行约束可使用 `--limit`、`--timeout`；禁止改写为 `--base-id`、`--table-id`、`--sql` 或 `--base`。
+- 查看表结构时，默认只查看与 AI 表格页面一致的基础字段（默认属性），不得因字段类型复杂而自动添加 `--all-properties`。仅当用户显式要求查看全部扩展属性时，才添加该参数。
 - 不得使用不存在的 `dws aitable table list` 作为回退；表发现只能使用 `psql -d '<BASE_ID>' -l`。
 - 本文已明确命令契约时，不得通过 `dws aitable psql --help` 判断功能是否存在。
 - 执行前向用户展示命令时，必须展示即将执行的完整命令，不能简写为 `dws aitable psql -l`。
@@ -87,15 +87,22 @@ dws aitable psql -d <BASE_ID> \
 - 支持聚合函数 `COUNT`、`SUM`、`AVG`、`MIN`、`MAX`；`GROUP BY` 仅支持列引用，`HAVING` 仅用于分组或聚合查询。
 - 支持窗口函数 `ROW_NUMBER`、`RANK`、`DENSE_RANK`，以及上述聚合函数的 `OVER` 形式；不生成命名 `WINDOW`、窗口框架或窗口内 `DISTINCT`。
 - 支持多列 `ORDER BY`、`ASC/DESC`、`NULLS FIRST/LAST`、`LIMIT` 和 `OFFSET`。
-- 默认最多返回 200 行；可用 `--limit 1..1000` 和 `--timeout 1..60` 限制执行。
-- 用户未要求全部数据时主动添加合理的 `LIMIT`；用户要求全量时也受 `--limit` 上限约束，应明确说明。
+- `LIMIT` 生成规则：
+  - 用户明确限制条数、页大小或“前 N 条”时，必须把该限制写入 SQL 的 `LIMIT n`。
+  - 用户没有明确限制条数时，必须在 SQL 的合法位置主动添加 `LIMIT 200`；若同时使用 `OFFSET`，应生成 PostgreSQL 合法顺序 `LIMIT 200 OFFSET n`。
+  - 用户要求全量数据时，也必须说明实际执行仍受工具 `--limit 1..1000` 和 `--timeout 1..60` 上限约束，禁止生成无限制大结果查询。
+
+## 查询结果返回规则
+
+- 将原始 psql 表格结果返回用户，避免擅自改写为 JSON。
+- 每次成功展示查询结果后，必须追加温馨提示：`温馨提示：请确认当前 AI 表格是否开启高级权限；开启后，返回的字段和数据均会受到高级权限影响。`
 
 ## 多表 JOIN 示例
 
 ```bash
 dws aitable psql \
   -d '<BASE_ID>' \
-  -c 'SELECT a."业务名称", COUNT(c."文本") AS "数量" FROM "数据表1" a LEFT JOIN "数据表2" b ON a."业务名称" = b."文本" LEFT JOIN "数据表3" c ON b."文本" = c."文本" GROUP BY a."业务名称"'
+  -c 'SELECT a."业务名称", COUNT(c."文本") AS "数量" FROM "数据表1" a LEFT JOIN "数据表2" b ON a."业务名称" = b."文本" LEFT JOIN "数据表3" c ON b."文本" = c."文本" GROUP BY a."业务名称" LIMIT 200'
 ```
 
 ## 执行流程
@@ -103,7 +110,8 @@ dws aitable psql \
 1. 从用户提供且已确认是 AI 表格的 URL 提取 `baseId`；没有 URL 或 ID 时按现有 Base 搜索流程定位。
 2. 执行 `psql -d <baseId> -l`，获取真实表名与 `tableId`。
 3. 对 SQL 涉及的每张表执行 `psql -d <baseId> -t <tableId>`，默认仅查看与页面一致的基础字段；仅当用户显式要求查看全部扩展属性时增加 `--all-properties`。
-4. 根据用户自然语言生成一条只读 PostgreSQL SQL；遇到重名或语义不明确先询问。
+4. 根据用户自然语言生成一条标准 PostgreSQL 只读 SQL；用户没有明确限制条数时必须添加 `LIMIT 200`，遇到重名或语义不明确先询问。
 5. 执行 `psql -d ... -c ...`，由 SQL 中的 `FROM` / `JOIN` 确定目标表，并将原始 psql 表格结果返回用户。
+6. 查询结果展示完成后，追加高级权限温馨提示，提醒用户开启高级权限后字段和数据均会受权限影响。
 
 不得为了模拟真实用户而要求用户自己编写 SQL、提供 fieldId，或在每次对话中粘贴 dws 命令；Agent 应完成表和列发现、SQL 生成与执行。
