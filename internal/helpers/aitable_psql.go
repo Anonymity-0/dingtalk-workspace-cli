@@ -253,23 +253,20 @@ func renderPgQuery(out io.Writer, data any, expanded bool) error {
 }
 
 func printPgTable(out io.Writer, headers []string, rows [][]string) error {
-	writer := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	if _, err := fmt.Fprintln(writer, strings.Join(headers, "\t| ")); err != nil {
-		return err
-	}
+	var rendered strings.Builder
+	writer := tabwriter.NewWriter(&rendered, 0, 4, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, strings.Join(headers, "\t| "))
 	separator := make([]string, len(headers))
 	for i, header := range headers {
 		separator[i] = strings.Repeat("-", max(3, len([]rune(header))))
 	}
-	if _, err := fmt.Fprintln(writer, strings.Join(separator, "\t+-")); err != nil {
-		return err
-	}
+	_, _ = fmt.Fprintln(writer, strings.Join(separator, "\t+-"))
 	for _, row := range rows {
-		if _, err := fmt.Fprintln(writer, strings.Join(row, "\t| ")); err != nil {
-			return err
-		}
+		_, _ = fmt.Fprintln(writer, strings.Join(row, "\t| "))
 	}
-	return writer.Flush()
+	_ = writer.Flush()
+	_, err := io.WriteString(out, rendered.String())
+	return err
 }
 
 func pgValue(value any) string {

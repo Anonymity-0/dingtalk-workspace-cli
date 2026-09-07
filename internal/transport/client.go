@@ -997,19 +997,29 @@ func (c *Client) ValidateTrustedEndpoint(endpoint string) error {
 
 func requiresStreamableHTTPSession(endpoint string) bool {
 	productionEndpoint, ok := aitableProductionEndpoint()
-	if !ok {
+	return ok && sameStreamableHTTPSessionEndpoint(endpoint, productionEndpoint)
+}
+
+func sameStreamableHTTPSessionEndpoint(endpoint, productionEndpoint string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(endpoint))
+	if err != nil {
 		return false
 	}
-	parsed, err := url.Parse(strings.TrimSpace(endpoint))
-	productionParsed, productionErr := url.Parse(productionEndpoint)
-	return err == nil && productionErr == nil &&
-		strings.EqualFold(parsed.Scheme, productionParsed.Scheme) &&
+	productionParsed, err := url.Parse(productionEndpoint)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(parsed.Scheme, productionParsed.Scheme) &&
 		strings.EqualFold(parsed.Hostname(), productionParsed.Hostname()) &&
 		parsed.EscapedPath() == productionParsed.EscapedPath()
 }
 
 func aitableProductionEndpoint() (string, bool) {
-	for _, server := range syncdata.StaticServers() {
+	return aitableEndpointFromServers(syncdata.StaticServers())
+}
+
+func aitableEndpointFromServers(servers []syncdata.ServerInfo) (string, bool) {
+	for _, server := range servers {
 		if server.ID == "aitable" {
 			return server.Endpoint, true
 		}

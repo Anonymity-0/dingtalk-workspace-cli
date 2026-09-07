@@ -30,6 +30,7 @@ import (
 	"time"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/syncdata"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/config"
 )
 
@@ -851,6 +852,11 @@ func TestRequiresStreamableHTTPSessionOnlyForProductionAITableEndpoint(t *testin
 			endpoint: strings.Replace(productionEndpoint, "https://", "http://", 1),
 			want:     false,
 		},
+		{
+			name:     "invalid endpoint",
+			endpoint: "%",
+			want:     false,
+		},
 	}
 
 	for _, tt := range cases {
@@ -858,6 +864,92 @@ func TestRequiresStreamableHTTPSessionOnlyForProductionAITableEndpoint(t *testin
 			t.Parallel()
 			if got := requiresStreamableHTTPSession(tt.endpoint); got != tt.want {
 				t.Fatalf("requiresStreamableHTTPSession(%q) = %t, want %t", tt.endpoint, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAITableEndpointFromServersAndStreamableSessionFailures(t *testing.T) {
+	if endpoint, ok := aitableEndpointFromServers([]syncdata.ServerInfo{{ID: "other"}}); ok || endpoint != "" {
+		t.Fatalf("missing endpoint = %q, %t", endpoint, ok)
+	}
+	if endpoint, ok := aitableEndpointFromServers([]syncdata.ServerInfo{{ID: "other"}, {ID: "aitable", Endpoint: "https://example.test/mcp"}}); !ok || endpoint != "https://example.test/mcp" {
+		t.Fatalf("resolved endpoint = %q, %t", endpoint, ok)
+	}
+	for _, test := range []struct {
+		endpoint           string
+		productionEndpoint string
+	}{
+		{endpoint: "%", productionEndpoint: "https://example.test/mcp"},
+		{endpoint: "https://example.test/mcp", productionEndpoint: "%"},
+	} {
+		if sameStreamableHTTPSessionEndpoint(test.endpoint, test.productionEndpoint) {
+			t.Fatalf("endpoint comparison unexpectedly matched %#v", test)
+		}
+	}
+
+	endpoint := requireAITableProductionEndpoint(t)
+	t.Run("existing session skips initialize", func(t *testing.T) {
+		client := NewClient(nil)
+		client.setSessionID("ready")
+		if err := client.ensureStreamableHTTPSession(context.Background(), endpoint); err != nil {
+			t.Fatalf("ensure session: %v", err)
+		}
+	})
+	t.Run("initialize missing session id", func(t *testing.T) {
+		client := NewClient(&http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-03-26","capabilities":{},"serverInfo":{}}}`))}, nil
+		})})
+		client.MaxRetries = 0
+		if err := client.ensureStreamableHTTPSession(context.Background(), endpoint); err == nil || !strings.Contains(err.Error(), "session ID") {
+			t.Fatalf("ensure session error = %v", err)
+		}
+	})
+	t.Run("initialize failure", func(t *testing.T) {
+		client := NewClient(&http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			return nil, stderrors.New("offline")
+		})})
+		client.MaxRetries = 0
+		if err := client.ensureStreamableHTTPSession(context.Background(), endpoint); err == nil || !strings.Contains(err.Error(), "offline") {
+			t.Fatalf("ensure session error = %v", err)
+		}
+		if _, err := client.CallTool(context.Background(), endpoint, "otable_pg_list_tables", map[string]any{}); err == nil || !strings.Contains(err.Error(), "offline") {
+			t.Fatalf("CallTool error = %v", err)
+		}
+	})
+	t.Run("initialized notification failure", func(t *testing.T) {
+		calls := 0
+		client := NewClient(&http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			calls++
+			if calls == 1 {
+				header := make(http.Header)
+				header.Set(HeaderMCPSessionID, "session-1")
+				return &http.Response{StatusCode: http.StatusOK, Header: header, Body: io.NopCloser(strings.NewReader(`{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-03-26","capabilities":{},"serverInfo":{}}}`))}, nil
+			}
+			return &http.Response{StatusCode: http.StatusInternalServerError, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("failed"))}, nil
+		})})
+		client.MaxRetries = 0
+		if err := client.ensureStreamableHTTPSession(context.Background(), endpoint); err == nil {
+			t.Fatal("ensure session error = nil")
+		}
+	})
+}
+
+func TestNormalizeJSONRPCResponseBody(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		body        string
+		contentType string
+		want        string
+	}{
+		{name: "json unchanged", body: `{"jsonrpc":"2.0"}`, contentType: "application/json", want: `{"jsonrpc":"2.0"}`},
+		{name: "sse data", body: "event: message\ndata: {\"jsonrpc\":\"2.0\"}\n\n", contentType: "text/event-stream", want: `{"jsonrpc":"2.0"}`},
+		{name: "sse skips done", body: "data: [DONE]\ndata: {\"jsonrpc\":\"2.0\"}\n", contentType: "TEXT/EVENT-STREAM; charset=utf-8", want: `{"jsonrpc":"2.0"}`},
+		{name: "sse no payload", body: "event: message\ndata: [DONE]\n", contentType: "text/event-stream", want: "event: message\ndata: [DONE]\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := string(normalizeJSONRPCResponseBody([]byte(test.body), test.contentType)); got != test.want {
+				t.Fatalf("normalized = %q, want %q", got, test.want)
 			}
 		})
 	}
