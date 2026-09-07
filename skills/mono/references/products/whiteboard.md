@@ -97,6 +97,14 @@ dws whiteboard +update --node <WHITEBOARD_NODE_ID> \
 # 使用不透明 checkpoint 创建独立白板
 dws whiteboard create-with-content --name "<白板名称>" \
   --content ./checkpoint.txt --request-id <STABLE_REQUEST_ID> --format json
+
+# 导出独立白板；--output 是目录，文件名自动使用白板名称
+dws whiteboard export --node <WHITEBOARD_NODE_ID> \
+  --export-format png --output ./exports --format json
+
+# 轮询中断后用已有 jobId 恢复查询和下载
+dws whiteboard export-get --job-id <JOB_ID> \
+  --export-format png --output ./exports --format json
 ```
 
 `--source` 接受 JSON、`@relative-file.json` 或 stdin；本地文件必须加 `@`，裸路径
