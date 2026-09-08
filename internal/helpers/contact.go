@@ -1196,10 +1196,14 @@ func contactOrgPaginationMeta(result map[string]any) (*output.Meta, error) {
 		switch v := rawCursor.(type) {
 		case string:
 			cursor = strings.TrimSpace(v)
-		case float64:
-			cursor = strconv.FormatInt(int64(v), 10)
+		case json.Number:
+			n, err := strconv.ParseInt(v.String(), 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("pagination nextCursor must be an integer, got %q", v.String())
+			}
+			cursor = strconv.FormatInt(n, 10)
 		default:
-			return nil, fmt.Errorf("pagination nextCursor must be a JSON string or number, got %T", rawCursor)
+			return nil, fmt.Errorf("pagination nextCursor must be a JSON string or integer, got %T", rawCursor)
 		}
 	}
 	if !hasFlag && !hasCursor {
@@ -1249,11 +1253,24 @@ func contactOrgListResult(toolName string, args map[string]any) (output.CommandR
 	}
 
 	var body map[string]any
-	if err := json.Unmarshal([]byte(text), &body); err != nil || body == nil {
+	dec := json.NewDecoder(strings.NewReader(text))
+	dec.UseNumber()
+	if err := dec.Decode(&body); err != nil || body == nil {
 		return nil, &CLIError{Code: CodeMCPToolError, Message: "服务端返回非 JSON 文本或 null"}
 	}
 
-	resultData, _ := body["result"].(map[string]any)
+	var resultData map[string]any
+	if rawResult, hasResult := body["result"]; hasResult {
+		m, ok := rawResult.(map[string]any)
+		if !ok {
+			return nil, &CLIError{
+				Code:       CodeMCPToolError,
+				Message:    fmt.Sprintf("服务端返回的 result 必须是对象，实际为 %T", rawResult),
+				Suggestion: "请检查 MCP 工具出参配置或联系服务提供方修正响应结构。",
+			}
+		}
+		resultData = m
+	}
 	meta, err := contactOrgPaginationMeta(resultData)
 	if err != nil {
 		return output.Failure(&output.ErrorInfo{

@@ -294,6 +294,14 @@ func TestContactOrgListPaginationProjection(t *testing.T) {
 			wantExhausted: true,
 			wantToken:     "",
 		},
+		{
+			name:          "large integer nextCursor preserves precision beyond float53",
+			path:          []string{"org", "invite-list"},
+			toolName:      "list_team_invite",
+			response:      `{"result":{"values":[{"id":3,"status":1,"empName":"王五"}],"hasMore":true,"nextCursor":9007199254740993},"success":true}`,
+			wantExhausted: false,
+			wantToken:     "9007199254740993",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := newContactCommand()
@@ -379,9 +387,11 @@ func TestContactOrgListResultEdgeCases(t *testing.T) {
 		wantCalls  int
 	}{
 		{
-			name:      "result is non-object falls back to no pagination",
-			response:  `{"result":"unexpected","success":true}`,
-			wantCalls: 1,
+			name:       "non-object result is rejected",
+			response:   `{"result":"unexpected","success":true}`,
+			wantErr:    true,
+			wantErrMsg: "服务端返回的 result 必须是对象",
+			wantCalls:  1,
 		},
 		{
 			name:       "non-boolean hasMore is rejected",
@@ -396,10 +406,29 @@ func TestContactOrgListResultEdgeCases(t *testing.T) {
 			wantCalls: 1,
 		},
 		{
+			name:      "large integer nextCursor preserves precision",
+			response:  `{"result":{"values":[],"hasMore":true,"nextCursor":9007199254740993},"success":true}`,
+			wantCalls: 1,
+		},
+		{
+			name:       "decimal nextCursor is rejected",
+			response:   `{"result":{"values":[],"hasMore":true,"nextCursor":42.5},"success":true}`,
+			wantErr:    true,
+			wantErrMsg: "nextCursor must be an integer",
+			wantCalls:  1,
+		},
+		{
+			name:       "out-of-range nextCursor is rejected",
+			response:   `{"result":{"values":[],"hasMore":true,"nextCursor":9223372036854775808},"success":true}`,
+			wantErr:    true,
+			wantErrMsg: "nextCursor must be an integer",
+			wantCalls:  1,
+		},
+		{
 			name:       "invalid nextCursor type is rejected",
 			response:   `{"result":{"values":[],"hasMore":true,"nextCursor":true},"success":true}`,
 			wantErr:    true,
-			wantErrMsg: "nextCursor must be a JSON string or number",
+			wantErrMsg: "nextCursor must be a JSON string or integer",
 			wantCalls:  1,
 		},
 		{
