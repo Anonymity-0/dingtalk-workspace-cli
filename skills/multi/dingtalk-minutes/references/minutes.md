@@ -19,13 +19,14 @@
 
 ### 辅助脚本
 
-以下文件仍随 Skill 交付，所以必须可发现；但它不是 Golden Route。当前 Runtime 有对应 Shortcut 时优先 Shortcut，只有用户明确要求生成本地 Markdown 汇总文件、使用仓库脚本或兼容旧调用方时才运行脚本。
+以下脚本随 Skill 交付。业务读取优先 Runtime Shortcut；摘要脚本只用于用户明确要求本地 Markdown 汇总或兼容旧调用方。时间转换脚本用于读取后的本地展示计算，可按根 Skill 规则直接使用。
 
 | 文件 | 定位 | 当前边界 |
 |---|---|---|
 | [minutes_recent_summary.py](../scripts/minutes_recent_summary.py) | 汇总最近若干条“我创建的”听记摘要 | 可直接运行；固定使用 `mine`，不能代替 `+search --scope all` 或具名目标定位 |
+| [format_timestamp.py](../scripts/format_timestamp.py) | 本地批量转换时间戳、时区和星期 | 不调用 DWS；显式提供 `s/ms` 和 IANA 时区，不处理时长或相对周范围 |
 
-脚本的 `--dry-run` 只打印计划且不得调用 DWS；DWS 失败、非法 JSON 与合法空结果必须分开。脚本没有覆盖完整分页、目标消歧与跨 scope 聚合，因此不能用脚本输出声称“全部听记”。行动项读取由 `+action-items`（单条）或 `+detail --ids ... --artifacts todos`（多条）承接，不再发布重复脚本。
+摘要脚本的 `--dry-run` 只打印计划且不得调用 DWS；DWS 失败、非法 JSON 与合法空结果必须分开。摘要脚本没有覆盖完整分页、目标消歧与跨 scope 聚合，因此不能用它的输出声称“全部听记”。时间转换脚本始终纯本地，不提供或需要 `--dry-run`。行动项读取由 `+action-items`（单条）或 `+detail --ids ... --artifacts todos`（多条）承接，不再发布重复脚本。
 
 命令前缀统一为 `dws minutes`。结构化读取加 `--format json`；参数不确定时查询精确 leaf：
 
@@ -65,6 +66,20 @@ dws minutes <group> <leaf> --help
 2. 用户给标题/关键词/时间：先搜索。服务端过滤与 Agent 复核应使用同一时间范围和 profile。
 3. 精确标题优先；标题包含或语义相关结果可作为候选。零命中停止，多候选、差异较大或分页未完成时消歧。
 4. 锁定后所有 get/update 操作复用同一 taskUuid；某项内容为空或失败不能偷偷换对象。
+
+### 时间转换与展示
+
+- 使用真实返回字段的时间值和已确认单位，不能把标题中的日期当作开始时间；缺失值不补零、不补当前时间。`duration` 是时长，不作为 Unix 时间戳转换。
+- 日期、星期、UTC 偏移必须从同一个带时区的日期对象生成。优先用户指定的 IANA 时区，否则使用已知会话时区；不默认使用电脑时区。只有时区确认为 `Asia/Shanghai` 时才标注北京时间。秒/毫秒语义以字段 Contract 或来源说明为准，不单凭数字长度猜测。
+- 使用 Python 3.9+ 运行本 Skill 的 [format_timestamp.py](../scripts/format_timestamp.py)。以下命令从本 Skill 目录执行；实际替换为真实时间戳、已确认的 `s`/`ms` 单位与 IANA 时区。可一次传入多个值，按输出 `index`（从 0 开始）和原始 `timestamp` 保留 taskUuid/字段对应关系。
+
+```bash
+python3 scripts/format_timestamp.py --unit ms --timezone Asia/Shanghai 0 1000
+```
+
+- 输出为 JSON：`items` 中含原值、单位、时区、带 UTC 偏移的 `datetime` 和 `weekday`。任一输入非法则整批非零退出，stdout 无部分成功结果，错误写 stderr；不把错误当作日期。负值放在 `--` 后。无 Python、时区数据库缺失或转换报错时，使用可用的等价日期工具；仍无法计算则展示原始值并说明未转换，不能猜日期或星期。
+- “本周”等相对范围基于同一时区的真实当前时间，用日期库计算本周一和下周一边界；传给搜索前按其端点包含规则生成 RFC3339 参数，不能靠手算固定 UTC 偏移处理有夏令时的地区。
+- 交付时直接引用计算输出，保留时区；不手动改日期、不补算星期。用户不需要星期时可省略；已有明确时区且无冲突的可读时间无需额外执行转换或重复查询 DWS。
 
 ## 3. 读取内容
 
