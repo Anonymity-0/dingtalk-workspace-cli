@@ -5005,6 +5005,16 @@ func TestInstallScriptRefusesMuslLinux(t *testing.T) {
 			if !strings.Contains(body, "/lib/ld-musl-") {
 				t.Error("musl detection does not probe the musl dynamic loader")
 			}
+			// ldd must decide first. A glibc distribution with musl or
+			// musl-tools installed also carries the loader file, so consulting
+			// the glob before ldd refuses a system that can run the binary.
+			lddAt := strings.Index(body, "ldd --version")
+			globAt := strings.Index(body, "/lib/ld-musl-")
+			if lddAt < 0 {
+				t.Error("musl detection does not consult ldd --version")
+			} else if lddAt > globAt {
+				t.Errorf("ldd --version must be consulted before the loader-file fallback (ldd=%d, glob=%d)", lddAt, globAt)
+			}
 
 			entry := extractShellFunction(t, scriptPath, installer.entry)
 			guardAt := strings.Index(entry, "require_glibc_on_linux")
@@ -5017,11 +5027,20 @@ func TestInstallScriptRefusesMuslLinux(t *testing.T) {
 					installer.entry, installer.downloadsAt, guardAt, downloadAt)
 			}
 
-			run := func(t *testing.T, targetOS, lddOutput string) (string, error) {
+			run := func(t *testing.T, targetOS, lddOutput string, muslLoaderPresent bool) (string, error) {
 				t.Helper()
 				binDir := filepath.Join(t.TempDir(), "bin")
 				mustWriteFile(t, filepath.Join(binDir, "ldd"),
 					[]byte(fmt.Sprintf("#!/bin/sh\nprintf '%%s\\n' %q\n", lddOutput)), 0o755)
+				if muslLoaderPresent {
+					// Simulate a system carrying the musl loader without
+					// writing to the host /lib. When the glob matches nothing a
+					// POSIX shell passes the literal pattern to ls, so a stub
+					// that succeeds on it reproduces the file being present and
+					// delegates to the real ls otherwise.
+					mustWriteFile(t, filepath.Join(binDir, "ls"),
+						[]byte("#!/bin/sh\ncase \"$*\" in\n*ld-musl-*) exit 0 ;;\nesac\nexec /bin/ls \"$@\"\n"), 0o755)
+				}
 				harness := fmt.Sprintf(`err() { printf '%%s\n' "$@" >&2; exit 1; }
 BIN_NAME=dws
 os=%q
@@ -5039,14 +5058,22 @@ printf 'accepted\n'
 				name       string
 				targetOS   string
 				lddOutput  string
+				muslLoader bool
 				wantAccept bool
 			}{
 				{name: "glibc linux", targetOS: "linux", lddOutput: "ldd (GNU libc) 2.31", wantAccept: true},
 				{name: "musl linux", targetOS: "linux", lddOutput: "musl libc 1.2.5", wantAccept: false},
 				{name: "darwin skips the probe", targetOS: "darwin", lddOutput: "musl libc 1.2.5", wantAccept: true},
+				// A glibc distribution with musl or musl-tools installed
+				// carries the loader file but still runs glibc binaries.
+				{name: "glibc linux with musl loader present", targetOS: "linux", lddOutput: "ldd (GNU libc) 2.31", muslLoader: true, wantAccept: true},
+				{name: "ubuntu glibc with musl loader present", targetOS: "linux", lddOutput: "ldd (Ubuntu GLIBC 2.39-0ubuntu8) 2.39", muslLoader: true, wantAccept: true},
+				// Alpine's BusyBox ldd reports no version, so the loader file
+				// is still the only signal available there.
+				{name: "inconclusive ldd with musl loader present", targetOS: "linux", lddOutput: "", muslLoader: true, wantAccept: false},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
-					output, err := run(t, tc.targetOS, tc.lddOutput)
+					output, err := run(t, tc.targetOS, tc.lddOutput, tc.muslLoader)
 					if tc.wantAccept {
 						if err != nil {
 							t.Fatalf("require_glibc_on_linux rejected %s: %v\noutput:\n%s", tc.name, err, output)
