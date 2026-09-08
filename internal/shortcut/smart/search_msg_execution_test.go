@@ -342,6 +342,44 @@ func TestCrossPlatformCoverageScopedReactionSearchUsesConversationStream(t *test
 	}
 }
 
+func TestCrossPlatformCoverageScopedReactionSearchPreservesExplicitSearchCursor(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		flag  string
+		value string
+	}{
+		{name: "cursor", flag: "--cursor", value: "cursor-resume"},
+		{name: "page token alias", flag: "--page-token", value: "page-token-resume"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &searchMsgExecutionCaller{
+				searchResponse: `{"result":{"messages":[{"openMessageId":"m1","openConversationId":"cid-target"}],"hasMore":false}}`,
+				mgetResponse:   `{"result":[{"openMessageId":"m1","openConversationId":"cid-target","emotionReplyList":[{"emoji":"赞","count":1}]}]}`,
+			}
+			payload := executeSearchMsg(t, caller,
+				"--group", "cid-target",
+				"--has-reactions",
+				"--page-all",
+				tc.flag, tc.value,
+			)
+
+			if len(caller.calls) != 3 || caller.calls[0].tool != "get_conversation_info" ||
+				caller.calls[1].tool != "search_messages" || caller.calls[2].tool != "list_messages_by_ids" {
+				t.Fatalf("calls=%#v, want explicit cursor to preserve search_messages strategy", caller.calls)
+			}
+			if caller.calls[1].args["cursor"] != tc.value {
+				t.Fatalf("search cursor=%#v, want %q", caller.calls[1].args["cursor"], tc.value)
+			}
+			if payload["complete"] != true || payload["count"] != float64(1) {
+				t.Fatalf("payload=%#v", payload)
+			}
+			if _, switched := payload["searchStrategy"]; switched {
+				t.Fatalf("payload=%#v, explicit search cursor was silently switched to conversation stream", payload)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageScopedReactionSearchCompletenessBranches(t *testing.T) {
 	messageTime := time.Date(2026, 7, 3, 10, 0, 0, 0, time.UTC)
 	nextCursor := messageTime.Add(-time.Millisecond).UnixMilli()

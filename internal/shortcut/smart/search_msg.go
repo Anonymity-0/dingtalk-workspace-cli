@@ -373,6 +373,8 @@ var SearchMsg = shortcut.Shortcut{
 // interface exposes equally strong typed facts for them.
 func scopedConversationReactionStreamEligible(rt *shortcut.RuntimeContext) bool {
 	return rt.Bool("has-reactions") &&
+		!rt.Changed("cursor") &&
+		!rt.Changed("page-token") &&
 		rt.StrFirst("query", "keyword", "text", "text-query", "message-type", "conversation-type", "chat-type") == "" &&
 		len(rt.StrSlice("senders")) == 0 &&
 		len(rt.StrSlice("sender")) == 0 &&
