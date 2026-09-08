@@ -164,6 +164,9 @@ var SearchMsg = shortcut.Shortcut{
 			if err := validateSearchConversationScope(rt, requestedConversationIDs); err != nil {
 				return err
 			}
+			if scopedConversationReactionStreamEligible(rt) {
+				return executeScopedConversationReactionSearch(rt, params, resolvedFilters, requestedConversationIDs)
+			}
 			// The downstream search currently drops invalid CID filters and does
 			// not return group-scoped hits reliably. Scan the same filtered global
 			// stream and apply the already-validated CID set locally instead.
@@ -361,6 +364,217 @@ var SearchMsg = shortcut.Shortcut{
 		}
 		return rt.Output(payload)
 	},
+}
+
+// scopedConversationReactionStreamEligible selects the exact-conversation
+// message stream only when every requested predicate can be evaluated from
+// that stream without weakening the established search contract. More complex
+// structured predicates stay on search_messages until the conversation list
+// interface exposes equally strong typed facts for them.
+func scopedConversationReactionStreamEligible(rt *shortcut.RuntimeContext) bool {
+	return rt.Bool("has-reactions") &&
+		rt.StrFirst("query", "keyword", "text", "text-query", "message-type", "conversation-type", "chat-type") == "" &&
+		len(rt.StrSlice("senders")) == 0 &&
+		len(rt.StrSlice("sender")) == 0 &&
+		len(rt.StrSlice("sender-query")) == 0 &&
+		len(rt.StrSlice("at-ids")) == 0 &&
+		!rt.Bool("at-me") &&
+		!rt.Bool("is-at-me") &&
+		!rt.Bool("only-robot")
+}
+
+// executeScopedConversationReactionSearch uses the narrowest source that owns
+// every requested predicate. Each validated conversation is read through its
+// native time-boundary stream, then details are enriched and reactions are
+// filtered. The source endpoint itself enforces conversation scope, so
+// unrelated account history does not consume the global search safety budget.
+func executeScopedConversationReactionSearch(
+	rt *shortcut.RuntimeContext,
+	params map[string]any,
+	resolvedFilters searchResolvedFilters,
+	conversationIDs []string,
+) error {
+	startMillis, startOK := numericMillis(params["startTime"])
+	endMillis, endOK := numericMillis(params["endTime"])
+	if !startOK || !endOK {
+		return apperrors.NewInternal("会话消息流缺少有效的搜索时间范围")
+	}
+	startTime := time.UnixMilli(startMillis)
+	endTime := time.UnixMilli(endMillis)
+	streamRange := chatMessageTimeRange{
+		configured: true,
+		start:      &startTime,
+		end:        &endTime,
+		order:      "desc",
+	}
+	pageSize, _ := params["limit"].(int)
+	if pageSize <= 0 {
+		pageSize = chatMessagesAllPageSize
+	}
+	allMessages := make([]map[string]any, 0)
+	messageScopes := map[string]string{}
+	seenMessages := map[string]bool{}
+	failures := make([]map[string]any, 0)
+	continuations := make([]map[string]any, 0)
+	pagesFetched := 0
+	sourceComplete := true
+	hasMore := false
+	paginationKnown := true
+
+	for _, conversationID := range conversationIDs {
+		request := chatMessagesRequest{
+			tool: "list_conversation_message_v2",
+			params: map[string]any{
+				"openconversation_id": conversationID,
+				"time":                formatDingTalkMessageBoundary(endTime),
+				"forward":             false,
+				"limit":               pageSize,
+			},
+			direction:              "older",
+			fallbackConversationID: conversationID,
+			timeRange:              streamRange,
+		}
+		pagePayload, pageMessages, readErr := collectAllChatMessages(rt, request)
+		pageCount, _ := pagePayload["pagesFetched"].(int)
+		pagesFetched += pageCount
+		if readErr != nil && pageCount == 0 {
+			return readErr
+		}
+		if pagePayload["complete"] != true {
+			sourceComplete = false
+		}
+		if pagePayload["hasMore"] == true {
+			hasMore = true
+		}
+		if known, ok := pagePayload["paginationKnown"].(bool); !ok || !known {
+			paginationKnown = false
+		}
+		failures = appendScopedConversationFailures(failures, pagePayload, conversationID, readErr)
+		if nextPage, ok := pagePayload["nextPage"].(map[string]any); ok && len(nextPage) > 0 {
+			continuations = append(continuations, map[string]any{
+				"conversationId": conversationID,
+				"nextPage":       nextPage,
+			})
+		}
+		for _, message := range pageMessages {
+			messageConversationID := strings.TrimSpace(fmt.Sprint(chatmsg.ConversationID(message)))
+			if messageConversationID == "" || messageConversationID == "<nil>" {
+				message["openConversationId"] = conversationID
+			}
+			messageID := strings.TrimSpace(fmt.Sprint(searchMsgMessageID(message)))
+			if messageID != "" && messageID != "<nil>" {
+				messageScopes[messageID] = conversationID
+				if seenMessages[messageID] {
+					continue
+				}
+				seenMessages[messageID] = true
+			}
+			allMessages = append(allMessages, message)
+		}
+	}
+
+	enrichedMessages, enrichedCount, enrichFailures := enrichSearchMessages(rt, allMessages)
+	failures = append(failures, enrichFailures...)
+	for _, message := range enrichedMessages {
+		messageConversationID := strings.TrimSpace(fmt.Sprint(chatmsg.ConversationID(message)))
+		if messageConversationID != "" && messageConversationID != "<nil>" {
+			continue
+		}
+		messageID := strings.TrimSpace(fmt.Sprint(searchMsgMessageID(message)))
+		if conversationID := messageScopes[messageID]; conversationID != "" {
+			message["openConversationId"] = conversationID
+		}
+	}
+	validatedMessages, unverifiableMessageIDs := chatmsg.FilterConversationScope(enrichedMessages, conversationIDs)
+	if len(unverifiableMessageIDs) > 0 {
+		return searchScopeUnverifiedError(conversationIDs, unverifiableMessageIDs)
+	}
+	if len(validatedMessages) != len(enrichedMessages) {
+		return searchScopeViolationError(conversationIDs, enrichedMessages)
+	}
+	reactionSourceCount := len(validatedMessages)
+	validatedMessages = filterSearchMessagesWithReactions(validatedMessages)
+	order := strings.ToLower(strings.TrimSpace(rt.StrFirst("order", "sort")))
+	if order == "" {
+		order = "desc"
+	}
+	sortMessagesByCreateTimeStable(validatedMessages, order)
+	results := make([]map[string]any, 0, len(validatedMessages))
+	for _, message := range validatedMessages {
+		results = append(results, searchMsgProjectWithReactions(message, !rt.Bool("no-reactions")))
+	}
+	finalComplete := sourceComplete && len(failures) == 0
+	scope := searchScopePayload(conversationIDs, sourceComplete)
+	scope["filterMode"] = "source"
+	payload := map[string]any{
+		"contractVersion": chatmsg.MessageListContractVersion,
+		"searchStrategy":  "conversation_stream",
+		"count":           len(results),
+		"messages":        results,
+		"pagesFetched":    pagesFetched,
+		"enrichedCount":   enrichedCount,
+		"complete":        finalComplete,
+		"hasMore":         hasMore,
+		"nextCursor":      "",
+		"paginationKnown": paginationKnown,
+		"failedCount":     len(failures),
+		"failures":        failures,
+		"queryRange":      searchMessageQueryRange(params, order),
+		"timeCoverage":    searchMessageTimeCoverage(rt),
+		"scope":           scope,
+		"reactionFilter": map[string]any{
+			"predicate":    "present",
+			"sourceCount":  reactionSourceCount,
+			"matchedCount": len(results),
+			"evidence":     "conversation_stream_and_message_detail_enrichment",
+		},
+		"conclusionGuard": searchMessageConclusionGuard(rt, finalComplete, len(results)),
+	}
+	if len(resolvedFilters.Chats) > 0 {
+		payload["resolvedFilters"] = resolvedFilters
+	}
+	if len(continuations) > 0 {
+		payload["continuations"] = continuations
+	}
+	if rt.Bool("download-resources") {
+		chatshortcut.AttachMessageResourceDownloads(
+			payload,
+			chatshortcut.DownloadMessageResources(rt, validatedMessages, ""),
+		)
+	}
+	return rt.Output(payload)
+}
+
+func appendScopedConversationFailures(
+	failures []map[string]any,
+	payload map[string]any,
+	conversationID string,
+	readErr error,
+) []map[string]any {
+	failureCountBefore := len(failures)
+	if pageFailures, ok := payload["failures"].([]map[string]any); ok {
+		for _, failure := range pageFailures {
+			copyFailure := make(map[string]any, len(failure)+1)
+			for key, value := range failure {
+				copyFailure[key] = value
+			}
+			copyFailure["conversationId"] = conversationID
+			failures = append(failures, copyFailure)
+		}
+	}
+	if payload["complete"] == true || len(failures) > failureCountBefore {
+		return failures
+	}
+	failure := map[string]any{
+		"stage":          "conversation-stream",
+		"conversationId": conversationID,
+		"stopReason":     payload["stopReason"],
+		"error":          "会话消息流未在安全预算内完成",
+	}
+	if readErr != nil {
+		failure["error"] = readErr.Error()
+	}
+	return append(failures, failure)
 }
 
 func searchMessageTimeCoverage(rt *shortcut.RuntimeContext) map[string]any {

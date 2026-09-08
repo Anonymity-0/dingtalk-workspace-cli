@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -20,24 +21,26 @@ import (
 )
 
 type searchMsgExecutionCaller struct {
-	calls              []platformCoverageCall
-	failSecondPage     bool
-	failEnrichment     bool
-	omitPagination     bool
-	omitMgetItem       bool
-	failPreflight      bool
-	preflightError     error
-	searchResponse     string
-	wrongMgetScope     bool
-	missingMgetCID     bool
-	firstResponse      string
-	mgetResponse       string
-	numericZeroEnd     bool
-	contactResponse    string
-	contactResponses   map[string]string
-	groupResponse      string
-	failContactKeyword string
-	failGroupKeyword   string
+	calls                 []platformCoverageCall
+	failSecondPage        bool
+	failEnrichment        bool
+	omitPagination        bool
+	omitMgetItem          bool
+	failPreflight         bool
+	preflightError        error
+	searchResponse        string
+	wrongMgetScope        bool
+	missingMgetCID        bool
+	firstResponse         string
+	mgetResponse          string
+	numericZeroEnd        bool
+	contactResponse       string
+	contactResponses      map[string]string
+	groupResponse         string
+	conversationResponses []string
+	conversationCalls     int
+	failContactKeyword    string
+	failGroupKeyword      string
 }
 
 const (
@@ -55,6 +58,14 @@ func (f *searchMsgExecutionCaller) CallTool(_ context.Context, product, tool str
 			return nil, errors.New("conversation not found")
 		}
 		return searchMsgToolResult(`{"result":{"openConversationId":"` + args["openConversationId"].(string) + `"}}`), nil
+	}
+	if product == "chat" && tool == "list_conversation_message_v2" {
+		response := `{"result":{"messages":[],"hasMore":false}}`
+		if f.conversationCalls < len(f.conversationResponses) {
+			response = f.conversationResponses[f.conversationCalls]
+		}
+		f.conversationCalls++
+		return searchMsgToolResult(response), nil
 	}
 	if product == "contact" && tool == "search_contact_by_key_word" {
 		if f.failContactKeyword != "" && args["keyword"] == f.failContactKeyword {
@@ -264,6 +275,65 @@ func TestCrossPlatformCoverageSearchMsgReactionPredicateUsesEnrichedEvidence(t *
 	messages := payload["messages"].([]any)
 	if messages[0].(map[string]any)["messageId"] != "m1" {
 		t.Fatalf("reaction messages=%#v", messages)
+	}
+}
+
+func TestCrossPlatformCoverageScopedReactionSearchUsesConversationStream(t *testing.T) {
+	firstTime := time.Date(2026, 7, 3, 10, 0, 0, 0, time.UTC)
+	secondTime := firstTime.Add(-time.Hour)
+	nextCursor := firstTime.Add(-time.Millisecond).UnixMilli()
+	caller := &searchMsgExecutionCaller{
+		conversationResponses: []string{
+			fmt.Sprintf(`{"result":{"messages":[{"openMessageId":"m1","createTime":%d},{"openMessageId":"m1","createTime":%d}],"hasMore":true,"nextCursor":%d}}`, firstTime.UnixMilli(), firstTime.UnixMilli(), nextCursor),
+			fmt.Sprintf(`{"result":{"messages":[{"openMessageId":"m2","createTime":%d}],"hasMore":false}}`, secondTime.UnixMilli()),
+		},
+		mgetResponse: `{"result":[{"openMessageId":"m1","emotionReplyList":[{"emoji":"赞","count":1}]},{"openMessageId":"m2"}]}`,
+	}
+	payload := executeSearchMsg(t, caller,
+		"--group", "cid-target",
+		"--has-reactions",
+		"--page-all",
+		"--start", "2026-07-01T00:00:00Z",
+		"--end", "2026-07-04T00:00:00Z",
+	)
+
+	if len(caller.calls) != 4 || caller.calls[0].tool != "get_conversation_info" ||
+		caller.calls[1].tool != "list_conversation_message_v2" ||
+		caller.calls[2].tool != "list_conversation_message_v2" ||
+		caller.calls[3].tool != "list_messages_by_ids" {
+		t.Fatalf("calls=%#v, want preflight, two conversation pages, and enrichment", caller.calls)
+	}
+	for _, call := range caller.calls {
+		if call.tool == "search_messages" {
+			t.Fatalf("scoped reaction search used lossy global search: %#v", caller.calls)
+		}
+	}
+	if caller.calls[1].args["openconversation_id"] != "cid-target" || caller.calls[1].args["forward"] != false {
+		t.Fatalf("first conversation request=%#v", caller.calls[1])
+	}
+	wantBoundary := time.UnixMilli(nextCursor).UTC().Format(time.RFC3339Nano)
+	if caller.calls[2].args["time"] != wantBoundary {
+		t.Fatalf("second page boundary=%#v, want %q", caller.calls[2].args["time"], wantBoundary)
+	}
+	if ids := caller.calls[3].args["openMsgIds"]; !reflect.DeepEqual(ids, []string{"m1", "m2"}) {
+		t.Fatalf("enrichment ids=%#v, want stable deduplicated ids", ids)
+	}
+	if payload["searchStrategy"] != "conversation_stream" || payload["complete"] != true ||
+		payload["count"] != float64(1) || payload["pagesFetched"] != float64(2) {
+		t.Fatalf("payload=%#v", payload)
+	}
+	scope := payload["scope"].(map[string]any)
+	if scope["filterMode"] != "source" || scope["sourceComplete"] != true || scope["resultsWithinScope"] != true {
+		t.Fatalf("scope=%#v", scope)
+	}
+	filter := payload["reactionFilter"].(map[string]any)
+	if filter["sourceCount"] != float64(2) || filter["matchedCount"] != float64(1) ||
+		filter["evidence"] != "conversation_stream_and_message_detail_enrichment" {
+		t.Fatalf("reactionFilter=%#v", filter)
+	}
+	messages := payload["messages"].([]any)
+	if messages[0].(map[string]any)["messageId"] != "m1" || messages[0].(map[string]any)["conversationId"] != "cid-target" {
+		t.Fatalf("messages=%#v", messages)
 	}
 }
 
