@@ -16,12 +16,12 @@ import (
 )
 
 const (
-	publicShortcutCount = 441
+	publicShortcutCount = 442
 	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool,
 	// including reviewed hidden compatibility and unavailable contracts.
-	schemaPublishedShortcutCount = 498
+	schemaPublishedShortcutCount = 499
 	// publiclyDeliveredShortcutCount is the public-catalog subset of that surface.
-	publiclyDeliveredShortcutCount = 441
+	publiclyDeliveredShortcutCount = 442
 )
 
 func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
@@ -131,7 +131,7 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 
 	product := executeShortcutSchemaQuery(t, "chat")
 	productPayload, _ := product["product"].(map[string]any)
-	if got, want := int(product["count"].(float64)), 239; got != want {
+	if got, want := int(product["count"].(float64)), 240; got != want {
 		t.Fatalf("schema chat count = %d, want %d", got, want)
 	}
 	summaries := schemaContractObjectSlice(productPayload["tools"])
@@ -143,8 +143,8 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 			shortcutCount++
 		}
 	}
-	if shortcutCount != 101 {
-		t.Fatalf("schema chat shortcut summaries = %d, want 101", shortcutCount)
+	if shortcutCount != 102 {
+		t.Fatalf("schema chat shortcut summaries = %d, want 102", shortcutCount)
 	}
 	for _, cliPath := range missingChatCatalogCoveragePaths() {
 		if summaryByCLIPath[cliPath] == nil {
