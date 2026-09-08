@@ -91,7 +91,7 @@ func TestCrossPlatformCoverageMinutesUploadAndAnalyzeBranchesE2E(t *testing.T) {
 		"minutes/create_mind_graph":       {`{"success":true,"result":{}}`},
 		"minutes/query_mind_graph_status": {`{"success":true,"result":{"taskStatus":1,"mindGraph":"ready"}}`},
 		"minutes/create_speaker_summary":  {`{"success":true,"result":{"taskId":"job","status":"processing"}}`},
-		"minutes/get_speaker_summary":     {`{"success":true,"result":{"summaries":[{"speaker":"a","summary":"b"}]}}`},
+		"minutes/get_speaker_summary":     {speakerReadyFixture},
 	}}
 	payload, _, err := runMinutesAlignmentCLI(t, resume, "minutes", "+upload-and-analyze", "--resume-id", "u1", "--artifacts", "basic", "--mindmap", "--speaker-insights", "--yes")
 	if err != nil || payload["complete"] != true || payload["taskUuid"] != "u1" {
@@ -199,7 +199,7 @@ func TestCrossPlatformCoverageMinutesSpeakerInsightsBranchesE2E(t *testing.T) {
 		{name: "poll nonpending", responses: map[string][]string{"minutes/create_speaker_summary": {`{"success":true,"result":{"taskId":"job","status":"processing"}}`}, "minutes/get_speaker_summary": {`{"success":false,"errorMsg":"denied"}`}}},
 		{name: "poll parse", responses: map[string][]string{"minutes/create_speaker_summary": {`{"success":true,"result":{"taskId":"job","status":"processing"}}`}, "minutes/get_speaker_summary": {`{"success":true,"result":{}}`}}},
 		{name: "timeout", responses: map[string][]string{"minutes/create_speaker_summary": {`{"success":true,"result":{"taskId":"job","status":"processing"}}`}, "minutes/get_speaker_summary": {`{"success":false,"errorMsg":"processing"}`}}},
-		{name: "resume", responses: map[string][]string{"minutes/get_speaker_summary": {`{"success":true,"result":{"summaries":[{"speaker":"a","summary":"b"}]}}`}}, args: []string{"--resume", "--task-id", "job"}},
+		{name: "resume", responses: map[string][]string{"minutes/get_speaker_summary": {speakerReadyFixture}}, args: []string{"--resume", "--task-id", "job"}},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
@@ -215,21 +215,21 @@ func TestCrossPlatformCoverageMinutesSpeakerInsightsBranchesE2E(t *testing.T) {
 			}
 		})
 	}
-	outputFail := &minutesE2ECaller{responses: map[string][]string{"minutes/get_speaker_summary": {`{"success":true,"result":{"summaries":[{"speaker":"a","summary":"b"}]}}`}}}
+	outputFail := &minutesE2ECaller{responses: map[string][]string{"minutes/get_speaker_summary": {speakerReadyFixture}}}
 	if err := runMinutesAlignmentCLIWithWriter(t, outputFail, minutesFailWriter{}, "minutes", "+speaker-insights", "--id", "u1", "--resume", "--yes"); err == nil {
 		t.Fatal("speaker output failure accepted")
 	}
 
 	for _, message := range []string{"query empty", "processing", "not ready", "result is empty", "business error: code 000", "暂无"} {
-		if !speakerSummaryPending(errors.New(message)) {
-			t.Fatalf("pending message rejected: %q", message)
+		if speakerSummaryPending(errors.New(message)) {
+			t.Fatalf("untyped pending message accepted: %q", message)
 		}
 	}
 	if speakerSummaryPending(nil) || speakerSummaryPending(errors.New("denied")) {
 		t.Fatal("non-pending speaker error accepted")
 	}
 
-	caller := &minutesE2ECaller{responses: map[string][]string{"minutes/get_speaker_summary": {`{"success":false,"errorMsg":"processing"}`}}}
+	caller := &minutesE2ECaller{responses: map[string][]string{"minutes/get_speaker_summary": {`{"success":true,"result":{"status":"processing","taskId":"job"}}`}}}
 	helpers.InitDepsForTest(t, caller)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

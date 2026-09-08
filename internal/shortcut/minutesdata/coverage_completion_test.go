@@ -291,11 +291,11 @@ func TestCrossPlatformCoverageMinutesWorkflowCompletion(t *testing.T) {
 			t.Fatalf("invalid speaker result accepted: %#v", data)
 		}
 	}
-	if value, err := SpeakerSummaryResult(map[string]any{"result": []any{}}); err != nil || value == nil {
-		t.Fatalf("empty speaker list = %#v, %v", value, err)
+	if _, err := SpeakerSummaryResult(map[string]any{"result": []any{}}); err == nil {
+		t.Fatal("empty speaker list accepted")
 	}
-	if value, err := SpeakerSummaryResult(map[string]any{"result": map[string]any{"summary": "ok"}}); err != nil || value == nil {
-		t.Fatalf("speaker map = %#v, %v", value, err)
+	if _, err := SpeakerSummaryResult(map[string]any{"result": map[string]any{"summary": "ok"}}); err == nil {
+		t.Fatal("unreviewed speaker map accepted")
 	}
 	for _, data := range []map[string]any{{}, {"result": "bad"}, {"result": map[string]any{}}, {"result": map[string]any{"hotWordList": "bad"}}, {"result": map[string]any{"hotWordList": []any{true}}}} {
 		if _, err := HotWords(data); err == nil {

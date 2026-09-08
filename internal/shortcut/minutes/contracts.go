@@ -82,6 +82,14 @@ func withMinutesExportResult(decl corecmd.ContractDecl) corecmd.ContractDecl {
 	return decl
 }
 
+func withMinutesSpeakerResult(decl corecmd.ContractDecl) corecmd.ContractDecl {
+	decl.Result = &contract.ResultSpec{
+		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomePending, contract.ResultOutcomeFailure},
+		DataSchema: json.RawMessage(`{"type":"object","description":"发言人总结的有界读取结果，创建回执不等于完成","properties":{"operation":{"type":"string","description":"执行操作"},"state":{"type":"string","enum":["pending","ready","failed","unsupported_shape"],"description":"读取状态；pending 也可能表示结果暂不可读取，不保证任务仍在运行"},"complete":{"type":"boolean","description":"只有已确认终态且存在总结正文时为 true"},"taskUuid":{"type":"string","description":"听记稳定标识"},"taskId":{"type":"string","description":"创建或查询实际返回的恢复句柄，未知时为空"},"createStatus":{"type":"string","description":"创建时状态或 resume，不表示当前终态"},"status":{"type":"string","description":"当前查询明确返回的任务状态"},"attempts":{"type":"integer","description":"实际查询次数"},"stage":{"type":"string","description":"停止所在 create 或 poll 阶段"},"reason":{"type":"string","description":"当前状态的判定原因"},"retryable":{"type":"boolean","description":"是否可有界继续读取；永不授权重新 create"},"result":{"type":"object","description":"仅 ready 时返回校验后的总结正文和终态证据","additionalProperties":true},"recovery":{"type":"object","description":"未完成时保留稳定标识和只读恢复方式","properties":{"taskUuid":{"type":"string","description":"原听记标识"},"taskId":{"type":"string","description":"已知恢复句柄"},"nextCommand":{"type":"array","description":"需沿用同一 profile 并完成确认的 resume argv，不含 --yes","items":{"type":"string"}},"nextAction":{"type":"string","description":"恢复限制与确认提示"}},"additionalProperties":false}},"additionalProperties":true}`),
+	}
+	return decl
+}
+
 func withMinutesListResult(decl corecmd.ContractDecl) corecmd.ContractDecl {
 	decl.Result = minutesListResult()
 	decl.Pagination = minutesCursorPagination()

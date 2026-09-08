@@ -6,6 +6,7 @@ package minutes
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -123,13 +124,13 @@ var Mindmap = shortcut.Shortcut{
 var SpeakerInsights = shortcut.Shortcut{
 	Service: "minutes", Command: "+speaker-insights", Product: "minutes",
 	Description: "创建发言人段落总结并轮询结果，保留异步任务恢复句柄",
-	Intent:      "需要按发言人汇总听记内容时使用；严格要求 create 返回 taskId，读取未就绪时有界重试，失败或超时返回 taskId/taskUuid。",
+	Intent:      "需要按发言人汇总听记内容时使用；仅明确完成且有总结正文才 complete=true。pending 只 resume，不重复 create；用户给定等待时长时传入 --timeout。",
 	Risk:        shortcut.RiskWrite,
 	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
-	Contract: withMinutesDryRun(minutesContract("+speaker-insights", "创建发言人段落总结并轮询结果，保留异步任务恢复句柄",
+	Contract: withMinutesSpeakerResult(withMinutesDryRun(minutesContract("+speaker-insights", "创建发言人段落总结并轮询结果，保留异步任务恢复句柄",
 		"逐字稿已有多位发言人，需要触发并读取平台发言人段落总结时使用",
 		[]string{"只改发言人昵称时使用 +speaker-replace；无有效发言内容时平台可能不生成结果"},
-		[]string{`dws minutes +speaker-insights --id <taskUuid>`, `dws minutes +speaker-insights --id <taskUuid> --timeout 180`}), contract.DryRunPreviewPlan, false),
+		[]string{`dws minutes +speaker-insights --id <taskUuid>`, `dws minutes +speaker-insights --id <taskUuid> --timeout 180`}), contract.DryRunPreviewPlan, false)),
 	Flags: []shortcut.Flag{
 		{Name: "id", Type: shortcut.FlagString, Desc: "听记 taskUuid", Required: true},
 		{Name: "timeout", Type: shortcut.FlagInt, Default: "180", Desc: "等待秒数"},
@@ -409,7 +410,11 @@ func runMinutesMindmap(rt *shortcut.RuntimeContext, id string, timeout, interval
 
 func executeMinutesSpeakerInsights(rt *shortcut.RuntimeContext) error {
 	if rt.DryRun() {
-		return rt.Output(minutesDryRunPayload(contract.DryRunPreviewPlan, "minutes.speaker_insights", map[string]any{"taskUuid": rt.Str("id"), "stages": []string{"create", "poll"}}))
+		stages := []string{"poll"}
+		if !rt.Bool("resume") {
+			stages = []string{"create", "poll"}
+		}
+		return rt.Output(minutesDryRunPayload(contract.DryRunPreviewPlan, "minutes.speaker_insights", map[string]any{"taskUuid": rt.Str("id"), "stages": stages, "taskId": rt.Str("task-id")}))
 	}
 	payload, err := runMinutesSpeakerInsights(rt, rt.Str("id"), time.Duration(rt.Int("timeout"))*time.Second, time.Duration(rt.Int("interval"))*time.Second, !rt.Bool("resume"), rt.Str("task-id"))
 	if outputErr := rt.Output(payload); outputErr != nil {
@@ -420,15 +425,27 @@ func executeMinutesSpeakerInsights(rt *shortcut.RuntimeContext) error {
 
 func runMinutesSpeakerInsights(rt *shortcut.RuntimeContext, id string, timeout, interval time.Duration, create bool, taskID string) (map[string]any, error) {
 	status := "resume"
+	payloadFor := func(attempts int, state, stage string, retryable bool) map[string]any {
+		payload := speakerInsightsPayload(id, taskID, status, attempts, state, stage, retryable)
+		recovery := payload["recovery"].(map[string]any)
+		argv := recovery["nextCommand"].([]string)
+		argv = append(argv, "--timeout", fmt.Sprint(int(timeout/time.Second)), "--interval", fmt.Sprint(int(interval/time.Second)))
+		if profile := rt.Str("profile"); profile != "" {
+			argv = append(argv, "--profile", profile)
+		}
+		recovery["nextCommand"] = argv
+		return payload
+	}
 	if create {
+		status = "unknown"
 		created, err := rt.CallMCPWriteDataStrict("minutes", "create_speaker_summary", map[string]any{"uuids": []string{id}})
 		if err != nil {
-			return map[string]any{"operation": "minutes.speaker_insights", "complete": false, "taskUuid": id, "stage": "create"}, err
+			return payloadFor(0, "unsupported_shape", "create", false), err
 		}
 		var parseErr error
 		taskID, status, parseErr = minutesdata.SpeakerSummaryTask(created)
 		if parseErr != nil {
-			return map[string]any{"operation": "minutes.speaker_insights", "complete": false, "taskUuid": id, "stage": "create"}, parseErr
+			return payloadFor(0, "unsupported_shape", "create", false), parseErr
 		}
 	}
 	deadline := time.Now().Add(timeout)
@@ -436,33 +453,62 @@ func runMinutesSpeakerInsights(rt *shortcut.RuntimeContext, id string, timeout, 
 	for {
 		attempts++
 		data, callErr := rt.CallMCPData("minutes", "get_speaker_summary", map[string]any{"uuids": []string{id}})
+		parsed := minutesdata.SpeakerSummary{State: minutesdata.SpeakerUnsupported, Reason: "query_failed"}
 		if callErr == nil {
-			result, resultErr := minutesdata.SpeakerSummaryResult(data)
-			if resultErr == nil {
-				return map[string]any{"operation": "minutes.speaker_insights", "complete": true, "taskUuid": id, "taskId": taskID, "createStatus": status, "attempts": attempts, "result": result}, nil
+			parsed = minutesdata.ParseSpeakerSummary(data)
+			if parsed.TaskID != "" {
+				if taskID != "" && parsed.TaskID != taskID {
+					parsed.State, parsed.Reason = minutesdata.SpeakerUnsupported, "task_id_mismatch"
+				} else {
+					taskID = parsed.TaskID
+				}
 			}
-			callErr = resultErr
+		} else if speakerSummaryPending(callErr) {
+			// This exact observed error permits a bounded read retry; it does
+			// not prove the backend job itself is still processing.
+			parsed.State, parsed.Reason = minutesdata.SpeakerPending, "result_unavailable"
 		}
-		if !speakerSummaryPending(callErr) {
-			payload := map[string]any{"operation": "minutes.speaker_insights", "complete": false, "taskUuid": id, "taskId": taskID, "attempts": attempts, "stage": "poll", "recovery": map[string]any{"taskUuid": id, "taskId": taskID, "nextAction": "dws minutes speaker summary get --ids <taskUuid>"}}
-			return payload, callErr
+		payload := payloadFor(attempts, string(parsed.State), "poll", parsed.State == minutesdata.SpeakerPending)
+		payload["reason"] = parsed.Reason
+		if parsed.Status != "" {
+			payload["status"] = parsed.Status
+		}
+		if parsed.State == minutesdata.SpeakerReady {
+			payload["result"] = parsed.Result
+			delete(payload, "recovery")
+			return payload, nil
+		}
+		if parsed.State != minutesdata.SpeakerPending {
+			if callErr != nil {
+				return payload, callErr
+			}
+			return payload, minutesCompositeError("minutes_speaker_insights_"+string(parsed.State), "poll", payload)
 		}
 		if minutesPollDeadlineReached(deadline, interval) {
-			payload := map[string]any{"operation": "minutes.speaker_insights", "complete": false, "taskUuid": id, "taskId": taskID, "attempts": attempts, "stage": "poll", "recovery": map[string]any{"taskUuid": id, "taskId": taskID, "nextAction": "dws minutes speaker summary get --ids <taskUuid>"}}
 			return payload, minutesCompositeError("minutes_speaker_insights_timeout", "poll", payload)
 		}
 		if err := waitMinutesInterval(rt, interval); err != nil {
-			return map[string]any{"operation": "minutes.speaker_insights", "complete": false, "taskUuid": id, "taskId": taskID, "attempts": attempts}, err
+			return payload, err
 		}
 	}
 }
 
 func speakerSummaryPending(err error) bool {
-	if err == nil {
-		return false
+	var apiErr *apperrors.Error
+	return errors.As(err, &apiErr) && apiErr.Category == apperrors.CategoryAPI &&
+		apiErr.Reason == "business_error" && apiErr.ServerDiag.ServerErrorCode == "000" &&
+		apiErr.Message == "downstream query empty"
+}
+
+func speakerInsightsPayload(id, taskID, createStatus string, attempts int, state, stage string, retryable bool) map[string]any {
+	argv := []string{"dws", "minutes", "+speaker-insights", "--id", id, "--resume"}
+	if taskID != "" {
+		argv = append(argv, "--task-id", taskID)
 	}
-	message := strings.ToLower(err.Error())
-	return strings.Contains(message, "query empty") || strings.Contains(message, "processing") || strings.Contains(message, "not ready") || strings.Contains(message, "result is empty") || strings.Contains(message, "business error: code 000") || strings.Contains(message, "暂无")
+	return map[string]any{"operation": "minutes.speaker_insights", "complete": state == "ready", "taskUuid": id,
+		"taskId": taskID, "createStatus": createStatus, "attempts": attempts, "state": state, "stage": stage,
+		"retryable": retryable, "recovery": map[string]any{"taskUuid": id, "taskId": taskID,
+			"nextCommand": argv, "nextAction": "Resume reads with the same profile; never repeat create. Confirmation is still required."}}
 }
 
 func executeMinutesPrepareASR(rt *shortcut.RuntimeContext) error {

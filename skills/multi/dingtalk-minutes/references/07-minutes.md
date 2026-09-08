@@ -92,6 +92,8 @@ dws minutes +speaker-insights --id <taskUuid>
 - 首次执行保存 create 返回的异步 `taskId`。
 - 真实执行遵循 `user_required`；`--resume` 沿用同一命令级门禁。
 - 超时后使用 `--resume [--task-id <taskId>]` 继续轮询。
+- 只有 `state=ready/complete=true` 且有经过校验的总结正文才算完成；`createStatus` 只是创建时状态。`state=pending` 表示尚未取到可交付结果，可能是 processing 或暂不可读，并不证明后台仍在运行。超时非零，保留 `taskUuid/taskId/attempts/retryable/recovery`；`retryable` 只允许继续读，不能重新 create。
+- 恢复使用返回的 `recovery.nextCommand` argv，沿用原 profile 并完成确认；例如 `dws minutes +speaker-insights --id <taskUuid> --resume --task-id <taskId> --timeout 180 --interval 3`。用户指定等待时间时原样传 `--timeout`。
 - `taskId` 缺失、状态未知或结果不可解析时保留恢复信息并停止，不再次创建任务。
 
 ### 3.3 结束录音并等待产物

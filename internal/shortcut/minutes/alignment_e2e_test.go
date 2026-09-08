@@ -81,6 +81,7 @@ func runMinutesAlignmentCLI(t *testing.T, caller *minutesE2ECaller, args ...stri
 	root.PersistentFlags().Bool("yes", false, "")
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.PersistentFlags().String("format", "json", "")
+	root.PersistentFlags().String("profile", "", "")
 	root.AddCommand(shortcut.Commands()...)
 	ctx, _ := output.WithResultStore(context.Background())
 	root.SetContext(ctx)
@@ -356,8 +357,8 @@ func TestCrossPlatformCoverageMinutesSpeakerInsightsRequiresTaskAndResultE2E(t *
 	caller := &minutesE2ECaller{responses: map[string][]string{
 		"minutes/create_speaker_summary": {`{"success":true,"result":{"taskId":"job-1","status":"processing"}}`},
 		"minutes/get_speaker_summary": {
-			`{"success":false,"errorMsg":"downstream query empty"}`,
-			`{"success":true,"result":{"summaries":[{"speaker":"甲","summary":"结论"}]}}`,
+			`{"success":true,"result":{"status":"processing","taskId":"job-1"}}`,
+			`{"success":true,"result":{"status":"completed","innerStatus":"Finished","success":true,"content":"总结","errorMsg":"","taskId":"job-1"}}`,
 		},
 	}}
 	payload, output, err := runMinutesAlignmentCLI(t, caller, "minutes", "+speaker-insights", "--id", "u1", "--timeout", "3", "--interval", "1", "--yes")

@@ -52,7 +52,7 @@ metadata:
 | 真实开始、暂停、继续或停止录音 | `+record-start` / `+record-pause` / `+record-resume` / `+record-stop` | 这组入口会真实执行。start 返回 `accepted=true, bound=false` 或 `controlReady=false` 时，报告“已受理但未绑定”并停止：不得重试 start，也不得用 `+latest`、列表第一条或时间最近项猜 ID。结束并等待产物用 `+record-wrap-up` |
 | 只预览录音请求，不实际执行 | `dws minutes record start --dry-run --format json` | 使用对应的原子 `minutes record start|pause|resume|stop` leaf；start 的 `--session-id` 可选，pause/resume/stop 必须传真实 `--id`。不要把被拒绝的 Shortcut dry-run 描述成预览成功 |
 | 生成或继续思维导图 | `dws minutes +mindmap --id <taskUuid>` | 创建后有界轮询；超时或未知状态保留恢复信息，用 `--resume` 继续，不重复创建 |
-| 生成或继续发言人洞察 | `dws minutes +speaker-insights --id <taskUuid>` | 有界轮询；保留 `taskId`，恢复时用 `--resume [--task-id <ID>]`，不重复创建 |
+| 生成或继续发言人洞察 | `dws minutes +speaker-insights --id <taskUuid>` | 只有 `state=ready/complete=true` 才完成；pending 保留 `taskId` 并同账号 `--resume [--task-id <ID>]`，不重复创建；用户给定等待时长传 `--timeout` |
 | 当前用户申请查看/下载/编辑权限 | `dws minutes +apply-permission --id <taskUuid> --permission view|download|edit` | 这是“我申请访问”，不是所有者给别人授权；按 Runtime confirmation 执行 |
 | 所有者给成员授权或撤权 | `dws minutes +share ...` / `dws minutes +unshare ...` | 先用通讯录把姓名解析为同组织稳定 UID；撤权是破坏性操作。批量结果必须保留逐成员 ledger 和失败项 |
 
