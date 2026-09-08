@@ -268,7 +268,7 @@ func TestCrossPlatformCoverageMessagePaginationCursorTypeEdges(t *testing.T) {
 	ApplyMessagePagination(payload, map[string]any{
 		"result": map[string]any{"hasMore": true, "nextCursor": int64(1)},
 	}, nil, "older")
-	if payload["failedCount"] != 1 || payload["complete"] != false {
+	if payload["failedCount"] != 0 || payload["complete"] != false || payload["nextPage"] == nil {
 		t.Fatalf("empty continuing page = %#v", payload)
 	}
 }

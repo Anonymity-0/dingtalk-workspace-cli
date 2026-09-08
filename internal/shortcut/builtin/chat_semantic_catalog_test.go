@@ -91,10 +91,10 @@ func TestChatSemanticCatalogExactlyCoversRegisteredShortcuts(t *testing.T) {
 		registered[item.Command] = item
 		helpTierCounts[item.HelpTier]++
 	}
-	if got, want := len(registered), 100; got != want {
+	if got, want := len(registered), 103; got != want {
 		t.Fatalf("registered Chat Shortcuts = %d, want %d", got, want)
 	}
-	if got, want := len(source.Shortcuts), 100; got != want {
+	if got, want := len(source.Shortcuts), 103; got != want {
 		t.Fatalf("reviewed Chat Shortcut records = %d, want %d", got, want)
 	}
 	if got, want := len(source.FeaturedShortcuts), 26; got != want {
@@ -102,7 +102,7 @@ func TestChatSemanticCatalogExactlyCoversRegisteredShortcuts(t *testing.T) {
 	}
 	for tier, want := range map[shortcut.HelpTier]int{
 		shortcut.HelpTierFeatured:      26,
-		shortcut.HelpTierCatalog:       67,
+		shortcut.HelpTierCatalog:       70,
 		shortcut.HelpTierCompatibility: 5,
 		shortcut.HelpTierUnavailable:   2,
 	} {
