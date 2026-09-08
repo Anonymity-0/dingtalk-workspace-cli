@@ -45,7 +45,7 @@ metadata:
 | <!-- dws-intent: chat.read.conversation -->读取指定会话、返回较多消息 | `dws chat +chat-messages` | 粗粒度读取；目标条件明确时优先 `+search-msg` |
 | <!-- dws-intent: chat.read.reactions -->筛选存在 reaction 的消息 | `dws chat +search-msg --group <群名或ID> --has-reactions --page-all` | reaction 是消息谓词；必须富化详情并检查 `complete` |
 | <!-- dws-intent: chat.search.filtered -->多维度条件搜索（发送者/关键词/@/类型，单/跨会话） | `dws chat +search-msg` | 目标条件明确时使用 |
-| <!-- dws-intent: chat.conversation.active-since -->查看指定时间以来有新消息的会话 | `dws chat +active-conversations --start <时间>` | 自动翻页并按会话 ID 去重；检查 `complete` 和分页元数据 |
+| <!-- dws-intent: chat.conversation.active-since -->查看最近 24 小时或指定时间以来有新消息的会话 | `dws chat +recent-conversations` | `--start` 选填，默认有效 `--end` 前 24 小时；自动翻页并去重，检查 `complete` 和分页元数据 |
 | <!-- dws-intent: chat.create.group -->按成员 ID 或姓名创建群聊 | `dws chat +chat-create` | 姓名用 `--member-query` 由 CLI 唯一解析，不先手工搜索 |
 | <!-- dws-intent: chat.reply.quote -->引用回复一条已有消息 | `dws chat +messages-reply` | 使用真实消息与会话 ID；未知投递状态不得写成成功送达 |
 | 查看指定群成员（用户/机器人） | `dws chat +chat-members-list --group <群名或ID>` | 唯一解析并全量读取 |
