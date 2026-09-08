@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,6 +40,7 @@ type searchMsgExecutionCaller struct {
 	groupResponse         string
 	conversationResponses []string
 	conversationCalls     int
+	failConversationCall  int
 	failContactKeyword    string
 	failGroupKeyword      string
 }
@@ -60,11 +62,14 @@ func (f *searchMsgExecutionCaller) CallTool(_ context.Context, product, tool str
 		return searchMsgToolResult(`{"result":{"openConversationId":"` + args["openConversationId"].(string) + `"}}`), nil
 	}
 	if product == "chat" && tool == "list_conversation_message_v2" {
-		response := `{"result":{"messages":[],"hasMore":false}}`
-		if f.conversationCalls < len(f.conversationResponses) {
-			response = f.conversationResponses[f.conversationCalls]
-		}
 		f.conversationCalls++
+		if f.failConversationCall == f.conversationCalls {
+			return nil, errors.New("fixture conversation stream failure")
+		}
+		response := `{"result":{"messages":[],"hasMore":false}}`
+		if f.conversationCalls <= len(f.conversationResponses) {
+			response = f.conversationResponses[f.conversationCalls-1]
+		}
 		return searchMsgToolResult(response), nil
 	}
 	if product == "contact" && tool == "search_contact_by_key_word" {
@@ -335,6 +340,144 @@ func TestCrossPlatformCoverageScopedReactionSearchUsesConversationStream(t *test
 	if messages[0].(map[string]any)["messageId"] != "m1" || messages[0].(map[string]any)["conversationId"] != "cid-target" {
 		t.Fatalf("messages=%#v", messages)
 	}
+}
+
+func TestCrossPlatformCoverageScopedReactionSearchCompletenessBranches(t *testing.T) {
+	messageTime := time.Date(2026, 7, 3, 10, 0, 0, 0, time.UTC)
+	nextCursor := messageTime.Add(-time.Millisecond).UnixMilli()
+	baseArgs := []string{
+		"--group", "cid-target",
+		"--has-reactions",
+		"--page-all",
+		"--start", "2026-07-01T00:00:00Z",
+		"--end", "2026-07-04T00:00:00Z",
+	}
+	reactionDetail := `{"result":[{"openMessageId":"m1","emotionReplyList":[{"emoji":"赞","count":1}]}]}`
+
+	t.Run("invalid internal time range", func(t *testing.T) {
+		err := executeScopedConversationReactionSearch(nil, map[string]any{}, searchResolvedFilters{}, []string{"cid-target"})
+		if err == nil || !strings.Contains(err.Error(), "有效的搜索时间范围") {
+			t.Fatalf("err=%v, want internal time-range rejection", err)
+		}
+	})
+
+	t.Run("first page failure", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{failConversationCall: 1}
+		if _, err := executeSearchMsgResult(caller, baseArgs...); err == nil || !strings.Contains(err.Error(), "0 页成功") {
+			t.Fatalf("err=%v, want first-page failure", err)
+		}
+	})
+
+	t.Run("page budget continuation", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{
+			conversationResponses: []string{fmt.Sprintf(
+				`{"result":{"messages":[{"openMessageId":"m1","createTime":%d}],"hasMore":true,"nextCursor":%d}}`,
+				messageTime.UnixMilli(), nextCursor,
+			)},
+			mgetResponse: reactionDetail,
+		}
+		payload := executeSearchMsg(t, caller, append(baseArgs, "--page-limit", "1")...)
+		if payload["complete"] != false || payload["hasMore"] != true || payload["paginationKnown"] != true {
+			t.Fatalf("payload=%#v", payload)
+		}
+		continuations := payload["continuations"].([]any)
+		failures := payload["failures"].([]any)
+		if len(continuations) != 1 || len(failures) != 1 || failures[0].(map[string]any)["stage"] != "conversation-stream" {
+			t.Fatalf("continuations=%#v failures=%#v", continuations, failures)
+		}
+	})
+
+	t.Run("missing pagination evidence", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{
+			conversationResponses: []string{fmt.Sprintf(
+				`{"result":{"messages":[{"openMessageId":"m1","createTime":%d}]}}`,
+				messageTime.UnixMilli(),
+			)},
+			mgetResponse: reactionDetail,
+		}
+		payload := executeSearchMsg(t, caller, baseArgs...)
+		if payload["complete"] != false || payload["paginationKnown"] != false || payload["failedCount"] != float64(1) {
+			t.Fatalf("payload=%#v", payload)
+		}
+		failure := payload["failures"].([]any)[0].(map[string]any)
+		if failure["stage"] != "pagination" || failure["conversationId"] != "cid-target" {
+			t.Fatalf("failure=%#v", failure)
+		}
+	})
+
+	t.Run("later page failure ledger", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{
+			conversationResponses: []string{fmt.Sprintf(
+				`{"result":{"messages":[{"openMessageId":"m1","createTime":%d}],"hasMore":true,"nextCursor":%d}}`,
+				messageTime.UnixMilli(), nextCursor,
+			)},
+			failConversationCall: 2,
+			mgetResponse:         reactionDetail,
+		}
+		payload := executeSearchMsg(t, caller, baseArgs...)
+		if payload["complete"] != false || payload["failedCount"] != float64(1) {
+			t.Fatalf("payload=%#v", payload)
+		}
+		failure := payload["failures"].([]any)[0].(map[string]any)
+		if failure["stage"] != "read" || failure["conversationId"] != "cid-target" {
+			t.Fatalf("failure=%#v", failure)
+		}
+	})
+}
+
+func TestCrossPlatformCoverageScopedReactionSearchScopeAndOptionalOutputBranches(t *testing.T) {
+	messageTime := time.Date(2026, 7, 3, 10, 0, 0, 0, time.UTC).UnixMilli()
+	baseResponse := fmt.Sprintf(
+		`{"result":{"messages":[{"openMessageId":"m1","createTime":%d}],"hasMore":false}}`,
+		messageTime,
+	)
+	baseArgs := []string{
+		"--has-reactions", "--page-all",
+		"--start", "2026-07-01T00:00:00Z",
+		"--end", "2026-07-04T00:00:00Z",
+	}
+
+	t.Run("cross-conversation dedupe preserves first scope", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{
+			conversationResponses: []string{baseResponse, baseResponse},
+			mgetResponse:          `{"result":[{"openMessageId":"m1","openConversationId":null,"emotionReplyList":[{"emoji":"赞","count":1}]}]}`,
+		}
+		payload := executeSearchMsg(t, caller, append(baseArgs, "--groups", "cid-first,cid-second")...)
+		messages := payload["messages"].([]any)
+		if payload["complete"] != true || payload["count"] != float64(1) ||
+			messages[0].(map[string]any)["conversationId"] != "cid-first" {
+			t.Fatalf("payload=%#v", payload)
+		}
+	})
+
+	t.Run("enrichment scope violation", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{
+			conversationResponses: []string{baseResponse},
+			wrongMgetScope:        true,
+		}
+		_, err := executeSearchMsgResult(caller, append(baseArgs, "--group", "cid-target")...)
+		if err == nil || !strings.Contains(err.Error(), "超出请求的会话范围") {
+			t.Fatalf("err=%v, want scope violation", err)
+		}
+	})
+
+	t.Run("resolved group and resource ledger", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{
+			groupResponse:         `{"result":[{"openConversationId":"cid-target","title":"项目群"}],"hasMore":false}`,
+			conversationResponses: []string{`{"result":{"messages":[],"hasMore":false}}`},
+		}
+		payload := executeSearchMsg(t, caller, append(
+			baseArgs,
+			"--group", "项目群",
+			"--download-resources", "--output-dir", "./downloads", "--dry-run",
+		)...)
+		if _, ok := payload["resolvedFilters"]; !ok {
+			t.Fatalf("payload=%#v, want resolved group evidence", payload)
+		}
+		if _, ok := payload["resourceDownloads"]; !ok {
+			t.Fatalf("payload=%#v, want resource download ledger", payload)
+		}
+	})
 }
 
 func TestCrossPlatformCoverageSearchMsgReactionPredicateValidationStopsBeforeRead(t *testing.T) {

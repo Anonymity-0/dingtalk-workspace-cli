@@ -332,7 +332,7 @@ func TestPagedMCPCommandStringCursorAggregatesAndSyncsCompletionFields(t *testin
 	}
 }
 
-func TestPagedMCPCommandConversationMessagesMergeSameConversation(t *testing.T) {
+func TestCrossPlatformCoveragePagedMCPCommandConversationMessagesMergeSameConversation(t *testing.T) {
 	caller := &pagedCommandCaller{steps: []scriptedToolStep{
 		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"群1","messages":[{"id":"m1"}]}],"hasMore":true,"nextCursor":"c2"}}`},
 		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"ignored","messages":[{"id":"m2"}]}],"hasMore":false,"nextCursor":""}}`},
@@ -376,7 +376,7 @@ func TestPagedMCPCommandConversationMessagesPreserveFirstConversationOrder(t *te
 	}
 }
 
-func TestPagedMCPCommandConversationMessagesMaxItemsTruncatesMessages(t *testing.T) {
+func TestCrossPlatformCoveragePagedMCPCommandConversationMessagesMaxItemsTruncatesMessages(t *testing.T) {
 	caller := &pagedCommandCaller{steps: []scriptedToolStep{
 		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","messages":[{"id":"m1"},{"id":"m2"}]},{"openConversationId":"cid2","messages":[{"id":"m3"},{"id":"m4"}]}],"hasMore":true,"nextCursor":"c2"}}`},
 	}}
@@ -425,7 +425,7 @@ func TestPagedMCPCommandConversationMessagesLaterFailureOutputsPartial(t *testin
 	}
 }
 
-func TestPagedMCPCommandConversationMessagesAddErrorsOutputPartial(t *testing.T) {
+func TestCrossPlatformCoveragePagedMCPCommandConversationMessagesAddErrorsOutputPartial(t *testing.T) {
 	tests := []struct {
 		name     string
 		response string
@@ -664,6 +664,38 @@ func TestCrossPlatformCoveragePagedMCPCommandIdentityDedupAndRequestSatisfaction
 	failedPaging := got["paging"].(map[string]any)
 	if failedPaging["requestSatisfied"] != false || failedPaging["itemsFetched"] != float64(0) {
 		t.Fatalf("paging=%#v, want unsatisfied request with no accepted items", failedPaging)
+	}
+
+	for _, tc := range []struct {
+		name     string
+		response string
+		want     string
+	}{
+		{
+			name:     "non-object item",
+			response: `{"result":{"messages":["bad"],"hasMore":false,"nextCursor":""}}`,
+			want:     "item must be object",
+		},
+		{
+			name:     "empty identity",
+			response: `{"result":{"messages":[{"id":"  "}],"hasMore":false,"nextCursor":""}}`,
+			want:     "must be non-empty",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &pagedCommandCaller{steps: []scriptedToolStep{{text: tc.response}}}
+			if _, _, err := runPagedCommandTest(t, caller, cfg, "--page-all", "--page-delay", "0"); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err=%v, want %q", err, tc.want)
+			}
+		})
+	}
+
+	collection := newPagedCollection(cfg)
+	if err := collection.Add([]any{map[string]any{"id": "m1"}, map[string]any{"id": "m2"}}); err != nil {
+		t.Fatal(err)
+	}
+	if collection.Truncate(0) || !collection.Truncate(1) || collection.Total() != 1 {
+		t.Fatalf("collection=%#v, want generic truncation to one item", collection.Values())
 	}
 }
 

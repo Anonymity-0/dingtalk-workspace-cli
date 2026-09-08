@@ -407,10 +407,7 @@ func executeScopedConversationReactionSearch(
 		end:        &endTime,
 		order:      "desc",
 	}
-	pageSize, _ := params["limit"].(int)
-	if pageSize <= 0 {
-		pageSize = chatMessagesAllPageSize
-	}
+	pageSize := rt.IntFirst("limit", "page-size")
 	allMessages := make([]map[string]any, 0)
 	messageScopes := map[string]string{}
 	seenMessages := map[string]bool{}
@@ -449,7 +446,7 @@ func executeScopedConversationReactionSearch(
 		if known, ok := pagePayload["paginationKnown"].(bool); !ok || !known {
 			paginationKnown = false
 		}
-		failures = appendScopedConversationFailures(failures, pagePayload, conversationID, readErr)
+		failures = appendScopedConversationFailures(failures, pagePayload, conversationID)
 		if nextPage, ok := pagePayload["nextPage"].(map[string]any); ok && len(nextPage) > 0 {
 			continuations = append(continuations, map[string]any{
 				"conversationId": conversationID,
@@ -463,11 +460,11 @@ func executeScopedConversationReactionSearch(
 			}
 			messageID := strings.TrimSpace(fmt.Sprint(searchMsgMessageID(message)))
 			if messageID != "" && messageID != "<nil>" {
-				messageScopes[messageID] = conversationID
 				if seenMessages[messageID] {
 					continue
 				}
 				seenMessages[messageID] = true
+				messageScopes[messageID] = conversationID
 			}
 			allMessages = append(allMessages, message)
 		}
@@ -485,10 +482,7 @@ func executeScopedConversationReactionSearch(
 			message["openConversationId"] = conversationID
 		}
 	}
-	validatedMessages, unverifiableMessageIDs := chatmsg.FilterConversationScope(enrichedMessages, conversationIDs)
-	if len(unverifiableMessageIDs) > 0 {
-		return searchScopeUnverifiedError(conversationIDs, unverifiableMessageIDs)
-	}
+	validatedMessages, _ := chatmsg.FilterConversationScope(enrichedMessages, conversationIDs)
 	if len(validatedMessages) != len(enrichedMessages) {
 		return searchScopeViolationError(conversationIDs, enrichedMessages)
 	}
@@ -549,7 +543,6 @@ func appendScopedConversationFailures(
 	failures []map[string]any,
 	payload map[string]any,
 	conversationID string,
-	readErr error,
 ) []map[string]any {
 	failureCountBefore := len(failures)
 	if pageFailures, ok := payload["failures"].([]map[string]any); ok {
@@ -570,9 +563,6 @@ func appendScopedConversationFailures(
 		"conversationId": conversationID,
 		"stopReason":     payload["stopReason"],
 		"error":          "会话消息流未在安全预算内完成",
-	}
-	if readErr != nil {
-		failure["error"] = readErr.Error()
 	}
 	return append(failures, failure)
 }
