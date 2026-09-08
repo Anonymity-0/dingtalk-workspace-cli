@@ -15,7 +15,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 )
 
-func TestCrossPlatformCoverageActiveConversationsAliasMatchesPrimary(t *testing.T) {
+func TestCrossPlatformCoverageActiveConversationsCompatibilityMatchesPrimary(t *testing.T) {
 	const first = `{"result":{"conversationMessagesList":[{"openConversationId":"group-1","title":"测试群","singleChat":false,"messages":[{"createTime":"2026-09-07 10:00:00"}]}],"hasMore":true,"nextCursor":"page-2"}}`
 	const second = `{"result":{"conversationMessagesList":[{"openConversationId":"group-1","title":"测试群","singleChat":false,"messages":[{"createTime":"2026-09-07 12:00:00"}]}],"hasMore":false}}`
 	for _, tc := range []struct {
@@ -31,6 +31,7 @@ func TestCrossPlatformCoverageActiveConversationsAliasMatchesPrimary(t *testing.
 		{name: "page limit", flags: []string{"--page-limit", "1"}, lastPage: second, wantCalls: 1},
 		{name: "later page failure", lastPage: `{"result":{"hasMore":true}}`, wantCalls: 2, wantExit: 7},
 		{name: "invalid start", flags: []string{"--start", " "}, wantError: true},
+		{name: "invalid total timeout", flags: []string{"--total-timeout", "0"}, wantError: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var primaryJSON map[string]any

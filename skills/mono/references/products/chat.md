@@ -22,7 +22,7 @@
 - `+chat-messages --page-all` 连续读取 typed `nextPage.time`，按消息 ID 去重并受 `--page-limit/--max-results` 约束；`--output` 将同一完整性 ledger 原子写入工作目录内 JSON。
 - `+messages-send` 会自动规范化并补齐 @ 占位符。user 使用 `<@id>` / `<@all>`；bot/webhook 使用 `@id` / `@手机号` / `@all`。声明 `--at-*` / `--at-all` 即可，不要为统一 Shortcut 手工拼 `@10`。
 - `+search-msg --page-all` 连续翻页并默认按消息 ID 批量富化；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger。
-- `+active-conversations` 保留为兼容别名；新调用使用 `+recent-conversations`。两者参数和结果相同，使用旧名不会额外告警。
+- `+active-conversations` 保留为隐藏但可执行的兼容入口；新调用使用 `+recent-conversations`。两者共用参数、校验和查询实现，使用旧名不会额外告警。
 - `+recent-conversations` 的 `--start` 选填，省略时从有效 `--end` 往前推 24 小时；两个时间参数都省略即查询最近 24 小时，仅传 `--end` 即查询该结束时间之前 24 小时，不是当天零点。显式 `--start` 沿用原解析规则，空值或纯空白仍报错。自动翻页并按 `openConversationId` 去重；`--page-delay` 默认 200ms（0–60000ms，等待可取消）。会话总有 `name` 和 `nameKnown`，未知名称为 `""` / `false`。成功及页数上限结果在 `data`，需检查 `complete` 和 `meta.pagination`；`pageSize` 记录 `--limit`。
 - `+recent-conversations` 的 `--start/--end` 仅支持整秒，显式传入非零小数秒会在参数校验时失败。默认 `end` 是本次查询取到的当前时间向下取整秒，不包含当前尚未结束的这一秒，再从有效 `end` 倒推默认 `start`；最终有效区间必须满足 `end > start`。同一 `start/end` 用于所有页请求、结果返回和续查；消息 `latestMessageTime` 仍保留毫秒精度。非首页 `--cursor` 必须显式复用原 `--start/--end`，否则校验失败，不能重新使用默认窗口。
 - `+recent-conversations` 后续页失败返回 `partial_failure`（退出码 7）：已成功页面摘要在 `data.succeeded[0]`（`id=completed-pages`，`complete=false`），失败项在 `data.failed[0]`（`id=page:N`，其 `error.details.failedPage/failedCursor` 保留失败位置），`meta.pagination.next_token` 指向失败页输入游标；首个请求页失败返回普通 `failure`。先排查错误，不自动重试。`--cursor` 用于手工续查，不能跨次校验查询绑定或检测循环，也不恢复旧聚合；必须保持同一 profile，复用摘要中的 `start/end/pageSize` 作为 `--start/--end/--limit`，前后批次按 `conversationId` 合并并保留最大消息时间。续页自身的 `complete` 始终为 false；只有从首页起无遗漏地接续所有批次、处理完失败页且 endpoint 耗尽，才能报告全量结果。分页耗尽不保证上游索引无延迟或一致性快照。

@@ -11,9 +11,11 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/interfacesnapshot"
+	"github.com/spf13/cobra"
 )
 
-func TestCrossPlatformCoverageChatRecentConversationsSilentAlias(t *testing.T) {
+func TestCrossPlatformCoverageChatRecentConversationsHiddenCompatibilityEntry(t *testing.T) {
 	const primary = "chat +recent-conversations"
 	const canonical = "chat.shortcut_active_conversations"
 	const alias = "chat +active-conversations"
@@ -24,11 +26,25 @@ func TestCrossPlatformCoverageChatRecentConversationsSilentAlias(t *testing.T) {
 		t.Fatalf("primary is not an exact runnable leaf: leaf=%v remaining=%v err=%v", leaf, remaining, err)
 	}
 	oldLeaf, remaining, err := root.Find([]string{"chat", "+active-conversations"})
-	if err != nil || len(remaining) != 0 || oldLeaf != leaf {
-		t.Fatalf("compatibility alias must resolve to the same Cobra leaf: leaf=%v remaining=%v err=%v", oldLeaf, remaining, err)
+	if err != nil || len(remaining) != 0 || oldLeaf == nil || oldLeaf == leaf || oldLeaf.Name() != "+active-conversations" || !oldLeaf.Hidden || !oldLeaf.Runnable() || oldLeaf.Deprecated != "" {
+		t.Fatalf("legacy must be a distinct hidden runnable leaf without deprecation: leaf=%v remaining=%v err=%v", oldLeaf, remaining, err)
 	}
-	if !reflect.DeepEqual(leaf.Aliases, []string{"+active-conversations"}) || leaf.Hidden || leaf.Deprecated != "" {
-		t.Fatalf("primary must remain visible with a non-deprecated compatibility alias: aliases=%v hidden=%v deprecated=%q", leaf.Aliases, leaf.Hidden, leaf.Deprecated)
+	if len(leaf.Aliases) != 0 || len(oldLeaf.Aliases) != 0 || leaf.Hidden || leaf.Deprecated != "" {
+		t.Fatalf("primary must remain visible without Cobra aliases or deprecation: aliases=%v hidden=%v deprecated=%q", leaf.Aliases, leaf.Hidden, leaf.Deprecated)
+	}
+	// Prove the actual artifact consumed by the migration lifecycle has two
+	// exact entries, not just an alias accepted by Cobra.Find.
+	states := map[string]bool{}
+	for _, command := range interfacesnapshot.Capture(root).Commands {
+		if command.Path == "dws "+primary || command.Path == "dws "+alias {
+			if !command.Runnable || len(command.Aliases) != 0 {
+				t.Fatalf("unexpected migration snapshot: %#v", command)
+			}
+			states[command.Path] = command.Hidden
+		}
+	}
+	if !reflect.DeepEqual(states, map[string]bool{"dws " + primary: false, "dws " + alias: true}) {
+		t.Fatalf("migration snapshot is not the approved after-state: %#v", states)
 	}
 	for _, path := range []string{primary, alias} {
 		meta, ok := cli.ResolveMeta(path)
@@ -123,9 +139,47 @@ func TestCrossPlatformCoverageChatRecentConversationsSilentAlias(t *testing.T) {
 			if strings.Contains(help, "+active-conversations") {
 				t.Fatal("product help advertises the compatibility alias")
 			}
-		} else if !strings.Contains(help, "dws "+primary+" [flags]") {
-			t.Fatalf("exact help %q must show primary usage", name)
+		} else if !strings.Contains(help, "dws chat "+name+" [flags]") {
+			t.Fatalf("exact help %q must show the executable entry usage", name)
 		}
+		if name == "+recent-conversations" && strings.Contains(help, "+active-conversations") {
+			t.Fatal("primary help advertises the hidden compatibility entry")
+		}
+	}
+}
+
+func TestCrossPlatformCoverageChatRecentConversationsCompatibilityAssemblyFailsClosed(t *testing.T) {
+	annotateChatRecentConversationsCompatibility([]*cobra.Command{{Use: "other"}})
+	for _, name := range []string{"missing primary", "missing legacy", "Cobra alias", "visible legacy", "hidden primary", "non-runnable legacy", "non-runnable primary"} {
+		t.Run(name, func(t *testing.T) {
+			product := &cobra.Command{Use: "chat"}
+			primary := &cobra.Command{Use: "+recent-conversations", Run: func(*cobra.Command, []string) {}}
+			legacy := &cobra.Command{Use: "+active-conversations", Hidden: true, Run: func(*cobra.Command, []string) {}}
+			switch name {
+			case "visible legacy":
+				legacy.Hidden = false
+			case "hidden primary":
+				primary.Hidden = true
+			case "non-runnable legacy":
+				legacy.Run = nil
+			case "non-runnable primary":
+				primary.Run = nil
+			case "Cobra alias":
+				primary.Aliases = []string{"+active-conversations"}
+			}
+			if name != "missing primary" {
+				product.AddCommand(primary)
+			}
+			if name != "missing legacy" && name != "Cobra alias" {
+				product.AddCommand(legacy)
+			}
+			defer func() {
+				if recovered := recover(); recovered == nil {
+					t.Fatal("invalid compatibility assembly must fail closed")
+				}
+			}()
+			annotateChatRecentConversationsCompatibility([]*cobra.Command{product})
+		})
 	}
 }
 

@@ -49,7 +49,6 @@ var ActiveConversations = shortcut.Shortcut{
 	OutputRollout: output.RolloutUnifiedActive,
 	Service:       "chat",
 	Command:       "+recent-conversations",
-	Aliases:       []string{"+active-conversations"},
 	Product:       "chat",
 	Description:   "列出指定时间以来有新消息的单聊和群聊",
 	Intent:        "当你只需要知道最近 24 小时或指定时间范围内哪些单聊或群聊出现了新消息，而不需要读取消息正文时使用；省略 --start 时从有效 --end 往前推 24 小时，省略 --end 时固定为当前时间取整秒；CLI 自动翻页、按 openConversationId 去重，并返回会话名称、类型和时间窗内最新消息时间。",
@@ -656,5 +655,16 @@ func activeConversationResponseError(reason, message string) error {
 }
 
 func init() {
-	shortcut.Register(ActiveConversations)
+	shortcut.Register(ActiveConversations, legacyActiveConversations())
+}
+
+// A distinct hidden leaf supplies the approved command_move after-state.
+// Share all executable flags, constraints, safety and query hooks. The hidden
+// compatibility leaf does not publish a second Agent contract/identity.
+func legacyActiveConversations() shortcut.Shortcut {
+	legacy := ActiveConversations
+	legacy.Command = "+active-conversations"
+	legacy.Hidden = true
+	legacy.Contract = corecmd.ContractDecl{}
+	return legacy
 }

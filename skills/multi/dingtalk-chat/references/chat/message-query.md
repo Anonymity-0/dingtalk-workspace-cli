@@ -22,7 +22,7 @@ Favorite、Pin 和 reaction。只读任务优先使用 Shortcut；只有 Shortcu
 `+chat-messages` 是指定会话的粗粒度读取；`+search-msg` 是目标条件明确的单/跨会话检索。
 不要先读完整会话再补跑搜索，也不要把群名或姓名直接填入只接受稳定 ID 的参数。
 
-旧名 `+active-conversations` 保留为兼容别名；新调用使用 `+recent-conversations`。
+旧名 `+active-conversations` 保留为隐藏但可执行的兼容入口；新调用使用 `+recent-conversations`。
 两者共用实现、参数和结果，使用旧名不会额外告警。
 
 `+recent-conversations` 不返回消息正文。它自动沿 `nextCursor` 翻页，按 `openConversationId`
