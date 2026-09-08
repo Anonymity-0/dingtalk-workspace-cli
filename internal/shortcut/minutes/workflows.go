@@ -187,14 +187,14 @@ var SyncASR = shortcut.Shortcut{
 
 var ExportPack = shortcut.Shortcut{
 	Service: "minutes", Command: "+export-pack", Product: "minutes",
-	Description: "把完整听记产物写入受控目录并生成不含签名 URL 的 manifest",
-	Intent:      "需要离线归档 basic/summary/keywords/transcript/todos，可选媒体文件时使用；全部必需产物验证通过后才原子发布目录。",
+	Description: "把听记文本产物清理签名凭据后写入受控目录并生成清理台账",
+	Intent:      "需要归档 basic/summary/keywords/transcript/todos，可选媒体文件时使用；文本签名链接替换为明确占位符并通过凭据扫描后发布。完整性只针对所选产物，不保证摘要图片离线可用。",
 	Risk:        shortcut.RiskRead,
 	Safety:      contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
-	Contract: minutesContract("+export-pack", "把完整听记产物写入受控目录并生成不含签名 URL 的 manifest",
+	Contract: withMinutesExportResult(minutesContract("+export-pack", "把听记文本产物清理签名凭据后写入受控目录并生成清理台账",
 		"已知 taskUuid，需要把多个已验证产物和完整性 manifest 安全归档到工作目录时使用",
 		[]string{"只下载媒体时使用 +download；目标目录已存在时本命令拒绝覆盖"},
-		[]string{`dws minutes +export-pack --id <taskUuid> --output ./minutes-export`, `dws minutes +export-pack --id <taskUuid> --output ./minutes-export --include-media`}),
+		[]string{`dws minutes +export-pack --id <taskUuid> --output ./minutes-export`, `dws minutes +export-pack --id <taskUuid> --output ./minutes-export --include-media`})),
 	Flags: []shortcut.Flag{
 		{Name: "id", Type: shortcut.FlagString, Desc: "听记 taskUuid", Required: true},
 		{Name: "output", Type: shortcut.FlagString, Desc: "工作目录内的新归档目录", Required: true},
@@ -569,9 +569,14 @@ func executeMinutesExportPack(rt *shortcut.RuntimeContext) error {
 		}
 	}()
 	files := map[string]map[string]any{}
+	totalRedactions := 0
 	for _, name := range artifacts {
 		filename := name + ".json"
-		value := bundle[name]
+		value, redactionCount, sanitizeErr := sanitizeExportArtifact(bundle[name])
+		if sanitizeErr != nil {
+			return sanitizeErr
+		}
+		totalRedactions += redactionCount
 		if name == "summary" {
 			filename = "summary.md"
 			if err := minutesWriteFile(filepath.Join(tempDir, filename), []byte(value.(string)), 0o600); err != nil {
@@ -584,7 +589,7 @@ func executeMinutesExportPack(rt *shortcut.RuntimeContext) error {
 		if err != nil {
 			return err
 		}
-		files[name] = map[string]any{"file": filename, "sizeBytes": info.Size(), "complete": true}
+		files[name] = map[string]any{"file": filename, "sizeBytes": info.Size(), "complete": true, "sanitized": true, "redactionCount": redactionCount}
 	}
 	if rt.Bool("include-media") {
 		mediaData, callErr := rt.CallMCPData("minutes", "query_minutes_audio_url", map[string]any{"taskUuid": id})
@@ -597,19 +602,29 @@ func executeMinutesExportPack(rt *shortcut.RuntimeContext) error {
 		}
 		download, downloadErr := minutesDownload(rt.Command().Context(), mediaURL, localio.DownloadOptions{BaseDir: tempDir, Output: "media/", PreferredName: id + mediaExtension(mediaURL)})
 		if downloadErr != nil {
-			return downloadErr
+			return fmt.Errorf("听记媒体下载失败；未发布归档")
 		}
 		files["media"] = map[string]any{"file": download.RelativePath, "sizeBytes": download.SizeBytes, "complete": true}
 	}
-	manifest := map[string]any{"version": 1, "operation": "minutes.export_pack", "taskUuid": id, "complete": true, "generatedAt": time.Now().UTC().Format(time.RFC3339), "files": files}
+	manifest := map[string]any{"version": 1, "operation": "minutes.export_pack", "taskUuid": id, "complete": true, "generatedAt": time.Now().UTC().Format(time.RFC3339), "files": files, "sanitized": true, "redactionCount": totalRedactions, "sanitizationScope": "text_artifacts", "redactionKinds": []string{}, "offlineImagesComplete": false}
+	if totalRedactions > 0 {
+		manifest["redactionKinds"] = []string{"signed_url_or_credential"}
+	}
 	if err := writeJSONFile(filepath.Join(tempDir, "manifest.json"), manifest); err != nil {
 		return err
+	}
+	if err := scanExportCredentials(tempDir, artifacts, rt.Bool("include-media")); err != nil {
+		payload := map[string]any{"operation": "minutes.export_pack", "complete": false, "taskUuid": id, "published": false, "sanitized": false}
+		return outputWorkflowResult(rt, payload, true, "minutes_export_sensitive_content", "sanitize")
 	}
 	if err := minutesRename(tempDir, target); err != nil {
 		return fmt.Errorf("发布听记归档目录失败: %w", err)
 	}
 	cleanup = false
-	return rt.Output(map[string]any{"operation": "minutes.export_pack", "complete": true, "taskUuid": id, "published": true, "path": filepath.ToSlash(relative), "manifest": filepath.ToSlash(filepath.Join(relative, "manifest.json")), "files": files})
+	manifest["published"] = true
+	manifest["path"] = filepath.ToSlash(relative)
+	manifest["manifest"] = filepath.ToSlash(filepath.Join(relative, "manifest.json"))
+	return rt.Output(manifest)
 }
 
 func minutesShareFlags(includePermission bool) []shortcut.Flag {

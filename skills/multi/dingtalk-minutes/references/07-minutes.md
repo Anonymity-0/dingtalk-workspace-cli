@@ -68,6 +68,8 @@ dws minutes +upload-and-analyze --resume-id <taskUuid> --artifacts summary,trans
 
 上传状态未知时先根据真实 session/taskUuid 读回；不能重新 create 来“试一次”。预签名 URL 属于敏感临时数据，不写入日志、报告或长期 manifest。
 
+`+export-pack` 对全部文本产物做递归签名凭据清理和发布前扫描，检查 `sanitized/redactionCount/sanitizationScope`。已识别签名链接目标替换为 `[signed-url-removed]`；不能将归档 `complete=true` 解释为图片离线完整，当前 `offlineImagesComplete=false`。二进制媒体不属于文本扫描范围，文件 hash/内容读回未实施。
+
 ## 3. 异步生成与录音收尾
 
 ### 3.1 思维导图

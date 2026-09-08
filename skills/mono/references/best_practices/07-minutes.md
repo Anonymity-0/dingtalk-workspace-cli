@@ -1,5 +1,7 @@
 # 听记与会后
 
+导出听记用 `+export-pack` 时，已识别签名链接会在全部文本产物中替换为 `[signed-url-removed]`，并在发布前扫描；失败不发布。交付需说明 `sanitized/redactionCount/sanitizationScope`。当前 `offlineImagesComplete=false`，不可把归档成功当作图片离线可用；二进制媒体不属于文本扫描范围，文件 hash/内容读回仍未提供。
+
 > lite（`list-minutes`、`get-minutes-summary`、`get-minutes-transcription`）见 [SKILL.md](../../SKILL.md)。full recipe 见下表。  
 > 日程、订会议室、`schedule-meeting` 见 [03-meeting.md](./03-meeting.md)。产品命令见 [minutes.md](../products/minutes.md)。
 

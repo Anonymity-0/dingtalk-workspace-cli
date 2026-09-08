@@ -85,6 +85,7 @@ dws minutes +list-all --page-all --format json
 
 ## 安全边界
 
+- `+export-pack` 会递归清理全部文本产物中的已识别签名链接/凭据，签名目标替换为 `[signed-url-removed]`；扫描失败不发布。交付时说明 `sanitized/redactionCount/sanitizationScope`，不要把 `complete=true` 解释为摘要图片已离线保存；当前 `offlineImagesComplete=false`。二进制媒体内容不属于文本扫描范围。
 - 是否确认以 leaf Schema 与 Runtime gate 为准，不根据“看起来像写操作”自行推断。推荐 Golden Route 中的 `+update`、`+summary`、`+record-*`、`+share/+unshare/+apply-permission`、`+speaker-replace`、`+replace-batch` 等当前要求确认。
 - 为兼容既有公开 Contract，对应的底层原子命令保留历史 `not_required`；它们只用于 Shortcut 无法表达的明确底层控制，不得为了绕过 Golden Route 的确认门禁而降级调用。
 - `+upload` 与 `+upload-and-analyze` 即使不发送消息，仍会上传本地媒体并创建远端听记，真实执行必须按 Runtime confirmation；`--dry-run` 仍可在零远端调用下预览。上传并发送闪记卡片、精确同步并删除热词、撤权等副作用更大的入口继续单独处理。

@@ -52,6 +52,8 @@ dws minutes +export-pack --id <taskUuid> --output ./minutes-export --include-med
 - `--output` 必须是工作目录内尚不存在的安全相对目录；命令拒绝目录穿越和静默覆盖。
 - 默认归档 `basic,summary,keywords,transcript,todos`；如用 `--artifacts` 缩小集合，只能声称已交付实际选择并验证通过的产物。
 - `--include-media` 只决定是否附带媒体，不降低逐字稿完整性要求；manifest 不保存短期签名 URL。
+- 全部文本产物（basic/summary/keywords/transcript/todos，含 JSON 内嵌字符串）清理已识别 OSS/AWS 签名 URL，目标替换为 `[signed-url-removed]`，独立凭据字段替换为 `[credential-removed]`；普通链接保持不变。发布前凭据扫描失败则不发布目录。
+- manifest 和返回值包含 `sanitized/redactionCount/redactionKinds/sanitizationScope`；文本文件有各自清理次数。`complete=true` 不代表原始图片可离线访问，当前 `offlineImagesComplete=false`；清理范围为 `text_artifacts`，不扫描二进制媒体内容，也不提供文件 hash/内容一致性读回。
 - 只有响应中的 `published=true`、真实 `path/manifest/files` 和所选产物均完整，才能称归档已生成；任一产物 unknown/pending/failed 时不得宣称成功。
 
 ## 目标匹配
