@@ -214,7 +214,7 @@ func executeActiveConversations(rt *shortcut.RuntimeContext) error {
 			pageFailure = activeConversationResponseError("invalid_pagination", "下层返回 hasMore=true，但 nextCursor 缺失、回到首页、停滞或形成循环")
 			break
 		}
-		if err := mergeActiveConversationPage(states, groups); err != nil {
+		if err := mergeActiveConversationPage(states, groups, queryRange); err != nil {
 			pageFailure = err
 			break
 		}
@@ -291,7 +291,7 @@ func waitActiveConversationPage(ctx context.Context, delay time.Duration) error 
 
 // Stage only the current page's affected conversations. Nothing from a failed
 // page may change the verified aggregate, including updates to existing IDs.
-func mergeActiveConversationPage(states map[string]*activeConversationState, groups []map[string]any) error {
+func mergeActiveConversationPage(states map[string]*activeConversationState, groups []map[string]any, queryRange activeConversationRange) error {
 	staged := make(map[string]*activeConversationState, len(groups))
 	for index, group := range groups {
 		id := activeConversationString(group, "openConversationId")
@@ -301,7 +301,7 @@ func mergeActiveConversationPage(states map[string]*activeConversationState, gro
 				staged[id] = &copyState
 			}
 		}
-		if err := mergeActiveConversationGroup(staged, group, index); err != nil {
+		if err := mergeActiveConversationGroup(staged, group, index, queryRange); err != nil {
 			return err
 		}
 	}
@@ -424,7 +424,7 @@ func parseActiveConversationPage(data map[string]any) ([]map[string]any, bool, s
 	return items, hasMore, nextCursor, nil
 }
 
-func mergeActiveConversationGroup(states map[string]*activeConversationState, group map[string]any, index int) error {
+func mergeActiveConversationGroup(states map[string]*activeConversationState, group map[string]any, index int, queryRange activeConversationRange) error {
 	conversationID := activeConversationString(group, "openConversationId")
 	if conversationID == "" {
 		return activeConversationResponseError("missing_conversation_id", fmt.Sprintf("响应会话项 %d 缺少 openConversationId", index))
@@ -438,14 +438,24 @@ func mergeActiveConversationGroup(states map[string]*activeConversationState, gr
 		return activeConversationResponseError("malformed_messages", fmt.Sprintf("会话 %s 的 messages 必须是非空对象数组", conversationID))
 	}
 	latest := time.Time{}
+	matched := false
 	for messageIndex, message := range messages {
 		messageTime, ok := parseActiveConversationTimestamp(chatmsg.CreateTime(message))
 		if !ok {
 			return activeConversationResponseError("invalid_message_time", fmt.Sprintf("会话 %s 的 messages[%d] 缺少可解析的消息时间", conversationID, messageIndex))
 		}
-		if latest.IsZero() || messageTime.After(latest) {
+		if messageTime.Before(queryRange.start) || !messageTime.Before(queryRange.end) {
+			continue
+		}
+		if !matched || messageTime.After(latest) {
 			latest = messageTime
 		}
+		matched = true
+	}
+	// An out-of-window group must neither create a conversation nor update an
+	// existing conversation's timestamp or metadata. Its page still advances.
+	if !matched {
+		return nil
 	}
 	name := activeConversationString(group, "title", "conversationTitle", "conversationName", "name")
 	state, exists := states[conversationID]
