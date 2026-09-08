@@ -28,8 +28,7 @@ func TestCrossPlatformCoverageActiveConversationsTotalTimeoutValidation(t *testi
 
 func TestCrossPlatformCoverageActiveConversationsTotalTimeoutPreservesBatchWithoutFiles(t *testing.T) {
 	t.Chdir(t.TempDir())
-	caller := &larkAlignmentCaller{responses: map[string]string{activeConversationsOperation: `{"result":{"conversationMessagesList":[{"openConversationId":"group-1","singleChat":false,"messages":[{"createTime":"2026-09-07T10:00:00+08:00"}]}],"hasMore":true,"nextCursor":"next"}}`,
-	}}
+	caller := &larkAlignmentCaller{responses: map[string]string{activeConversationsOperation: `{"result":{"conversationMessagesList":[{"openConversationId":"group-1","singleChat":false,"messages":[{"createTime":"2026-09-07T10:00:00+08:00"}]}],"hasMore":true,"nextCursor":"next"}}`}}
 	started := time.Now()
 	result, err := executeActiveConversationsForTest(t, caller, map[string]string{
 		"start": "2026-09-07", "end": "2026-09-08", "page-delay": "60000", "total-timeout": "1",
@@ -56,9 +55,8 @@ func TestCrossPlatformCoverageActiveConversationsRejectsLateResponse(t *testing.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	caller := &activeConversationsObservedCaller{
-		larkAlignmentCaller: &larkAlignmentCaller{responses: map[string]string{activeConversationsOperation: `{"result":{"conversationMessagesList":[],"hasMore":false}}`,
-		}},
-		afterRead: cancel,
+		larkAlignmentCaller: &larkAlignmentCaller{responses: map[string]string{activeConversationsOperation: `{"result":{"conversationMessagesList":[],"hasMore":false}}`}},
+		afterRead:           cancel,
 	}
 	if _, err := executeActiveConversationsContextForTest(t, ctx, caller, map[string]string{}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("late response bypassed cancellation: %v", err)
