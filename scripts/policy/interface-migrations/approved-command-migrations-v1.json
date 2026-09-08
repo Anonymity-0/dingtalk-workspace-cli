@@ -19,7 +19,7 @@
         "replacement_tool_id": "chat.shortcut_active_conversations",
         "parameters": []
       },
-      "state": "pending",
+      "state": "consumed",
       "reason": "Make recent-conversations the public time-window query entry while retaining active-conversations as a hidden executable compatibility command without deprecation warnings; preserve the stable Schema tool identity and do not rename parameters."
     },
     {
