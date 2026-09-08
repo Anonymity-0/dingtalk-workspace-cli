@@ -327,7 +327,7 @@ func (p *OAuthProvider) Login(ctx context.Context, force bool) (*TokenData, erro
 			switch {
 			case !processedAuthDisabled:
 				// CLI auth is enabled; show success page.
-				_, _ = fmt.Fprint(w, successHTML)
+				_, _ = fmt.Fprint(w, renderSuccessHTML())
 			case processedApplySent || processedHasDwsApply:
 				// User has an in-flight apply (this session or a previous
 				// one); show the dedicated approval-pending page.
@@ -355,7 +355,7 @@ func (p *OAuthProvider) Login(ctx context.Context, force bool) (*TokenData, erro
 			switch {
 			case !processedAuthDisabled:
 				// CLI auth is enabled; show success page.
-				_, _ = fmt.Fprint(w, successHTML)
+				_, _ = fmt.Fprint(w, renderSuccessHTML())
 			case processedApplySent || processedHasDwsApply:
 				// User has an in-flight apply; show the dedicated
 				// approval-pending page.
@@ -471,7 +471,7 @@ func (p *OAuthProvider) Login(ctx context.Context, force bool) (*TokenData, erro
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		switch {
 		case cliAuthEnabled:
-			_, _ = fmt.Fprint(w, successHTML)
+			_, _ = fmt.Fprint(w, renderSuccessHTML())
 		case denialReason == "user_forbidden" || denialReason == "user_not_allowed":
 			_, _ = fmt.Fprint(w, accessDeniedHTML)
 		case denialReason == "channel_not_allowed" || denialReason == "channel_required":
@@ -598,7 +598,7 @@ func (p *OAuthProvider) Login(ctx context.Context, force bool) (*TokenData, erro
 	// Success page endpoint
 	mux.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = fmt.Fprint(w, successHTML)
+		_, _ = fmt.Fprint(w, renderSuccessHTML())
 	})
 
 	// Apply pending page endpoint
