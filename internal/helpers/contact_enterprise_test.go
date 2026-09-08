@@ -22,7 +22,8 @@ type contactEnterpriseCall struct {
 }
 
 type contactEnterpriseCaller struct {
-	calls []contactEnterpriseCall
+	calls        []contactEnterpriseCall
+	responseText string
 }
 
 func (c *contactEnterpriseCaller) CallTool(_ context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
@@ -31,7 +32,11 @@ func (c *contactEnterpriseCaller) CallTool(_ context.Context, productID, toolNam
 		toolName:  toolName,
 		args:      args,
 	})
-	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: `{}`}}}, nil
+	text := c.responseText
+	if text == "" {
+		text = `{}`
+	}
+	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
 }
 
 func (*contactEnterpriseCaller) Format() string { return "json" }

@@ -14,12 +14,15 @@
 package helpers
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/spf13/cobra"
 )
@@ -231,5 +234,132 @@ func TestContactApplyRemoveSafetyProjectionMatchesBehavior(t *testing.T) {
 	}
 	if want := map[string]any{"id": int64(123)}; !reflect.DeepEqual(call.args, want) {
 		t.Fatalf("apply-remove args = %#v, want %#v", call.args, want)
+	}
+}
+
+// runContactOrgListCommandCapture 执行 invite-list / apply-list 并捕获 stdout，
+// 同时注入自定义 MCP 文本响应。用于验证统一分页映射与 DataSchema 剥离。
+func runContactOrgListCommandCapture(t *testing.T, responseText string, args ...string) (*contactEnterpriseCaller, string, error) {
+	t.Helper()
+	previousDeps := deps
+	previousArgs := os.Args
+	t.Cleanup(func() {
+		deps = previousDeps
+		os.Args = previousArgs
+	})
+
+	caller := &contactEnterpriseCaller{responseText: responseText}
+	InitDeps(caller)
+	os.Args = append([]string{"dws", "contact"}, args...)
+
+	var out bytes.Buffer
+	cmd := newContactCommand()
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.PersistentFlags().Bool("yes", false, "")
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	return caller, out.String(), err
+}
+
+// TestContactOrgListPaginationProjection 验证 invite-list / apply-list 的最终
+// Schema 声明了统一 Pagination 契约、DataSchema 不再包含分页字段，且运行侧
+// 把服务端返回的 hasMore/nextCursor 正确投影到 meta.pagination。
+func TestContactOrgListPaginationProjection(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		path          []string
+		toolName      string
+		response      string
+		wantExhausted bool
+		wantToken     string
+	}{
+		{
+			name:          "invite-list declares cursor pagination and maps hasMore/nextCursor",
+			path:          []string{"org", "invite-list"},
+			toolName:      "list_team_invite",
+			response:      `{"result":{"values":[{"id":1,"status":1,"empName":"张三"}],"hasMore":true,"nextCursor":42},"success":true}`,
+			wantExhausted: false,
+			wantToken:     "42",
+		},
+		{
+			name:          "apply-list declares cursor pagination and strips terminal cursor",
+			path:          []string{"org", "apply-list"},
+			toolName:      "query_org_apply_list",
+			response:      `{"result":{"values":[{"id":2,"status":1,"content":"李四"}],"hasMore":false,"nextCursor":99},"success":true}`,
+			wantExhausted: true,
+			wantToken:     "",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := newContactCommand()
+			cmd := requireWukongSyncCommand(t, root, tc.path...)
+			payload, ok := contractfinal.RuntimeContractFinal(cmd)
+			if !ok {
+				t.Fatalf("%s has no runtime contract final payload", strings.Join(tc.path, " "))
+			}
+			if payload.Pagination == nil {
+				t.Fatalf("%s must declare pagination", strings.Join(tc.path, " "))
+			}
+			if payload.Pagination.Kind != contract.PaginationKindCursor || payload.Pagination.CursorParameter != "cursor" {
+				t.Fatalf("%s pagination = %+v, want cursor/cursor", strings.Join(tc.path, " "), payload.Pagination)
+			}
+			schema := string(payload.Result.DataSchema)
+			if strings.Contains(schema, "hasMore") || strings.Contains(schema, "nextCursor") {
+				t.Fatalf("%s data_schema must not contain pagination fields: %s", strings.Join(tc.path, " "), schema)
+			}
+
+			caller, out, err := runContactOrgListCommandCapture(t, tc.response, tc.path...)
+			if err != nil {
+				t.Fatalf("%s execute: %v\n%s", strings.Join(tc.path, " "), err, out)
+			}
+			if len(caller.calls) != 1 {
+				t.Fatalf("%s want 1 MCP call, got %d: %+v", strings.Join(tc.path, " "), len(caller.calls), caller.calls)
+			}
+			call := caller.calls[0]
+			if call.productID != "contact" || call.toolName != tc.toolName {
+				t.Fatalf("%s call = %s/%s, want contact/%s", strings.Join(tc.path, " "), call.productID, call.toolName, tc.toolName)
+			}
+
+			var envelope map[string]any
+			if err := json.Unmarshal([]byte(out), &envelope); err != nil {
+				t.Fatalf("%s output is not valid JSON: %v\n%s", strings.Join(tc.path, " "), err, out)
+			}
+			meta, ok := envelope["meta"].(map[string]any)
+			if !ok {
+				t.Fatalf("%s output missing meta: %s", strings.Join(tc.path, " "), out)
+			}
+			pg, ok := meta["pagination"].(map[string]any)
+			if !ok {
+				t.Fatalf("%s output missing meta.pagination: %s", strings.Join(tc.path, " "), out)
+			}
+			if pg["endpoint_exhausted"] != tc.wantExhausted {
+				t.Fatalf("%s endpoint_exhausted = %v, want %v", strings.Join(tc.path, " "), pg["endpoint_exhausted"], tc.wantExhausted)
+			}
+			gotToken, hasToken := pg["next_token"]
+			if tc.wantExhausted {
+				if hasToken && gotToken != "" {
+					t.Fatalf("%s exhausted pagination must not carry next_token, got %v", strings.Join(tc.path, " "), gotToken)
+				}
+			} else if gotToken != tc.wantToken {
+				t.Fatalf("%s next_token = %v, want %q", strings.Join(tc.path, " "), gotToken, tc.wantToken)
+			}
+			data, ok := envelope["data"].(map[string]any)
+			if !ok {
+				t.Fatalf("%s output missing data: %s", strings.Join(tc.path, " "), out)
+			}
+			result, ok := data["result"].(map[string]any)
+			if !ok {
+				t.Fatalf("%s output data.result missing or not object: %s", strings.Join(tc.path, " "), out)
+			}
+			if _, exists := result["hasMore"]; exists {
+				t.Fatalf("%s data.result must not leak hasMore", strings.Join(tc.path, " "))
+			}
+			if _, exists := result["nextCursor"]; exists {
+				t.Fatalf("%s data.result must not leak nextCursor", strings.Join(tc.path, " "))
+			}
+		})
 	}
 }

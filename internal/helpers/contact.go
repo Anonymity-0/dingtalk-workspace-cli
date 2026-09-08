@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -1168,6 +1170,139 @@ func newContactDeptInviteAuditCommand() *cobra.Command {
 	return cmd
 }
 
+// contactOrgPaginationMeta 把 contact 企业邀请/申请列表响应中的分页字段
+// 投影到统一 meta.pagination。源字段位于 body["result"] 下的 hasMore 与
+// nextCursor（数值类型）；空响应或没有分页字段时返回 nil。
+// hasMore=false 时 nextCursor 是终端游标，不暴露为 next_token。
+func contactOrgPaginationMeta(result any) (*output.Meta, error) {
+	m, ok := result.(map[string]any)
+	if !ok {
+		return nil, nil
+	}
+	rawHasMore, hasFlag := m["hasMore"]
+	hasMore, hasMoreBool := rawHasMore.(bool)
+	if hasFlag && !hasMoreBool {
+		return nil, fmt.Errorf("pagination hasMore must be a JSON boolean")
+	}
+	if hasFlag && !hasMore {
+		// 已耗尽：钉钉可能仍回显一个 terminal cursor，但布尔是权威信号，
+		// 不能把不可续页的游标暴露为 next_token。
+		pg, _ := output.NewPagination(true, "")
+		return &output.Meta{Pagination: pg}, nil
+	}
+
+	rawCursor, hasCursor := m["nextCursor"]
+	cursor := ""
+	if hasCursor {
+		switch v := rawCursor.(type) {
+		case string:
+			cursor = strings.TrimSpace(v)
+		case json.Number:
+			cursor = strings.TrimSpace(v.String())
+		case float64:
+			cursor = strconv.FormatInt(int64(v), 10)
+		case int64:
+			cursor = strconv.FormatInt(v, 10)
+		default:
+			return nil, fmt.Errorf("pagination nextCursor must be a JSON string or number, got %T", rawCursor)
+		}
+	}
+	if !hasFlag && !hasCursor {
+		return nil, nil
+	}
+	if hasMore && cursor == "" {
+		return nil, fmt.Errorf("pagination hasMore=true is missing nextCursor")
+	}
+	pg, err := output.NewPagination(false, cursor)
+	if err != nil {
+		return nil, err
+	}
+	return &output.Meta{Pagination: pg}, nil
+}
+
+// contactOrgDataWithoutPagination 从 result 对象中剥离源分页控制字段，
+// 保证业务 data 不再泄漏 hasMore/nextCursor。
+func contactOrgDataWithoutPagination(result any) any {
+	m, ok := result.(map[string]any)
+	if !ok {
+		return result
+	}
+	data := make(map[string]any, len(m))
+	for key, value := range m {
+		if key == "hasMore" || key == "nextCursor" {
+			continue
+		}
+		data[key] = value
+	}
+	return data
+}
+
+// contactOrgListResult 调用 MCP 列表工具并投影分页元数据到统一输出。
+// 错误分类与 callMCPToolInternalOptsContext 保持一致。
+func contactOrgListResult(toolName string, args map[string]any) (output.CommandResult, error) {
+	if deps.Caller.DryRun() {
+		return output.Success(map[string]any{
+			"result":  map[string]any{"values": []any{}},
+			"success": true,
+		}, output.WithDryRun()), nil
+	}
+
+	serverID := resolveProductID()
+	result, err := deps.Caller.CallTool(context.Background(), serverID, toolName, args)
+	if err != nil {
+		if patErr := reclassifyPATFromError(err); patErr != nil {
+			return nil, patErr
+		}
+		return nil, WrapErrorWithOperation(err, serverID+"/"+toolName)
+	}
+
+	for _, c := range result.Content {
+		if c.Type != "text" {
+			continue
+		}
+		var body map[string]any
+		if err := json.Unmarshal([]byte(c.Text), &body); err != nil {
+			return nil, &CLIError{Code: CodeMCPToolError, Message: "服务端返回非 JSON 文本"}
+		}
+		if body == nil {
+			return nil, &CLIError{Code: CodeMCPToolError, Message: "服务端返回 null"}
+		}
+		// 网关层错误（如 token 过期）
+		if _, ok := getDWSGatewayErrorCode(body); ok {
+			return nil, &CLIError{Code: CodeAuthTokenExpired, Message: c.Text, Suggestion: authExpiredSuggestion()}
+		}
+		// 未登录错误
+		if isNotLoggedInError(body) {
+			return nil, &CLIError{Code: CodeAuthNotConfigured, Message: "当前未登录", Suggestion: notLoggedInSuggestion()}
+		}
+		// PAT（个人访问令牌）相关错误
+		if patErr := classifyPATError(body); patErr != nil {
+			return nil, patErr
+		}
+		// 业务逻辑错误
+		if isBusinessError(body) {
+			return nil, &CLIError{Code: CodeMCPToolError, Message: businessErrorDisplayMessage(body, c.Text), Suggestion: suggestForBusinessError(body)}
+		}
+
+		resultData, _ := body["result"].(map[string]any)
+		meta, err := contactOrgPaginationMeta(resultData)
+		if err != nil {
+			return output.Failure(&output.ErrorInfo{
+				Type: "api", Subtype: "pagination_inconsistent", Message: err.Error(),
+				Hint: "保留原始响应并停止翻页；不要把当前页当作完整结果。",
+			}), nil
+		}
+		body["result"] = contactOrgDataWithoutPagination(resultData)
+		opts := []output.ResultOption{}
+		if meta != nil {
+			opts = append(opts, output.WithMeta(meta))
+		}
+		return output.Success(body, opts...), nil
+	}
+
+	return output.Success(result), nil
+}
+
 // newContactOrgInviteListCommand 构造 contact org invite-list 命令。
 func newContactOrgInviteListCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -1195,7 +1330,15 @@ func newContactOrgInviteListCommand() *cobra.Command {
 			} else if ok {
 				toolArgs["cursor"] = cursor
 			}
-			return callMCPTool("list_team_invite", toolArgs)
+			result, err := contactOrgListResult("list_team_invite", toolArgs)
+			if err != nil {
+				return err
+			}
+			if err := output.StoreResult(cmd.Context(), result); err != nil {
+				_, emitErr := output.EmitResult(cmd, result)
+				return emitErr
+			}
+			return nil
 		},
 	}
 	cmd.Flags().String("status", "1", "邀请状态：1=未处理，2=已同意，3=已忽略或失效（默认 1）")
@@ -1235,7 +1378,15 @@ hasMore=true 时用 nextCursor 翻页。
 			} else if ok {
 				toolArgs["cursor"] = cursor
 			}
-			return callMCPTool("query_org_apply_list", toolArgs)
+			result, err := contactOrgListResult("query_org_apply_list", toolArgs)
+			if err != nil {
+				return err
+			}
+			if err := output.StoreResult(cmd.Context(), result); err != nil {
+				_, emitErr := output.EmitResult(cmd, result)
+				return emitErr
+			}
+			return nil
 		},
 	}
 	cmd.Flags().String("status", "1", "申请状态：0=全部，1=未处理，2=已通过，3=已拒绝，4=已屏蔽（默认 1）")
@@ -2977,6 +3128,7 @@ contact user profile fields 获取可用字段列表。
 
 	contactOrgInviteListCmd := newContactOrgInviteListCommand()
 	DeclareLeafMetadata(contactOrgInviteListCmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
 		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
@@ -2989,11 +3141,12 @@ contact user profile fields 获取可用字段列表。
 				CLIPath:        "contact org invite-list",
 				PrimaryCLIPath: "contact org invite-list",
 			},
-			Description: "分页查询企业已发出的成员邀请记录（管理员邀请加入企业的记录），按创建时间倒序，可按状态筛选",
+			Description: "分页查询企业已发出的成员邀请记录（管理员邀请加入企业的记录），按创建时间倒序，可按状态筛选；分页信息读取 meta.pagination",
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-				DataSchema: json.RawMessage(`{"type":"object","description":"企业邀请记录列表","properties":{"result":{"type":"object","description":"邀请记录列表","properties":{"values":{"type":"array","description":"邀请记录","items":{"type":"object","properties":{"id":{"type":"number","description":"邀请记录ID"},"status":{"type":"number","description":"邀请状态：1=未处理，2=已同意，3=已忽略或失效"},"empName":{"type":"string","description":"被邀请人姓名"},"optUserProfileModel":{"type":"object","description":"邀请人信息","properties":{"nick":{"type":"string","description":"邀请人昵称"}}}}}},"hasMore":{"type":"boolean","description":"是否还有更多数据"},"nextCursor":{"type":"number","description":"下一页游标，hasMore=true 时传回继续翻页"}}},"success":{"type":"boolean","description":"是否成功"},"errorCode":{"type":"string","description":"错误码"},"errorMsg":{"type":"string","description":"错误信息"}},"required":["success"],"additionalProperties":true}`),
+				DataSchema: json.RawMessage(`{"type":"object","description":"企业邀请记录列表","properties":{"result":{"type":"object","description":"邀请记录列表","properties":{"values":{"type":"array","description":"邀请记录","items":{"type":"object","properties":{"id":{"type":"number","description":"邀请记录ID"},"status":{"type":"number","description":"邀请状态：1=未处理，2=已同意，3=已忽略或失效"},"empName":{"type":"string","description":"被邀请人姓名"},"optUserProfileModel":{"type":"object","description":"邀请人信息","properties":{"nick":{"type":"string","description":"邀请人昵称"}}}}}}}},"success":{"type":"boolean","description":"是否成功"},"errorCode":{"type":"string","description":"错误码"},"errorMsg":{"type":"string","description":"错误信息"}},"required":["success"],"additionalProperties":true}`),
 			},
+			Pagination: &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "cursor"},
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
@@ -3021,6 +3174,7 @@ contact user profile fields 获取可用字段列表。
 	// 如实声明为 write（对齐 chat mark-read 先例）；副作用仅清除未读标记，
 	// Risk 仍为 low 且无需用户确认，重复查询幂等。
 	DeclareLeafMetadata(contactOrgApplyListCmd, LeafSpec{
+		OutputRollout: output.RolloutUnifiedActive,
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",
@@ -3033,11 +3187,12 @@ contact user profile fields 获取可用字段列表。
 				CLIPath:        "contact org apply-list",
 				PrimaryCLIPath: "contact org apply-list",
 			},
-			Description: "分页查询用户主动申请加入企业的记录（可按状态筛选），返回申请 ID 供后续审批命令使用；查询后服务端会把未读申请标记为已读",
+			Description: "分页查询用户主动申请加入企业的记录（可按状态筛选），返回申请 ID 供后续审批命令使用；查询后服务端会把未读申请标记为已读；分页信息读取 meta.pagination",
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-				DataSchema: json.RawMessage(`{"type":"object","description":"加入企业申请列表","properties":{"result":{"type":"object","description":"申请记录列表","properties":{"values":{"type":"array","description":"申请记录","items":{"type":"object","properties":{"id":{"type":"number","description":"申请记录ID，供 apply-approve/reject/block/remove 使用"},"status":{"type":"number","description":"申请状态：1=未处理，2=已通过，3=已拒绝，4=已屏蔽"},"content":{"type":"string","description":"申请人姓名"},"gmtCreate":{"type":"number","description":"申请时间（毫秒时间戳）"},"dept":{"type":"object","description":"申请加入的部门","properties":{"deptId":{"type":"number","description":"部门ID"},"deptName":{"type":"string","description":"部门名称"},"deptPathName":{"type":"string","description":"部门名称全路径"}}},"inviterEmployeeModel":{"type":"object","description":"邀请人信息","properties":{"nick":{"type":"string","description":"邀请人昵称"},"name":{"type":"string","description":"邀请人姓名"}}},"optEmployeeModel":{"type":"object","description":"操作人信息","properties":{"nick":{"type":"string","description":"操作人昵称"},"name":{"type":"string","description":"操作人姓名"}}}}}},"hasMore":{"type":"boolean","description":"是否还有更多数据"},"nextCursor":{"type":"number","description":"下一页游标，hasMore=true 时传回继续翻页"}}},"success":{"type":"boolean","description":"是否成功"},"errorCode":{"type":"string","description":"错误码"},"errorMsg":{"type":"string","description":"错误信息"}},"required":["success"],"additionalProperties":true}`),
+				DataSchema: json.RawMessage(`{"type":"object","description":"加入企业申请列表","properties":{"result":{"type":"object","description":"申请记录列表","properties":{"values":{"type":"array","description":"申请记录","items":{"type":"object","properties":{"id":{"type":"number","description":"申请记录ID，供 apply-approve/reject/block/remove 使用"},"status":{"type":"number","description":"申请状态：1=未处理，2=已通过，3=已拒绝，4=已屏蔽"},"content":{"type":"string","description":"申请人姓名"},"gmtCreate":{"type":"number","description":"申请时间（毫秒时间戳）"},"dept":{"type":"object","description":"申请加入的部门","properties":{"deptId":{"type":"number","description":"部门ID"},"deptName":{"type":"string","description":"部门名称"},"deptPathName":{"type":"string","description":"部门名称全路径"}}},"inviterEmployeeModel":{"type":"object","description":"邀请人信息","properties":{"nick":{"type":"string","description":"邀请人昵称"},"name":{"type":"string","description":"邀请人姓名"}}},"optEmployeeModel":{"type":"object","description":"操作人信息","properties":{"nick":{"type":"string","description":"操作人昵称"},"name":{"type":"string","description":"操作人姓名"}}}}}}}},"success":{"type":"boolean","description":"是否成功"},"errorCode":{"type":"string","description":"错误码"},"errorMsg":{"type":"string","description":"错误信息"}},"required":["success"],"additionalProperties":true}`),
 			},
+			Pagination: &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "cursor"},
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
