@@ -99,7 +99,8 @@ var ThreadReplies = shortcut.Shortcut{
 		{Name: "message-id", Type: shortcut.FlagString, Desc: "话题主消息 openMessageId；自动只读解析 conversationId 和 threadId；--group 与 --message-id 解析出的 conversationId 必须匹配"},
 		{Name: "thread-id", Type: shortcut.FlagString, Aliases: []string{"thread"}, Desc: "话题/线程 ID（可直接使用消息列表返回的 threadId）；--thread-id/--topic-id 必须同时提供 --group"},
 		{Name: "topic-id", Type: shortcut.FlagString, Desc: "--thread-id 的兼容别名；--thread-id/--topic-id 必须同时提供 --group"},
-		{Name: "time", Type: shortcut.FlagString, Aliases: []string{"page-token"}, Desc: "起始时间，如 \"2025-03-01 00:00:00\"；--time/--page-token 支持RFC3339、本地日期时间或服务端毫秒nextCursor（可选）"},
+		{Name: "time", Type: shortcut.FlagString, Desc: "起始时间，如 \"2025-03-01 00:00:00\"；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD（可选）"},
+		{Name: "page-token", Type: shortcut.FlagString, Desc: "服务端毫秒 nextCursor，用于恢复 Thread 续页；与 --time 互斥"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的回复条数；--limit 必须大于 0"},
 		{Name: "page-size", Type: shortcut.FlagInt, Desc: "--limit 的公开兼容别名；必须大于 0"},
 		{Name: "page-delay", Type: shortcut.FlagInt, Default: "0", Desc: "后续页间隔毫秒，0–60000"},
@@ -119,7 +120,8 @@ var ThreadReplies = shortcut.Shortcut{
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"order", "sort"}},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"group", "thread-id", "topic-id"}, Description: "--thread-id/--topic-id 必须同时提供 --group"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"group", "message-id"}, Description: "--group 与 --message-id 解析出的 conversationId 必须匹配"},
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"time"}, Description: "--time/--page-token 支持RFC3339、本地日期时间或服务端毫秒nextCursor"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"time"}, Description: "--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD"},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"time", "page-token"}},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit", "page-size"}, Description: "显式页大小必须大于 0"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-all", "page-limit"}, Description: "--page-limit 仅与 --page-all 一起使用且范围 1-500"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"order", "sort", "page-all"}, Description: "asc 必须与 --page-all 一起使用"},
@@ -146,8 +148,11 @@ func validateThreadReplies(rt *shortcut.RuntimeContext) error {
 			return localChatOptionError("invalid_page_size", "+thread-replies 的 --"+name+" 必须大于 0", "--"+name)
 		}
 	}
-	if value := strings.TrimSpace(rt.StrFirst("time", "page-token")); value != "" && !validChatTime(value) && !validThreadCursor(value) {
+	if value := strings.TrimSpace(rt.Str("time")); value != "" && !validChatTime(value) {
 		return localChatOptionError("invalid_time_boundary", "+thread-replies 的 --time 格式无效", "--time")
+	}
+	if value := strings.TrimSpace(rt.Str("page-token")); value != "" && !validThreadCursor(value) {
+		return localChatOptionError("invalid_page_token", "+thread-replies 的 --page-token 必须是服务端毫秒 nextCursor", "--page-token")
 	}
 	if strings.TrimSpace(rt.Str("message-id")) == "" && strings.TrimSpace(rt.Str("group")) == "" {
 		return apperrors.NewValidation("--thread-id/--topic-id 必须同时提供 --group")

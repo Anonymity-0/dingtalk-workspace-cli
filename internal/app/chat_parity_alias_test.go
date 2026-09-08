@@ -97,3 +97,14 @@ func TestCrossPlatformCoverageReplyOptionalConversationAndMentionsReachSchema(t 
 		}
 	}
 }
+
+func TestCrossPlatformCoverageThreadTimeKeepsHistoricalFormat(t *testing.T) {
+	tool := executeShortcutSchemaQuery(t, "--cli-path", "chat +thread-replies")
+	parameters := schemaContractMap(tool["parameters"])
+	if got := schemaContractString(parameters["time"]["format"]); got != "" {
+		t.Fatalf("historical --time accepts RFC3339 and local dates; must not narrow to %q", got)
+	}
+	if got := schemaContractString(parameters["page-token"]["format"]); got != "" {
+		t.Fatalf("millisecond cursor must not inherit date-time format: %q", got)
+	}
+}
