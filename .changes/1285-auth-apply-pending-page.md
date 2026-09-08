@@ -12,7 +12,6 @@ category: Changed
   a personal-scope message ("you do not yet have CLI data access") with the
   approver picker relabeled to "select approver"; the inline success message was
   replaced by a redirect to the pending page. The non-applyable `user_forbidden`
-  and `user_not_allowed` reasons now share a single consolidated message ("this
-  organization has not enabled CLI data access") across the browser page and both
-  login transports (OAuth browser flow and device flow), for forward/backward
-  compatibility with older and newer backend responses.
+  and `user_not_allowed` reasons now share a single consolidated terminal message
+  ("this organization has not enabled CLI data access") across the browser page and
+  both login transports (OAuth browser flow and device flow).
