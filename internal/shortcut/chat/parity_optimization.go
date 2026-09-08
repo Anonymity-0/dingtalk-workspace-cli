@@ -92,16 +92,11 @@ func executeExactFeedGroupQuery(rt *shortcut.RuntimeContext) error {
 	if err != nil {
 		return err
 	}
-	rows, err := StrictChatCollection(data, "conversations", "conversationList", "items", "list")
+	conversations, err := categoryConversationsProject(data)
 	if err != nil {
 		return err
 	}
-	for _, row := range rows {
-		if shortcutString(row, "openConversationId", "conversationId", "id") == "" {
-			return apperrors.NewAPI("分组项缺少会话身份")
-		}
-	}
-	payload := feedGroupQueryProject(categoryConversationsProject(data), ids)
+	payload := feedGroupQueryProject(conversations, ids)
 	missing, _ := payload["notFoundConversationIds"].([]string)
 	exhausted, known := chatmsg.Pagination(data)["hasMore"].(bool)
 	// A terminal list for a nonexistent category cannot prove non-membership.

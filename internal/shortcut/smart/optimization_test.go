@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -158,5 +158,35 @@ func TestCrossPlatformCoverageOptimizationHistoryCursorBinding(t *testing.T) {
 		if restoreHistoryCursor(rt, &r) == nil {
 			t.Fatal("bad token accepted")
 		}
+	}
+}
+
+func TestCrossPlatformCoverageReactionStreamKeepsExtendedSearchPredicates(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		args     []string
+		eligible bool
+	}{
+		{name: "default bounded", eligible: true},
+		{name: "with threads", args: []string{"--with-threads"}},
+		{name: "all time", args: []string{"--all-time"}},
+		{name: "start only", args: []string{"--start", "2026-09-01T00:00:00Z"}},
+		{name: "end only", args: []string{"--end", "2026-09-08T00:00:00Z"}},
+		{name: "paired boundaries", args: []string{"--start", "2026-09-01T00:00:00Z", "--end", "2026-09-08T00:00:00Z"}, eligible: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := newPlatformCoverageRoot()
+			cmd, _, err := root.Find([]string{"chat", "+search-msg"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := cmd.ParseFlags(append([]string{"--has-reactions", "--page-all", "--group", "cid"}, tc.args...)); err != nil {
+				t.Fatal(err)
+			}
+			rt := shortcut.RuntimeContextForTest(cmd, SearchMsg)
+			if got := scopedConversationReactionStreamEligible(rt); got != tc.eligible {
+				t.Fatalf("eligible=%v want %v", got, tc.eligible)
+			}
+		})
 	}
 }

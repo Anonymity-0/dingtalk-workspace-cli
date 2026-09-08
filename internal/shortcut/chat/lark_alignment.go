@@ -32,10 +32,10 @@ var ChatCreate = shortcut.Shortcut{
 	Command:     "+chat-create",
 	Product:     "im",
 	Description: "按成员和可选群主全量预检后创建一个钉钉群聊",
-	Intent:      "当你要创建钉钉群聊时使用；成员可传稳定 ID 或 --member-query 姓名，成员省略时仅当前用户；名称省略使用服务端默认昵称。群主默认当前用户，也可用 --owner-open-dingtalk-id 或 --owner-query 明确指定。所有自然身份会在唯一解析并去重后才执行一次创建，任一零命中或多命中都会整体停止。--bots 可在建群后逐个添加机器人（最多10个 robotCode）；权限由添加接口校验，非原子操作，失败保留已建群并报告恢复上下文。",
+	Intent:      "当你要创建钉钉群聊时使用；成员可传稳定 ID 或 --member-query 姓名，成员省略时仅当前用户；名称省略由服务端生成默认群名。群主默认当前用户，也可用 --owner-open-dingtalk-id 或 --owner-query 明确指定。所有自然身份会在唯一解析并去重后才执行一次创建，任一零命中或多命中都会整体停止。--bots 可在建群后逐个添加机器人（最多10个 robotCode）；权限由添加接口校验，非原子操作，失败保留已建群并报告恢复上下文。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "name", Type: shortcut.FlagString, Desc: "群名称；省略时复用当前用户昵称"},
+		{Name: "name", Type: shortcut.FlagString, Desc: "群名称；省略或空白时不传 groupName，由服务端生成默认群名"},
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "初始成员 userId 或 openDingTalkId 列表"},
 		{Name: "member-query", Type: shortcut.FlagStringSlice, Desc: "按姓名/花名唯一解析的初始成员，可逗号分隔或重复传入"},
 		{Name: "owner-open-dingtalk-id", Type: shortcut.FlagString, Desc: "明确指定群主 openDingTalkId（与 --owner-query 互斥；省略时群主为当前用户）"},
@@ -109,9 +109,13 @@ var ChatCreate = shortcut.Shortcut{
 			members = appendUniqueShortcutString(members, member)
 		}
 		params := map[string]any{
-			"groupName":    rt.Str("name"),
 			"groupMembers": members,
 			"groupType":    rt.Str("type"),
+		}
+		// Omit an absent name so the service owns default naming; do not
+		// promise or synthesize the current user nickname in the CLI.
+		if name := rt.Str("name"); strings.TrimSpace(name) != "" {
+			params["groupName"] = name
 		}
 		if rt.Bool("thread") {
 			params["convThreadEnabled"] = true

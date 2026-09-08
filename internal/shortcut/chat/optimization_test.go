@@ -27,8 +27,11 @@ func TestCrossPlatformCoverageOptimizationCreateDefaultsAndGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	call := fake.calls[len(fake.calls)-1]
-	if call.tool != "create_group_conversation" || call.args["groupName"] != "" {
+	if call.tool != "create_group_conversation" {
 		t.Fatalf("default payload %#v", call)
+	}
+	if _, supplied := call.args["groupName"]; supplied {
+		t.Fatal("default creation must omit groupName")
 	}
 	members, ok := call.args["groupMembers"].([]string)
 	if !ok || len(members) != 1 {
@@ -247,5 +250,33 @@ func TestCrossPlatformCoverageOptimizationThreadBudgetIncludesEmptyThreads(t *te
 	ledger, _, _ := EnrichMessageDetails(rt, rows)
 	if len(f.calls) != 50 || ledger["threadRequests"] != 50 || ledger["complete"] != false {
 		t.Fatalf("empty threads escaped budget: %#v calls=%d", ledger, len(f.calls))
+	}
+}
+
+func TestCrossPlatformCoverageCreateNameDelegatesOnlyMissingName(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		args     []string
+		supplied bool
+		want     string
+	}{
+		{name: "omitted"},
+		{name: "empty", args: []string{"--name", ""}},
+		{name: "whitespace", args: []string{"--name", "  \t"}},
+		{name: "explicit", args: []string{"--name", "Project team"}, supplied: true, want: "Project team"},
+		{name: "framework trims explicit spacing", args: []string{"--name", " Project team "}, supplied: true, want: "Project team"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := &larkAlignmentCaller{}
+			args := append([]string{"+chat-create", "--yes"}, tc.args...)
+			if _, err := runChatParity(t, fake, args...); err != nil {
+				t.Fatal(err)
+			}
+			call := fake.calls[len(fake.calls)-1]
+			got, present := call.args["groupName"]
+			if call.tool != "create_group_conversation" || present != tc.supplied || (present && got != tc.want) {
+				t.Fatalf("groupName=%#v present=%v; want %q present=%v", got, present, tc.want, tc.supplied)
+			}
+		})
 	}
 }
