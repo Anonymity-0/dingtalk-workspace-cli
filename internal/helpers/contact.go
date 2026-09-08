@@ -1174,12 +1174,11 @@ func newContactDeptInviteAuditCommand() *cobra.Command {
 // 投影到统一 meta.pagination。源字段位于 body["result"] 下的 hasMore 与
 // nextCursor（数值类型）；空响应或没有分页字段时返回 nil。
 // hasMore=false 时 nextCursor 是终端游标，不暴露为 next_token。
-func contactOrgPaginationMeta(result any) (*output.Meta, error) {
-	m, ok := result.(map[string]any)
-	if !ok {
+func contactOrgPaginationMeta(result map[string]any) (*output.Meta, error) {
+	if result == nil {
 		return nil, nil
 	}
-	rawHasMore, hasFlag := m["hasMore"]
+	rawHasMore, hasFlag := result["hasMore"]
 	hasMore, hasMoreBool := rawHasMore.(bool)
 	if hasFlag && !hasMoreBool {
 		return nil, fmt.Errorf("pagination hasMore must be a JSON boolean")
@@ -1191,18 +1190,14 @@ func contactOrgPaginationMeta(result any) (*output.Meta, error) {
 		return &output.Meta{Pagination: pg}, nil
 	}
 
-	rawCursor, hasCursor := m["nextCursor"]
+	rawCursor, hasCursor := result["nextCursor"]
 	cursor := ""
 	if hasCursor {
 		switch v := rawCursor.(type) {
 		case string:
 			cursor = strings.TrimSpace(v)
-		case json.Number:
-			cursor = strings.TrimSpace(v.String())
 		case float64:
 			cursor = strconv.FormatInt(int64(v), 10)
-		case int64:
-			cursor = strconv.FormatInt(v, 10)
 		default:
 			return nil, fmt.Errorf("pagination nextCursor must be a JSON string or number, got %T", rawCursor)
 		}
@@ -1213,22 +1208,19 @@ func contactOrgPaginationMeta(result any) (*output.Meta, error) {
 	if hasMore && cursor == "" {
 		return nil, fmt.Errorf("pagination hasMore=true is missing nextCursor")
 	}
-	pg, err := output.NewPagination(false, cursor)
-	if err != nil {
-		return nil, err
-	}
+	// 此时 cursor 非空且 hasMore=true，NewPagination 不会失败。
+	pg, _ := output.NewPagination(false, cursor)
 	return &output.Meta{Pagination: pg}, nil
 }
 
 // contactOrgDataWithoutPagination 从 result 对象中剥离源分页控制字段，
 // 保证业务 data 不再泄漏 hasMore/nextCursor。
-func contactOrgDataWithoutPagination(result any) any {
-	m, ok := result.(map[string]any)
-	if !ok {
-		return result
+func contactOrgDataWithoutPagination(result map[string]any) map[string]any {
+	if result == nil {
+		return nil
 	}
-	data := make(map[string]any, len(m))
-	for key, value := range m {
+	data := make(map[string]any, len(result))
+	for key, value := range result {
 		if key == "hasMore" || key == "nextCursor" {
 			continue
 		}
@@ -1238,11 +1230,10 @@ func contactOrgDataWithoutPagination(result any) any {
 }
 
 // contactOrgListResult 调用 MCP 列表工具并投影分页元数据到统一输出。
-// 错误分类与 callMCPToolInternalOptsContext 保持一致。
+// 非 dry-run 路径复用 callMCPToolReturnTextOnServer 完成错误分类，再在此做
+// 统一分页投影；dry-run 路径仅预览真实工具名与参数，不实际调用 Server。
 func contactOrgListResult(toolName string, args map[string]any) (output.CommandResult, error) {
 	if deps.Caller.DryRun() {
-		// 复用现有 MCP dry-run 预览契约：展示真实工具名与待发送参数，
-		// 不实际调用 Server；正常响应路径统一处理分页投影。
 		return output.Success(map[string]any{
 			"dry_run":   true,
 			"executed":  false,
@@ -1252,59 +1243,30 @@ func contactOrgListResult(toolName string, args map[string]any) (output.CommandR
 	}
 
 	serverID := resolveProductID()
-	result, err := deps.Caller.CallTool(context.Background(), serverID, toolName, args)
+	text, err := callMCPToolReturnTextOnServer(context.Background(), serverID, toolName, args)
 	if err != nil {
-		if patErr := reclassifyPATFromError(err); patErr != nil {
-			return nil, patErr
-		}
-		return nil, WrapErrorWithOperation(err, serverID+"/"+toolName)
+		return nil, err
 	}
 
-	for _, c := range result.Content {
-		if c.Type != "text" {
-			continue
-		}
-		var body map[string]any
-		if err := json.Unmarshal([]byte(c.Text), &body); err != nil {
-			return nil, &CLIError{Code: CodeMCPToolError, Message: "服务端返回非 JSON 文本"}
-		}
-		if body == nil {
-			return nil, &CLIError{Code: CodeMCPToolError, Message: "服务端返回 null"}
-		}
-		// 网关层错误（如 token 过期）
-		if _, ok := getDWSGatewayErrorCode(body); ok {
-			return nil, &CLIError{Code: CodeAuthTokenExpired, Message: c.Text, Suggestion: authExpiredSuggestion()}
-		}
-		// 未登录错误
-		if isNotLoggedInError(body) {
-			return nil, &CLIError{Code: CodeAuthNotConfigured, Message: "当前未登录", Suggestion: notLoggedInSuggestion()}
-		}
-		// PAT（个人访问令牌）相关错误
-		if patErr := classifyPATError(body); patErr != nil {
-			return nil, patErr
-		}
-		// 业务逻辑错误
-		if isBusinessError(body) {
-			return nil, &CLIError{Code: CodeMCPToolError, Message: businessErrorDisplayMessage(body, c.Text), Suggestion: suggestForBusinessError(body)}
-		}
-
-		resultData, _ := body["result"].(map[string]any)
-		meta, err := contactOrgPaginationMeta(resultData)
-		if err != nil {
-			return output.Failure(&output.ErrorInfo{
-				Type: "api", Subtype: "pagination_inconsistent", Message: err.Error(),
-				Hint: "保留原始响应并停止翻页；不要把当前页当作完整结果。",
-			}), nil
-		}
-		body["result"] = contactOrgDataWithoutPagination(resultData)
-		opts := []output.ResultOption{}
-		if meta != nil {
-			opts = append(opts, output.WithMeta(meta))
-		}
-		return output.Success(body, opts...), nil
+	var body map[string]any
+	if err := json.Unmarshal([]byte(text), &body); err != nil || body == nil {
+		return nil, &CLIError{Code: CodeMCPToolError, Message: "服务端返回非 JSON 文本或 null"}
 	}
 
-	return output.Success(result), nil
+	resultData, _ := body["result"].(map[string]any)
+	meta, err := contactOrgPaginationMeta(resultData)
+	if err != nil {
+		return output.Failure(&output.ErrorInfo{
+			Type: "api", Subtype: "pagination_inconsistent", Message: err.Error(),
+			Hint: "保留原始响应并停止翻页；不要把当前页当作完整结果。",
+		}), nil
+	}
+	body["result"] = contactOrgDataWithoutPagination(resultData)
+	opts := []output.ResultOption{}
+	if meta != nil {
+		opts = append(opts, output.WithMeta(meta))
+	}
+	return output.Success(body, opts...), nil
 }
 
 // newContactOrgInviteListCommand 构造 contact org invite-list 命令。

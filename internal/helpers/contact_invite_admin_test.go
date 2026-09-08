@@ -15,6 +15,7 @@ package helpers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -359,6 +361,137 @@ func TestContactOrgListPaginationProjection(t *testing.T) {
 			}
 			if _, exists := result["nextCursor"]; exists {
 				t.Fatalf("%s data.result must not leak nextCursor", strings.Join(tc.path, " "))
+			}
+		})
+	}
+}
+
+// TestContactOrgListResultEdgeCases 覆盖 contactOrgListResult 与分页映射的
+// 异常分支：非对象 result、非布尔 hasMore、字符串/非法类型 nextCursor、
+// hasMore=true 缺少 nextCursor、服务端返回非 JSON/分页不一致、以及结果
+// 成功写入 result store 的分支。
+func TestContactOrgListResultEdgeCases(t *testing.T) {
+	cases := []struct {
+		name       string
+		response   string
+		wantErr    bool
+		wantErrMsg string
+		wantCalls  int
+	}{
+		{
+			name:      "result is non-object falls back to no pagination",
+			response:  `{"result":"unexpected","success":true}`,
+			wantCalls: 1,
+		},
+		{
+			name:       "non-boolean hasMore is rejected",
+			response:   `{"result":{"hasMore":"yes"},"success":true}`,
+			wantErr:    true,
+			wantErrMsg: "hasMore must be a JSON boolean",
+			wantCalls:  1,
+		},
+		{
+			name:      "string nextCursor is accepted",
+			response:  `{"result":{"values":[],"hasMore":true,"nextCursor":"42"},"success":true}`,
+			wantCalls: 1,
+		},
+		{
+			name:       "invalid nextCursor type is rejected",
+			response:   `{"result":{"values":[],"hasMore":true,"nextCursor":true},"success":true}`,
+			wantErr:    true,
+			wantErrMsg: "nextCursor must be a JSON string or number",
+			wantCalls:  1,
+		},
+		{
+			name:       "hasMore=true without nextCursor is rejected",
+			response:   `{"result":{"values":[],"hasMore":true},"success":true}`,
+			wantErr:    true,
+			wantErrMsg: "hasMore=true is missing nextCursor",
+			wantCalls:  1,
+		},
+		{
+			name:       "non-JSON response is rejected",
+			response:   `not json`,
+			wantErr:    true,
+			wantErrMsg: "非 JSON 文本或 null",
+			wantCalls:  1,
+		},
+		{
+			name:       "null response is rejected",
+			response:   `null`,
+			wantErr:    true,
+			wantErrMsg: "非 JSON 文本或 null",
+			wantCalls:  1,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, out, err := runContactOrgListCommandCapture(t, tc.response, "org", "invite-list")
+			if tc.wantErr {
+				// 分页不一致通过 output.Failure 返回，因此 err 可能为 nil 但输出含错误信息；
+				// 真正的调用/解析错误才会在 err 中返回。
+				if err != nil {
+					if !strings.Contains(err.Error(), tc.wantErrMsg) {
+						t.Fatalf("error does not contain %q: err=%v", tc.wantErrMsg, err)
+					}
+					return
+				}
+				if !strings.Contains(out, tc.wantErrMsg) {
+					t.Fatalf("output does not contain %q: out=%s", tc.wantErrMsg, out)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v\n%s", err, out)
+			}
+		})
+	}
+}
+
+// TestContactOrgListStoreEmission 验证命令在带有 result store 的上下文里
+// 成功通过 StoreResult 返回，覆盖 invite-list / apply-list RunE 中 StoreResult
+// 成功后的 return nil 分支。
+func TestContactOrgListStoreEmission(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		args     []string
+		toolName string
+	}{
+		{name: "invite-list", args: []string{"org", "invite-list"}, toolName: "list_team_invite"},
+		{name: "apply-list", args: []string{"org", "apply-list"}, toolName: "query_org_apply_list"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			previousDeps := deps
+			previousArgs := os.Args
+			t.Cleanup(func() {
+				deps = previousDeps
+				os.Args = previousArgs
+			})
+
+			caller := &contactEnterpriseCaller{responseText: `{"result":{"values":[]},"success":true}`}
+			InitDeps(caller)
+			os.Args = append([]string{"dws", "contact"}, tc.args...)
+
+			ctx, _ := output.WithResultStore(context.Background())
+			cmd := newContactCommand()
+			output.SetCommandRollout(cmd, output.RolloutUnifiedActive)
+			cmd.SilenceErrors = true
+			cmd.SilenceUsage = true
+			cmd.PersistentFlags().Bool("yes", false, "")
+			var out bytes.Buffer
+			cmd.SetOut(&out)
+			cmd.SetErr(&out)
+			cmd.SetArgs(tc.args)
+			cmd.SetContext(ctx)
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("execute with store: %v", err)
+			}
+			if len(caller.calls) != 1 || caller.calls[0].toolName != tc.toolName {
+				t.Fatalf("want 1 %s call, got %+v", tc.toolName, caller.calls)
+			}
+			_, emitted, err := output.EmitStoredResult(cmd)
+			if err != nil || !emitted {
+				t.Fatalf("EmitStoredResult emitted=%t err=%v out=%s", emitted, err, out.String())
 			}
 		})
 	}
