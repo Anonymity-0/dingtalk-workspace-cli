@@ -582,10 +582,11 @@ const applyPendingHTML = `<!doctype html>
         align-items: center;
         flex-direction: column;
       }
-      .pending-icon {
+      .lock-icon {
         width: 120px;
         height: 120px;
         margin: 0 auto;
+        object-fit: contain;
         display: block;
       }
       h1 {
@@ -628,22 +629,11 @@ const applyPendingHTML = `<!doctype html>
   </head>
   <body>
     <div class="card">
-      <svg
-        class="pending-icon"
-        viewBox="0 0 120 120"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <circle cx="60" cy="60" r="56" fill="#EAF1FF" />
-        <path
-          d="M60 34V60L74 68"
-          stroke="#0066FF"
-          stroke-width="6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-        <circle cx="60" cy="60" r="8" fill="#0066FF" />
-      </svg>
+      <img
+        class="lock-icon"
+        src="https://img.alicdn.com/imgextra/i4/O1CN01fS3xxz1vbzZSGjbe0_!!6000000006192-2-tps-480-480.png"
+        alt="lock icon"
+      />
       <h1>访问权限申请中</h1>
       <p>
         已向管理员发送权限申请，正在等待审核<br />
