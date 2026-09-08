@@ -107,6 +107,8 @@ dws whiteboard export-get --job-id <JOB_ID> \
   --export-format png --output ./exports --format json
 ```
 
+导出支持 `--dry-run`，只预览请求，不轮询或写文件。`--output` 必须是目录；同名文件已存在时不会覆盖，请改用其他目录或先处理已有文件。下载内容会在临时文件中检查 PNG/PDF 文件头，通过后再落到最终路径；无效下载不会占用目标文件名。恢复 PDF 任务时须传 `--export-format pdf`；任务后续出错时会保留 jobId，并给出包含格式及目录的恢复命令（POSIX shell）。
+
 `create-with-content --source` 本质是 OpenNodes JSON String 参数。较短内容可直接传
 `'{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[...]}'`；内容较长时可传
 本地文件路径。文件既可直接保存 OpenNodes，也可使用 `{"source":{...}}` 包装结构。

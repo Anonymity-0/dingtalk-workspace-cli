@@ -6,7 +6,10 @@ package helpers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,6 +51,7 @@ func newStandaloneWhiteboardExportCommands() (*cobra.Command, *cobra.Command) {
 		Contract: LeafContract{
 			Identity:    contract.ToolIdentitySpec{ProductID: "whiteboard", Name: "export_whiteboard", CanonicalPath: "whiteboard.export_whiteboard", CLIPath: "whiteboard export", PrimaryCLIPath: "whiteboard export"},
 			Description: "导出独立白板并按白板名称下载 PNG 或 PDF 到本地目录",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
 			Interface:   &contract.InterfaceSpec{Mode: "composite", Availability: "available", Reason: "命令提交导出任务、轮询任务并使用下载地址中的标准文件名安全落盘，不能绑定为单一 interface_ref"},
 			Selection:   contract.SelectionSpec{AgentSummary: "导出独立白板并按白板名称保存到本地", UseWhen: []string{"用户要把独立 .adraw 白板导出为 PNG 或 PDF 本地文件时"}, AvoidWhen: []string{"文档内嵌白板不使用本命令；只读取 OpenNodes 使用 whiteboard query"}, Examples: []string{"dws whiteboard export --node <WHITEBOARD_NODE_ID> --output ./exports --format json"}},
 			Parameters:  []contract.ParamDecl{{Name: "node", Property: "nodeId", Required: boolPtr(true)}, {Name: "export-format", Property: "exportFormat", Required: boolPtr(false), Enum: []string{"png", "pdf"}}, {Name: "output", Required: boolPtr(true)}},
@@ -59,6 +63,7 @@ func newStandaloneWhiteboardExportCommands() (*cobra.Command, *cobra.Command) {
 		Contract: LeafContract{
 			Identity:    contract.ToolIdentitySpec{ProductID: "whiteboard", Name: "query_export_job", CanonicalPath: "whiteboard.query_export_job", CLIPath: "whiteboard export-get", PrimaryCLIPath: "whiteboard export-get"},
 			Description: "查询已有白板导出任务并下载结果到本地目录",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
 			Interface:   &contract.InterfaceSpec{Mode: "composite", Availability: "available", Reason: "命令查询远端任务并将签名下载地址安全落盘"},
 			Selection:   contract.SelectionSpec{AgentSummary: "恢复查询已有白板导出任务并下载", UseWhen: []string{"已有 export_whiteboard 返回的 jobId，需要恢复查询和下载时"}, AvoidWhen: []string{"没有 jobId 时使用 whiteboard export 提交新任务"}, Examples: []string{"dws whiteboard export-get --job-id <JOB_ID> --output ./exports --format json"}},
 			Parameters:  []contract.ParamDecl{{Name: "job-id", Property: "jobId", Required: boolPtr(true)}, {Name: "export-format", Required: boolPtr(false), Enum: []string{"png", "pdf"}}, {Name: "output", Required: boolPtr(true)}},
@@ -81,6 +86,9 @@ func runStandaloneWhiteboardExport(cmd *cobra.Command, _ []string) error {
 	if deps.Caller.DryRun() {
 		return callMCPToolOnServer(whiteboardServerID, whiteboardcore.StandaloneExportTool, map[string]any{"nodeId": node, "exportFormat": format})
 	}
+	if err := validateWhiteboardExportDirectory(outputDir); err != nil {
+		return err
+	}
 	response, err := callWhiteboardToolResult(cmd, whiteboardcore.StandaloneExportTool, map[string]any{"nodeId": node, "exportFormat": format})
 	if err != nil {
 		return err
@@ -102,6 +110,12 @@ func runStandaloneWhiteboardExportGet(cmd *cobra.Command, _ []string) error {
 	if err := validateWhiteboardExportFormat(format); err != nil {
 		return err
 	}
+	if deps.Caller.DryRun() {
+		return callMCPToolOnServer(whiteboardServerID, whiteboardcore.StandaloneExportQueryTool, map[string]any{"jobId": jobID})
+	}
+	if err := validateWhiteboardExportDirectory(outputDir); err != nil {
+		return whiteboardExportRecoveryError(err, jobID, format, outputDir)
+	}
 	return pollAndDownloadWhiteboardExport(cmd, jobID, format, outputDir)
 }
 
@@ -112,10 +126,18 @@ func validateWhiteboardExportFormat(format string) error {
 	return nil
 }
 
-func pollAndDownloadWhiteboardExport(cmd *cobra.Command, jobID, format, outputDir string) error {
+func pollAndDownloadWhiteboardExport(cmd *cobra.Command, jobID, format, outputDir string) (err error) {
+	defer func() {
+		if err != nil {
+			err = whiteboardExportRecoveryError(err, jobID, format, outputDir)
+		}
+	}()
 	const maxPolls = 30
 	var result map[string]any
 	for attempt := 1; attempt <= maxPolls; attempt++ {
+		if err := cmd.Context().Err(); err != nil {
+			return err
+		}
 		if attempt > 1 {
 			select {
 			case <-cmd.Context().Done():
@@ -152,7 +174,15 @@ func pollAndDownloadWhiteboardExport(cmd *cobra.Command, jobID, format, outputDi
 }
 
 func downloadWhiteboardExport(ctx context.Context, jobID, format, outputDir, downloadURL string, result map[string]any) error {
-	fileName := sanitizeFileName(inferExportFilename(downloadURL, ""))
+	parsedURL, err := url.Parse(downloadURL)
+	if err != nil {
+		return fmt.Errorf("白板下载地址无效")
+	}
+	rawName := filepath.Base(strings.ReplaceAll(parsedURL.Path, "\\", "/"))
+	if rawName == "." || rawName == "/" || strings.HasSuffix(parsedURL.Path, "/") {
+		return invalidWhiteboardToolResult(whiteboardcore.StandaloneExportQueryTool, fmt.Errorf("downloadUrl missing standard filename"))
+	}
+	fileName := sanitizeFileName(rawName)
 	if fileName == "unnamed" {
 		return invalidWhiteboardToolResult(whiteboardcore.StandaloneExportQueryTool, fmt.Errorf("downloadUrl missing standard filename"))
 	}
@@ -169,18 +199,20 @@ func downloadWhiteboardExport(ctx context.Context, jobID, format, outputDir, dow
 		return fmt.Errorf("解析白板导出路径失败: %w", err)
 	}
 	if err := checkDownloadConflict(outputPath, false, "whiteboard.export_whiteboard"); err != nil {
-		return err
+		return whiteboardExportDownloadError(err)
 	}
+	var size int64
 	if err := downloadViaTemp(outputPath, false, func(tmpPath string) error {
-		return httpGetFile(ctx, downloadURL, nil, tmpPath)
+		if err := httpGetFile(ctx, downloadURL, nil, tmpPath); err != nil {
+			return err
+		}
+		var err error
+		size, err = validateWhiteboardExportFile(tmpPath, format)
+		return err
 	}); err != nil {
-		return fmt.Errorf("下载白板导出文件失败 (jobId=%s): %w", jobID, err)
+		return fmt.Errorf("下载白板导出文件失败: %w", whiteboardExportDownloadError(err))
 	}
-	info, err := os.Stat(outputPath)
-	if err != nil || info.Size() == 0 {
-		return fmt.Errorf("白板导出文件为空或不可读 (jobId=%s)", jobID)
-	}
-	return deps.Out.PrintJSON(map[string]any{"success": true, "jobId": jobID, "status": "SUCCESS", "exportFormat": format, "fileName": fileName, "outputPath": outputPath, "size": info.Size(), "logId": whiteboardString(result["logId"])})
+	return deps.Out.PrintJSON(map[string]any{"success": true, "jobId": jobID, "status": "SUCCESS", "exportFormat": format, "fileName": fileName, "outputPath": outputPath, "size": size, "logId": whiteboardString(result["logId"])})
 }
 
 // unwrapWhiteboardExportResult accepts the response shapes used by the
@@ -210,4 +242,66 @@ func whiteboardExportFormatMismatch(jobID, requested, actual string) error {
 
 func whiteboardExportResultSpec() *contract.ResultSpec {
 	return &contract.ResultSpec{Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure}, DataSchema: json.RawMessage(`{"type":"object","description":"已下载到本地的独立白板导出结果","properties":{"jobId":{"type":"string","description":"白板导出任务 ID"},"status":{"type":"string","description":"白板导出任务终态"},"exportFormat":{"type":"string","description":"实际导出格式"},"fileName":{"type":"string","description":"下载地址提供的标准白板文件名"},"outputPath":{"type":"string","description":"本地文件绝对路径"},"size":{"type":"integer","description":"本地文件字节数"},"logId":{"type":"string","description":"服务端诊断日志 ID"}}}`)}
+}
+
+// Validate the temporary file before publishing it, so failed downloads remain retryable.
+func validateWhiteboardExportFile(path, format string) (int64, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+	signature := "\x89PNG\r\n\x1a\n"
+	if format == "pdf" {
+		signature = "%PDF-"
+	}
+	header := make([]byte, len(signature))
+	if _, err := io.ReadFull(file, header); err != nil || string(header) != signature {
+		return 0, fmt.Errorf("白板导出文件为空、截断或不是有效的 %s 文件", format)
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
+func whiteboardExportDownloadError(err error) error {
+	var cliErr *CLIError
+	if errors.As(err, &cliErr) && cliErr.Code == CodeFileAlreadyExists {
+		copy := *cliErr
+		copy.Suggestion = "请使用其他 --output 目录，或先处理已有文件后重试；白板导出不会覆盖已有文件"
+		return &copy
+	}
+	return err
+}
+
+// Inspect existing ancestors without creating anything during validation.
+func validateWhiteboardExportDirectory(directory string) error {
+	path, err := filepath.Abs(directory)
+	if err != nil {
+		return err
+	}
+	for {
+		info, err := os.Stat(path)
+		if err == nil {
+			if !info.IsDir() {
+				return &CLIError{Code: CodeInvalidPath, Message: "--output 必须是目录，已有路径不是目录: " + path}
+			}
+			return nil
+		}
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("检查白板导出目录失败: %w", err)
+		}
+		parent := filepath.Dir(path)
+		if parent == path {
+			return err
+		}
+		path = parent
+	}
+}
+
+func whiteboardExportRecoveryError(err error, jobID, format, directory string) error {
+	return fmt.Errorf("%w\n任务 jobId=%s；修正问题后可恢复查询（POSIX shell）：dws whiteboard export-get --job-id %s --export-format %s --output %s --format json",
+		err, jobID, ShellQuoteArg(jobID), ShellQuoteArg(format), ShellQuoteArg(directory))
 }
