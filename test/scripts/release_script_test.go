@@ -33,7 +33,7 @@ func writeVersionedReleaseArchive(t *testing.T, dist, asset, version string) {
 		binary = "dws.exe"
 	}
 	writeReleaseRuntimeFixture(t, stage, asset)
-	container, err := runtimepayload.BuildContainer(filepath.Join(stage, ".dws-runtime", "20260825"), 12<<20)
+	container, err := runtimepayload.BuildContainer(filepath.Join(stage, ".dws-runtime", "20260908"), 12<<20)
 	if err != nil {
 		t.Fatalf("BuildContainer(%s): %v", asset, err)
 	}
@@ -65,7 +65,7 @@ func writeReleaseRuntimeFixture(t *testing.T, stage, asset string) {
 	default:
 		t.Fatalf("unsupported release fixture asset %q", asset)
 	}
-	writeRuntimePayloadFixture(t, filepath.Join(stage, ".dws-runtime", "20260825"), target, library)
+	writeRuntimePayloadFixture(t, filepath.Join(stage, ".dws-runtime", "20260908"), target, library)
 }
 
 func writeRuntimePayloadFixture(t *testing.T, root, target, library string) {
@@ -84,7 +84,7 @@ func writeRuntimePayloadFixture(t *testing.T, root, target, library string) {
 	}
 	psSum := sha256.Sum256([]byte(psManifest.String()))
 	manifest := fmt.Sprintf(
-		"{\n  \"format_version\": 1,\n  \"payload_version\": \"20260825\",\n  \"target\": %q,\n  \"library\": %q,\n  \"library_sha256\": \"%x\",\n  \"ps_file_count\": 123,\n  \"ps_manifest_sha256\": \"%x\"\n}\n",
+		"{\n  \"format_version\": 1,\n  \"payload_version\": \"20260908\",\n  \"target\": %q,\n  \"library\": %q,\n  \"library_sha256\": \"%x\",\n  \"ps_file_count\": 123,\n  \"ps_manifest_sha256\": \"%x\"\n}\n",
 		target,
 		library,
 		librarySum,
