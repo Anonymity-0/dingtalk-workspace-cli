@@ -1241,9 +1241,13 @@ func contactOrgDataWithoutPagination(result any) any {
 // 错误分类与 callMCPToolInternalOptsContext 保持一致。
 func contactOrgListResult(toolName string, args map[string]any) (output.CommandResult, error) {
 	if deps.Caller.DryRun() {
+		// 复用现有 MCP dry-run 预览契约：展示真实工具名与待发送参数，
+		// 不实际调用 Server；正常响应路径统一处理分页投影。
 		return output.Success(map[string]any{
-			"result":  map[string]any{"values": []any{}},
-			"success": true,
+			"dry_run":   true,
+			"executed":  false,
+			"tool":      toolName,
+			"arguments": args,
 		}, output.WithDryRun()), nil
 	}
 
