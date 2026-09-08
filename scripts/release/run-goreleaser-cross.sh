@@ -178,6 +178,32 @@ do
   fi
 done
 
+# .goreleaser.yaml resolves CC/CXX per target with
+#   CC={{ index .Env (print "CC_" .Os "_" .Arch) }}
+# and also declares the twelve CC_/CXX_ entries in the same builds.env list, so a
+# direct goreleaser invocation stays self-contained. Reading an earlier entry of
+# that list from a later one through .Env depends on an undocumented GoReleaser
+# internal, so export the same values into the container's process environment as
+# well; the template then resolves from an environment that is unambiguously
+# present. TestReleaseCrossCompilerEnvMatchesWrapper pins these to the config.
+compiler_env=(
+  "CC_darwin_amd64=o64-clang"
+  "CXX_darwin_amd64=o64-clang++"
+  "CC_darwin_arm64=oa64-clang"
+  "CXX_darwin_arm64=oa64-clang++"
+  "CC_linux_amd64=/opt/dws-zig/zig cc -target x86_64-linux-gnu.2.17"
+  "CXX_linux_amd64=/opt/dws-zig/zig c++ -target x86_64-linux-gnu.2.17"
+  "CC_linux_arm64=/opt/dws-zig/zig cc -target aarch64-linux-gnu.2.17"
+  "CXX_linux_arm64=/opt/dws-zig/zig c++ -target aarch64-linux-gnu.2.17"
+  "CC_windows_amd64=x86_64-w64-mingw32-gcc"
+  "CXX_windows_amd64=x86_64-w64-mingw32-g++"
+  "CC_windows_arm64=/llvm-mingw/bin/aarch64-w64-mingw32-gcc"
+  "CXX_windows_arm64=/llvm-mingw/bin/aarch64-w64-mingw32-g++"
+)
+for entry in "${compiler_env[@]}"; do
+  env_args+=(--env "$entry")
+done
+
 docker run --rm \
   --platform "linux/$docker_arch" \
   --user "$(id -u):$(id -g)" \

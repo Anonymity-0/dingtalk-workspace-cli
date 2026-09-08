@@ -3546,6 +3546,91 @@ func TestReleaseCrossCompilerEnvCoversEveryTarget(t *testing.T) {
 	}
 }
 
+// TestReleaseCrossCompilerEnvMatchesWrapper pins that the cross-toolchain wrapper
+// hands the container the same CC_/CXX_ values .goreleaser.yaml declares, for
+// every target in the release matrix. The templates resolve through .Env, so the
+// container process environment is what actually supplies them; comparing the two
+// sources per target means neither can drift into an empty compiler, and a target
+// added to the matrix without a matching wrapper export fails here.
+func TestReleaseCrossCompilerEnvMatchesWrapper(t *testing.T) {
+	t.Parallel()
+
+	read := func(rel string) string {
+		t.Helper()
+		path, err := filepath.Abs(filepath.Join("..", "..", rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", rel, err)
+		}
+		return string(data)
+	}
+
+	var config struct {
+		Builds []struct {
+			Env    []string `yaml:"env"`
+			Goos   []string `yaml:"goos"`
+			Goarch []string `yaml:"goarch"`
+		} `yaml:"builds"`
+	}
+	if err := yaml.Unmarshal([]byte(read(".goreleaser.yaml")), &config); err != nil {
+		t.Fatalf("parse .goreleaser.yaml: %v", err)
+	}
+	if len(config.Builds) != 1 {
+		t.Fatalf("expected exactly one build, got %d", len(config.Builds))
+	}
+	build := config.Builds[0]
+
+	declared := make(map[string]string, len(build.Env))
+	for _, entry := range build.Env {
+		if name, value, found := strings.Cut(entry, "="); found {
+			declared[name] = value
+		}
+	}
+
+	wrapper := read(filepath.Join("scripts", "release", "run-goreleaser-cross.sh"))
+	if !strings.Contains(wrapper, `env_args+=(--env "$entry")`) {
+		t.Error("wrapper does not forward its compiler_env entries to docker run")
+	}
+	exported := make(map[string]string)
+	for _, line := range strings.Split(wrapper, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, `"CC_`) && !strings.HasPrefix(line, `"CXX_`) {
+			continue
+		}
+		entry := strings.Trim(line, `"`)
+		name, value, found := strings.Cut(entry, "=")
+		if !found {
+			t.Errorf("wrapper compiler entry %q carries no value", entry)
+			continue
+		}
+		exported[name] = value
+	}
+
+	for _, goos := range build.Goos {
+		for _, goarch := range build.Goarch {
+			for _, prefix := range []string{"CC_", "CXX_"} {
+				name := prefix + goos + "_" + goarch
+				want, ok := declared[name]
+				if !ok || want == "" {
+					t.Errorf(".goreleaser.yaml declares no %s value for %s/%s", name, goos, goarch)
+					continue
+				}
+				got, ok := exported[name]
+				if !ok {
+					t.Errorf("wrapper does not export %s, so the container environment cannot resolve %s/%s", name, goos, goarch)
+					continue
+				}
+				if got != want {
+					t.Errorf("%s differs between wrapper and config: wrapper=%q config=%q", name, got, want)
+				}
+			}
+		}
+	}
+}
+
 func TestFinalizeGitHubReleaseDoesNotPublishAfterUploadFailure(t *testing.T) {
 	t.Parallel()
 
