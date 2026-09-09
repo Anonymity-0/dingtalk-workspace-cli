@@ -104,8 +104,8 @@ dws oa approval list-initiated --process-code <processCode> --start "<ISO-8601>"
 ### 查询可管理的审批模板及详情
 
 ```bash
-dws oa template list --format json
-dws oa template detail --template-code PROC-EXAMPLE --format json
+dws oa approval template list --format json
+dws oa approval template detail --template-code PROC-EXAMPLE --format json
 ```
 
 - `template list` 无业务参数，调用 `oa/list_manage_templates`，查询当前用户在当前组织可管理的模板。

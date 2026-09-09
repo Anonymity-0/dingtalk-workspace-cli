@@ -894,7 +894,7 @@ func addOAApprovalListFlags(cmd *cobra.Command, options oaApprovalListOptions) {
 }
 
 func oaTemplateSpec(command, tool, description, useWhen, avoidWhen string) LeafSpec {
-	path := "oa template " + command
+	path := "oa approval template " + command
 	return LeafSpec{
 		Use: command, Short: description, Example: "dws " + path, Server: "oa", Tool: tool,
 		OutputRollout: output.RolloutUnifiedActive, ResultCall: callOATemplateResult,
@@ -1893,10 +1893,10 @@ func newOaCommand() *cobra.Command {
 
 	templateListSpec := oaTemplateSpec("list", "list_manage_templates", "查询用户在当前组织可管理的审批模板",
 		"需要枚举当前组织中自己有管理权限的审批模板并取得 processCode 时",
-		"需要单个模板的表单 Schema 和流程配置时使用 dws oa template detail；查询可发起模板时使用 dws oa approval list-forms")
+		"需要单个模板的表单 Schema 和流程配置时使用 dws oa approval template detail；查询可发起模板时使用 dws oa approval list-forms")
 	templateDetailSpec := oaTemplateSpec("detail", "get_template_detail", "获取审批模板详情，返回表单 Schema 和流程配置",
 		"已知一个 processCode，需要读取审批模板的 schemaContent 和 processConfig 以检查表单和流程配置时",
-		"尚不知道可管理模板的 processCode 时先用 dws oa template list；查看审批实例时使用 dws oa approval detail")
+		"尚不知道可管理模板的 processCode 时先用 dws oa approval template list；查看审批实例时使用 dws oa approval detail")
 	templateDetailSpec.Example += " --template-code <code>"
 	templateDetailSpec.Contract.Selection.Examples = []string{templateDetailSpec.Example}
 	templateDetailSpec.Flags = []LeafFlag{{
@@ -2377,7 +2377,8 @@ func newOaCommand() *cobra.Command {
 		approvalCreateCmd,
 	)
 	approvalCmd.AddCommand(newOAAttachmentCommand())
-	root.AddCommand(approvalCmd, templateCmd)
+	approvalCmd.AddCommand(templateCmd)
+	root.AddCommand(approvalCmd)
 
 	return root
 }

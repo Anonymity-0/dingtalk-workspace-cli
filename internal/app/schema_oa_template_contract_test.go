@@ -10,7 +10,7 @@ func TestCrossPlatformCoverageOATemplateDeliveredContract(t *testing.T) {
 	for _, tc := range []struct{ command, tool string }{{"list", "list_manage_templates"}, {"detail", "get_template_detail"}} {
 		t.Run(tc.command, func(t *testing.T) {
 			root := NewRootCommand()
-			path := "oa template " + tc.command
+			path := "oa approval template " + tc.command
 			command := exactCommandForTest(root, path)
 			if command == nil {
 				t.Fatal("missing executable")

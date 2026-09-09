@@ -18,7 +18,7 @@ func TestCrossPlatformCoverageOATemplateCommands(t *testing.T) {
 	} {
 		t.Run(tc.command, func(t *testing.T) {
 			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: `{"success":true,"dingOpenErrcode":0,"result":` + tc.result + `}`}}}
-			stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"template", tc.command}, tc.args...)...)
+			stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"approval", "template", tc.command}, tc.args...)...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -38,7 +38,7 @@ func TestCrossPlatformCoverageOATemplateCommands(t *testing.T) {
 		for _, response := range []string{`{"success":false,"dingOpenErrcode":830001,"result":{}}`, `{"success":true,"result":{}}`, `{"result":[]}`} {
 			t.Run(tc.command+"/failure/"+response, func(t *testing.T) {
 				caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: response}}}
-				_, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"template", tc.command}, tc.args...)...)
+				_, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"approval", "template", tc.command}, tc.args...)...)
 				if err == nil {
 					t.Fatal("expected failure")
 				}
@@ -53,7 +53,7 @@ func TestCrossPlatformCoverageOATemplateCommands(t *testing.T) {
 func TestCrossPlatformCoverageOATemplateDetailRequiresOneCode(t *testing.T) {
 	for _, args := range [][]string{nil, {"--process-code", "PROC-1"}, {"--template-code", " "}, {"--process-codes", "PROC-1,PROC-2"}, {"--template-code", "PROC-1", "PROC-2"}} {
 		caller := &scriptedToolCaller{format: "json"}
-		if _, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"template", "detail"}, args...)...); err == nil {
+		if _, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"approval", "template", "detail"}, args...)...); err == nil {
 			t.Fatal("expected validation failure")
 		}
 		if caller.calls != 0 {
@@ -75,7 +75,7 @@ func TestCrossPlatformCoverageOATemplateResponseValidation(t *testing.T) {
 	} {
 		t.Run(tc.response, func(t *testing.T) {
 			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: tc.response}}}
-			_, err := executeOAAttachmentCommandCapturingOutput(t, caller, "template", "detail", "--template-code", "PROC-1")
+			_, err := executeOAAttachmentCommandCapturingOutput(t, caller, "approval", "template", "detail", "--template-code", "PROC-1")
 			if (err != nil) != tc.fail {
 				t.Fatalf("error = %v, want failure %v", err, tc.fail)
 			}
@@ -85,7 +85,7 @@ func TestCrossPlatformCoverageOATemplateResponseValidation(t *testing.T) {
 
 func TestCrossPlatformCoverageOATemplateGroupHelp(t *testing.T) {
 	caller := &scriptedToolCaller{format: "json"}
-	stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, "template", "--help")
+	stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, "approval", "template", "--help")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestCrossPlatformCoverageOATemplateGroupHelp(t *testing.T) {
 		t.Fatal("group help called MCP")
 	}
 	root := newOaCommand()
-	group, _, err := root.Find([]string{"template"})
+	group, _, err := root.Find([]string{"approval", "template"})
 	if err != nil || group.Name() != "template" {
 		t.Fatalf("template group missing: %v", err)
 	}
@@ -108,5 +108,19 @@ func TestCrossPlatformCoverageOATemplateGroupHelp(t *testing.T) {
 	}
 	if !reflect.DeepEqual(children, map[string]bool{"list": true, "detail": true}) {
 		t.Fatalf("template leaves = %#v", children)
+	}
+}
+
+func TestCrossPlatformCoverageOAApprovalHelpIncludesTemplate(t *testing.T) {
+	caller := &scriptedToolCaller{format: "json"}
+	stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, "approval", "--help")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout, "template") || !strings.Contains(stdout, "审批模板管理") {
+		t.Fatalf("approval help does not expose template management: %s", stdout)
+	}
+	if caller.calls != 0 {
+		t.Fatal("approval help called MCP")
 	}
 }
