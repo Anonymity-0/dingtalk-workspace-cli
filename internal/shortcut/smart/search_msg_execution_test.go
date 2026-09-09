@@ -17,7 +17,9 @@ import (
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -199,9 +201,6 @@ func executeSearchMsgResult(caller *searchMsgExecutionCaller, args ...string) (m
 func executeSearchMsgIncomplete(t *testing.T, caller *searchMsgExecutionCaller, args ...string) (*apperrors.Error, map[string]any) {
 	t.Helper()
 	payload, err := executeSearchMsgResult(caller, args...)
-	if payload != nil {
-		t.Fatalf("incomplete command leaked success payload: %#v", payload)
-	}
 	var typed *apperrors.Error
 	if !errors.As(err, &typed) || typed.Reason != "search_messages_incomplete" {
 		t.Fatalf("incomplete error = %#v", err)
@@ -209,6 +208,20 @@ func executeSearchMsgIncomplete(t *testing.T, caller *searchMsgExecutionCaller, 
 	partial, ok := typed.Details["partialResult"].(map[string]any)
 	if !ok {
 		t.Fatalf("partialResult = %#v", typed.Details["partialResult"])
+	}
+	if payload == nil {
+		t.Fatal("dual_validate incomplete command omitted the established partial stdout payload")
+	}
+	normalizedJSON, marshalErr := json.Marshal(partial)
+	if marshalErr != nil {
+		t.Fatal(marshalErr)
+	}
+	var normalizedPartial map[string]any
+	if unmarshalErr := json.Unmarshal(normalizedJSON, &normalizedPartial); unmarshalErr != nil {
+		t.Fatal(unmarshalErr)
+	}
+	if !reflect.DeepEqual(payload, normalizedPartial) {
+		t.Fatalf("stdout partial payload drifted from error details: stdout=%#v details=%#v", payload, normalizedPartial)
 	}
 	return typed, partial
 }
@@ -896,6 +909,59 @@ func TestCrossPlatformCoverageSearchMsgIncompletePreservesTypedRetryDiagnostics(
 	if _, duplicated := typed.Details["failures"]; duplicated {
 		t.Fatalf("error details duplicated canonical failure ledger: %#v", typed.Details)
 	}
+}
+
+func TestCrossPlatformCoverageSearchMsgContinuationAndFailureClassificationBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		value any
+		want  string
+		ok    bool
+	}{
+		{value: " cursor-1 ", want: "cursor-1", ok: true},
+		{value: json.Number("2"), want: "2", ok: true},
+		{value: json.Number("0")},
+		{value: json.Number("invalid")},
+		{value: int(3), want: "3", ok: true},
+		{value: int(0)},
+		{value: int64(4), want: "4", ok: true},
+		{value: int64(-1)},
+		{value: float64(5), want: "5", ok: true},
+		{value: float64(1.5)},
+		{value: struct{}{}},
+	} {
+		got, ok := searchMsgContinuationCursor(tc.value)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("cursor %#v = %q, %t; want %q, %t", tc.value, got, ok, tc.want, tc.ok)
+		}
+	}
+
+	payload := map[string]any{"nextActions": []map[string]any{{"cliPath": "existing"}}}
+	attachSearchMsgEnrichmentRetries(payload, []map[string]any{{"stage": "message-enrichment"}})
+	if actions := payload["nextActions"].([]map[string]any); len(actions) != 1 {
+		t.Fatalf("empty enrichment IDs added a retry action: %#v", actions)
+	}
+
+	caller := &searchMsgExecutionCaller{searchResponse: `{"result":{"messages":[{"openMessageId":"m1","openConversationId":"cid","content":"{\"mediaId\":\"@resource\"}"}],"hasMore":false}}`}
+	typed, partial := executeSearchMsgIncomplete(t, caller,
+		"--query", "周报", "--no-enrich", "--download-resources", "--output-dir", "./downloads",
+	)
+	if typed.FailureStage != "resource_download" || typed.Operation != "chat/message_resource_download" || partial["stopReason"] != "resource_download_failure" {
+		t.Fatalf("typed = %#v, partial = %#v", typed, partial)
+	}
+
+	t.Run("pagination construction failure", func(t *testing.T) {
+		injected := errors.New("pagination construction failed")
+		testseam.Swap(t, &newSearchResultPagination, func(bool, string) (*output.Pagination, error) {
+			return nil, injected
+		})
+		_, err := executeSearchMsgResult(&searchMsgExecutionCaller{
+			searchResponse: `{"result":{"messages":[],"hasMore":false}}`,
+		}, "--query", "周报", "--no-enrich")
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || typed.Reason != "invalid_result_pagination" || !errors.Is(err, injected) {
+			t.Fatalf("error = %#v, want injected pagination failure", err)
+		}
+	})
 }
 
 func TestCrossPlatformCoverageSearchMsgEnrichmentFailureKeepsSearchHits(t *testing.T) {

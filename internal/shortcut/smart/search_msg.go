@@ -466,9 +466,9 @@ var SearchMsg = shortcut.Shortcut{
 		payload["failedCount"] = len(failures)
 		payload["partial"] = len(failures) > 0 && len(results) > 0
 		if len(failures) > 0 {
-			return searchMsgIncompleteError(payload, failures, terminalCause)
+			return searchMsgIncompleteError(rt, payload, failures, terminalCause)
 		}
-		pagination, paginationErr := output.NewPagination(paginationKnown && !hasMore, nextCursor)
+		pagination, paginationErr := newSearchResultPagination(paginationKnown && !hasMore, nextCursor)
 		if paginationErr != nil {
 			return apperrors.NewInternal(
 				"消息搜索生成了不可发布的分页元数据",
@@ -488,6 +488,8 @@ var SearchMsg = shortcut.Shortcut{
 		})
 	},
 }
+
+var newSearchResultPagination = output.NewPagination
 
 // scopedConversationReactionStreamEligible selects the exact-conversation
 // message stream only when every requested predicate can be evaluated from
@@ -691,7 +693,7 @@ func executeScopedConversationReactionSearch(
 		payload["partial"] = len(failures) > 0 && len(results) > 0
 	}
 	if len(failures) > 0 {
-		return searchMsgIncompleteError(payload, failures, terminalCause)
+		return searchMsgIncompleteError(rt, payload, failures, terminalCause)
 	}
 	return rt.Output(payload)
 }
@@ -783,7 +785,7 @@ func attachSearchMsgEnrichmentRetries(payload map[string]any, failures []map[str
 	payload["nextActions"] = actions
 }
 
-func searchMsgIncompleteError(payload map[string]any, failures []map[string]any, cause error) error {
+func searchMsgIncompleteError(rt *shortcut.RuntimeContext, payload map[string]any, failures []map[string]any, cause error) error {
 	hasReadFailure := false
 	hasPaginationFailure := false
 	hasEnrichmentFailure := false
@@ -824,7 +826,7 @@ func searchMsgIncompleteError(payload map[string]any, failures []map[string]any,
 	}
 	pagesFetched, _ := payload["pagesFetched"].(int)
 	count, _ := payload["count"].(int)
-	return helpers.NewIncompleteResultError(
+	incompleteErr := helpers.NewIncompleteResultError(
 		fmt.Sprintf("消息搜索未完成：保留 %d 条命中和 %d 个失败项", count, len(failures)),
 		cause,
 		retryable,
@@ -842,6 +844,7 @@ func searchMsgIncompleteError(payload map[string]any, failures []map[string]any,
 			"partialResult": payload,
 		}),
 	)
+	return rt.OutputIncomplete(payload, incompleteErr)
 }
 
 func searchMessageTimeCoverage(rt *shortcut.RuntimeContext) map[string]any {

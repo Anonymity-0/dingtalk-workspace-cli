@@ -88,7 +88,7 @@ func RunPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig) error {
 			return output.StoreResult(cmd.Context(), previewResult)
 		}
 		if output.CommandRollout(cmd) == output.RolloutDualValidate {
-			if err := output.ValidateResult(previewResult); err != nil {
+			if err := validateRuntimeResult(previewResult); err != nil {
 				return err
 			}
 		}
@@ -347,17 +347,21 @@ func handlePagedCommandError(
 		apperrors.WithHint("复用错误 details.partialResult 中的游标和原查询参数继续读取；不要丢弃已返回的数据"),
 		apperrors.WithDetails(map[string]any{"partialResult": partialPayload}),
 	)
-	if output.UsesUnifiedResult(cmd) {
-		return typedErr
+	if !output.UsesUnifiedResult(cmd) {
+		fmt.Fprintf(cmd.ErrOrStderr(), "pagination stopped at page %d: %v\n", failedPage, err)
 	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "pagination stopped at page %d: %v\n", failedPage, err)
-	if outputErr := deps.Out.PrintJSON(legacyPartial); outputErr != nil {
-		return errors.Join(typedErr, outputErr)
-	}
-	if output.CommandRollout(cmd) == output.RolloutDualValidate {
-		return typedErr
-	}
-	return err
+	return ReturnIncompleteResult(
+		cmd,
+		output.Success(partialPayload),
+		typedErr,
+		err,
+		func() error {
+			if outputErr := deps.Out.PrintJSON(legacyPartial); outputErr != nil {
+				return errors.Join(err, outputErr)
+			}
+			return nil
+		},
+	)
 }
 
 // NewIncompleteResultError adds retained business data to a stable outer
@@ -434,8 +438,8 @@ func writePagedCommandResult(cmd *cobra.Command, envelope map[string]any, cfg Pa
 	legacyEnvelope := buildPagedCommandResult(envelope, cfg, items, meta)
 	resultEnvelope := pagedCommandResultProjection(legacyEnvelope, cfg)
 	frameworkMeta, metaErr := pagedCommandFrameworkMeta(cfg, meta)
-	if metaErr != nil && output.CommandRollout(cmd) != output.RolloutLegacyOnly {
-		return NewIncompleteResultError(
+	if metaErr != nil {
+		typedErr := NewIncompleteResultError(
 			"分页结果没有可安全发布的续页游标",
 			metaErr,
 			false,
@@ -447,13 +451,20 @@ func writePagedCommandResult(cmd *cobra.Command, envelope map[string]any, cfg Pa
 			apperrors.WithHint("保留 details.partialResult 中的结果；不要使用不可靠游标继续读取"),
 			apperrors.WithDetails(map[string]any{"partialResult": resultEnvelope}),
 		)
+		return ReturnIncompleteResult(
+			cmd,
+			output.Success(resultEnvelope),
+			typedErr,
+			nil,
+			func() error { return deps.Out.PrintJSON(legacyEnvelope) },
+		)
 	}
 	result := output.Success(resultEnvelope, output.WithMeta(frameworkMeta))
 	if output.UsesUnifiedResult(cmd) {
 		return output.StoreResult(cmd.Context(), result)
 	}
 	if output.CommandRollout(cmd) == output.RolloutDualValidate {
-		if err := output.ValidateResult(result); err != nil {
+		if err := validateRuntimeResult(result); err != nil {
 			return err
 		}
 	}

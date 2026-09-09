@@ -613,10 +613,13 @@ func executeChatMessages(rt *shortcut.RuntimeContext) error {
 		// A sender name is only an optional post-read filter. If the primary
 		// message read never produced a page, do not make a misleading and
 		// unnecessary directory request before returning the read failure.
+		if payload != nil {
+			return rt.OutputIncomplete(payload, err)
+		}
 		return err
 	}
 	if err == nil && payload != nil {
-		if failures, ok := payload["failures"].([]map[string]any); ok && len(failures) > 0 {
+		if failures, ok := payload["failures"].([]map[string]any); ok && len(failures) > 0 && payload["stopReason"] != "time_filter_error" {
 			err = apperrors.NewAPI("消息查询未完整完成，请检查failures", apperrors.WithReason("incomplete_result"))
 		}
 	}
@@ -654,14 +657,15 @@ func executeChatMessages(rt *shortcut.RuntimeContext) error {
 	if err != nil {
 		// Full-page collection attaches its failure ledger to the typed error.
 		// Stop before resource downloads, export, or a contradictory success
-		// result can be published.
-		return err
+		// result can be published. Legacy and dual-validation callers retain
+		// their established partial payload before receiving the error.
+		return rt.OutputIncomplete(payload, err)
 	}
 	if senderFilter.requested && !senderFilter.applied {
-		return senderFilter.resolutionErr
+		return rt.OutputIncomplete(payload, senderFilter.resolutionErr)
 	}
 	if senderFilter.scopeErr != nil {
-		return senderFilter.scopeErr
+		return rt.OutputIncomplete(payload, senderFilter.scopeErr)
 	}
 	// A one-page range projection can retain readable messages while rejecting
 	// malformed timestamps. That is an incomplete terminal result, not a
@@ -670,7 +674,7 @@ func executeChatMessages(rt *shortcut.RuntimeContext) error {
 		count, _ := payload["count"].(int)
 		pagesFetched, _ := payload["pagesFetched"].(int)
 		cause := fmt.Errorf("%v", failures[0]["error"])
-		return helpers.NewIncompleteResultError(
+		incompleteErr := helpers.NewIncompleteResultError(
 			fmt.Sprintf("消息读取未完成：保留 %d 条消息和 %d 个失败项", count, len(failures)),
 			cause,
 			false,
@@ -688,6 +692,7 @@ func executeChatMessages(rt *shortcut.RuntimeContext) error {
 				"partialResult": payload,
 			}),
 		)
+		return rt.OutputIncomplete(payload, incompleteErr)
 	}
 	if rt.Bool("download-resources") {
 		resourceLedger, resourceCause := chatshortcut.DownloadMessageResourcesWithCause(
@@ -702,7 +707,7 @@ func executeChatMessages(rt *shortcut.RuntimeContext) error {
 			failures, _ := payload["failures"].([]map[string]any)
 			count, _ := payload["count"].(int)
 			pagesFetched, _ := payload["pagesFetched"].(int)
-			return helpers.NewIncompleteResultError(
+			incompleteErr := helpers.NewIncompleteResultError(
 				fmt.Sprintf("消息读取已完成，但 %d 个资源处理步骤失败", failedResources),
 				resourceCause,
 				true,
@@ -718,6 +723,7 @@ func executeChatMessages(rt *shortcut.RuntimeContext) error {
 					"partialResult": payload,
 				}),
 			)
+			return rt.OutputIncomplete(payload, incompleteErr)
 		}
 	}
 	if rt.Changed("output") {

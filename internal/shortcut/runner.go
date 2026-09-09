@@ -346,6 +346,20 @@ func (rt *RuntimeContext) OutputWithMeta(payload any, meta *output.Meta) error {
 	return rt.outputPayload(payload, output.WithMeta(meta))
 }
 
+// OutputIncomplete preserves the established partial-result bytes for legacy
+// and dual-validation commands before returning the terminal structured error.
+// Unified commands carry the partial result in the error envelope instead and
+// must not also publish a success-shaped payload.
+func (rt *RuntimeContext) OutputIncomplete(payload any, terminalErr error) error {
+	return helpers.ReturnIncompleteResult(
+		rt.cmd,
+		rt.resultForPayload("", payload),
+		terminalErr,
+		terminalErr,
+		func() error { return output.WriteCommandPayload(rt.cmd, payload, output.FormatJSON) },
+	)
+}
+
 func (rt *RuntimeContext) outputPayload(payload any, options ...output.ResultOption) error {
 	if output.UsesUnifiedResult(rt.cmd) {
 		return output.StoreResult(rt.cmd.Context(), rt.resultForPayload("", payload, options...))

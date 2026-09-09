@@ -1698,7 +1698,7 @@ func pagedChatMessageRangeAllConfig(cmd *cobra.Command) PagedMCPCommandConfig {
 		projected := pagedCommandResultProjection(legacyProjected, cfg)
 		meta, metaErr := chatMessageRangeAllFrameworkMeta(projected)
 		if metaErr != nil {
-			return NewIncompleteResultError(
+			typedErr := NewIncompleteResultError(
 				"时间范围消息结果缺少可安全发布的分页状态",
 				metaErr,
 				false,
@@ -1709,13 +1709,20 @@ func pagedChatMessageRangeAllConfig(cmd *cobra.Command) PagedMCPCommandConfig {
 				apperrors.WithReason("invalid_result_pagination"),
 				apperrors.WithDetails(map[string]any{"partialResult": projected}),
 			)
+			return ReturnIncompleteResult(
+				cmd,
+				output.Success(projected),
+				typedErr,
+				nil,
+				func() error { return writeCommandPayload(cmd, legacyProjected) },
+			)
 		}
 		result := output.Success(projected, output.WithMeta(meta))
 		if output.UsesUnifiedResult(cmd) {
 			return output.StoreResult(cmd.Context(), result)
 		}
 		if output.CommandRollout(cmd) == output.RolloutDualValidate {
-			if err := output.ValidateResult(result); err != nil {
+			if err := validateRuntimeResult(result); err != nil {
 				return err
 			}
 		}

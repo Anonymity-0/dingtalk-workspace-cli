@@ -73,6 +73,21 @@ func TestCrossPlatformCoverageMessageLedgersPublishResultAndContinuation(t *test
 		t.Fatalf("range continuation introduced conflicting --time: %#v", rangePatch)
 	}
 
+	ascendingRangePage := map[string]any{
+		"hasMore":  true,
+		"nextPage": map[string]any{"time": "2026-09-02T00:00:00Z"},
+		"queryRange": map[string]any{
+			"startTime": "2026-09-01T00:00:00Z",
+			"endTime":   "2026-09-04T00:00:00Z",
+			"order":     "asc",
+		},
+	}
+	attachChatMessageContinuation(ascendingRangePage, "chat +chat-messages")
+	ascendingPatch := ascendingRangePage["nextActions"].([]map[string]any)[0]["arguments"].(map[string]any)
+	if ascendingPatch["start"] != "2026-09-02T00:00:00Z" || ascendingPatch["end"] != "2026-09-04T00:00:00Z" || ascendingPatch["order"] != "asc" {
+		t.Fatalf("ascending range continuation patch = %#v", ascendingPatch)
+	}
+
 	searchPage := map[string]any{"hasMore": true, "nextCursor": "cursor-2"}
 	attachChatMessageContinuation(searchPage, "chat +search-msg")
 	actions = searchPage["nextActions"].([]map[string]any)

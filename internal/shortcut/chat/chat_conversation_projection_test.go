@@ -196,9 +196,6 @@ func TestCrossPlatformCoverageConversationListRejectsOversizedLimitPage(t *testi
 	if err == nil {
 		t.Fatal("oversized lower page unexpectedly published a safe continuation")
 	}
-	if output.Len() != 0 {
-		t.Fatalf("failed unified command leaked success data: %s", output.String())
-	}
 	var typed *apperrors.Error
 	if !errors.As(err, &typed) || typed.Reason != "conversation_list_incomplete" {
 		t.Fatalf("error = %#v", err)
@@ -213,6 +210,13 @@ func TestCrossPlatformCoverageConversationListRejectsOversizedLimitPage(t *testi
 	}
 	if partialResult["complete"] != false || partialResult["partial"] != true {
 		t.Fatalf("partial completeness = %#v", partialResult)
+	}
+	var legacyPayload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &legacyPayload); err != nil {
+		t.Fatalf("dual_validate partial stdout = %q: %v", output.String(), err)
+	}
+	if legacyPayload["count"] != float64(1) || legacyPayload["complete"] != false || legacyPayload["partial"] != true {
+		t.Fatalf("dual_validate partial stdout = %#v", legacyPayload)
 	}
 }
 
@@ -237,8 +241,12 @@ func TestCrossPlatformCoverageConversationListPropagatesDelayCancellation(t *tes
 		!typed.RetryableSet || typed.Retryable {
 		t.Fatalf("delay cancellation contract = %#v", err)
 	}
-	if output.Len() != 0 {
-		t.Fatalf("canceled unified command leaked success data: %s", output.String())
+	var legacyPayload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &legacyPayload); err != nil {
+		t.Fatalf("dual_validate cancellation stdout = %q: %v", output.String(), err)
+	}
+	if legacyPayload["count"] != float64(1) || legacyPayload["stopReason"] != "delay_interrupted" {
+		t.Fatalf("dual_validate cancellation stdout = %#v", legacyPayload)
 	}
 }
 
@@ -257,6 +265,8 @@ func TestCrossPlatformCoverageConversationListPreservesTypedLaterPageCause(t *te
 	}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
 	root.SetArgs([]string{"chat", "+conversation-list", "--page-all", "--page-delay", "0"})
 	err := root.Execute()
 	var typed *apperrors.Error
@@ -271,6 +281,13 @@ func TestCrossPlatformCoverageConversationListPreservesTypedLaterPageCause(t *te
 	partial, _ := typed.Details["partialResult"].(map[string]any)
 	if partial["count"] != 1 || partial["complete"] != false || partial["failedCount"] != 1 {
 		t.Fatalf("partial result = %#v", partial)
+	}
+	var legacyPayload map[string]any
+	if jsonErr := json.Unmarshal(output.Bytes(), &legacyPayload); jsonErr != nil {
+		t.Fatalf("dual_validate later-page stdout = %q: %v", output.String(), jsonErr)
+	}
+	if legacyPayload["count"] != float64(1) || legacyPayload["failedCount"] != float64(1) {
+		t.Fatalf("dual_validate later-page stdout = %#v", legacyPayload)
 	}
 }
 

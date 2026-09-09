@@ -556,7 +556,7 @@ var ConversationList = shortcut.Shortcut{
 			} else if stopReason == "delay_interrupted" {
 				origin = "client"
 			}
-			return helpers.NewIncompleteResultError(
+			incompleteErr := helpers.NewIncompleteResultError(
 				fmt.Sprintf("会话列表分页未完成：成功读取 %d 页，存在 %d 个失败项", pagesFetched, len(failures)),
 				terminalCause,
 				retryable,
@@ -574,12 +574,13 @@ var ConversationList = shortcut.Shortcut{
 					"partialResult": payload,
 				}),
 			)
+			return rt.OutputIncomplete(payload, incompleteErr)
 		}
 		nextToken := ""
 		if nextCursor > 0 {
 			nextToken = strconv.FormatInt(nextCursor, 10)
 		}
-		pagination, paginationErr := output.NewPagination(paginationKnown && !hasMore, nextToken)
+		pagination, paginationErr := newConversationResultPagination(paginationKnown && !hasMore, nextToken)
 		if paginationErr != nil {
 			return apperrors.NewInternal(
 				"会话列表生成了不可发布的分页元数据",
@@ -599,6 +600,8 @@ var ConversationList = shortcut.Shortcut{
 		})
 	},
 }
+
+var newConversationResultPagination = output.NewPagination
 
 func conversationPaginationCursor(value any) (int64, error) {
 	switch typed := value.(type) {

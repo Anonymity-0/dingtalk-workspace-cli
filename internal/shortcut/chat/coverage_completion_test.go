@@ -18,7 +18,9 @@ import (
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -438,6 +440,105 @@ func TestCrossPlatformCoverageConversationListFailureBoundaries(t *testing.T) {
 	if got := unwrapConversationTuple(nil); got != nil {
 		t.Fatalf("empty tuple = %#v", got)
 	}
+}
+
+func TestCrossPlatformCoverageConversationListIncompleteProjectionBoundaries(t *testing.T) {
+	run := func(t *testing.T, response string, args ...string) (map[string]any, error) {
+		t.Helper()
+		helpers.InitDeps(&larkAlignmentCaller{responses: map[string]string{
+			"im/list_all_conversations": response,
+		}})
+		root := newPlatformCoverageRoot()
+		var stdout bytes.Buffer
+		root.SetOut(&stdout)
+		root.SetArgs(append([]string{"chat", "+conversation-list"}, args...))
+		err := root.Execute()
+		var payload map[string]any
+		if stdout.Len() > 0 {
+			if decodeErr := json.Unmarshal(stdout.Bytes(), &payload); decodeErr != nil {
+				t.Fatalf("decode partial output: %v\n%s", decodeErr, stdout.String())
+			}
+		}
+		return payload, err
+	}
+
+	for _, tc := range []struct {
+		name     string
+		response string
+		args     []string
+		stop     string
+	}{
+		{
+			name:     "malformed tuple metadata",
+			response: `{"result":[[{"openConversationId":"g1"}]]}`,
+			args:     []string{"--page-all"},
+			stop:     "pagination_error",
+		},
+		{
+			name:     "missing hasMore retains safe cursor evidence",
+			response: `{"result":{"conversationList":[{"openConversationId":"g1"}],"nextCursor":2}}`,
+			args:     []string{"--page-all"},
+			stop:     "pagination_error",
+		},
+		{
+			name:     "invalid projected rows",
+			response: `{"result":{"conversationList":["bad",{"name":"missing id"}],"hasMore":false}}`,
+			args:     []string{"--page-all"},
+			stop:     "projection_error",
+		},
+		{
+			name:     "lower page exceeds remaining item budget",
+			response: `{"result":{"conversationList":[{"openConversationId":"g1"},{"openConversationId":"g2"}],"hasMore":true,"nextCursor":2}}`,
+			args:     []string{"--page-all", "--max-items", "1"},
+			stop:     "pagination_error",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			payload, err := run(t, tc.response, tc.args...)
+			if err == nil || payload == nil || payload["stopReason"] != tc.stop || payload["failedCount"] == float64(0) {
+				t.Fatalf("payload = %#v, err = %v", payload, err)
+			}
+		})
+	}
+
+	for _, value := range []any{
+		int(-1), int64(-1), float64(-1), float64(1.5), json.Number("-1"), json.Number("invalid"), "-1", "invalid",
+	} {
+		if _, err := conversationPaginationCursor(value); err == nil {
+			t.Errorf("invalid cursor %#v unexpectedly succeeded", value)
+		}
+	}
+	if got, err := conversationPaginationCursor(json.Number("7")); err != nil || got != 7 {
+		t.Fatalf("JSON cursor = %d, %v; want 7", got, err)
+	}
+	if got, err := conversationPaginationCursor(" "); err != nil || got != 0 {
+		t.Fatalf("empty cursor = %d, %v; want zero", got, err)
+	}
+
+	rows, failures, cause := conversationListProjectChecked(map[string]any{
+		"result": map[string]any{"conversationList": []any{"bad", map[string]any{"name": "missing"}}, "hasMore": false},
+	})
+	if len(rows) != 0 || len(failures) != 2 || cause == nil {
+		t.Fatalf("rows = %#v, failures = %#v, cause = %v", rows, failures, cause)
+	}
+	rows, failures, cause = conversationListProjectChecked(map[string]any{
+		"result": map[string]any{"conversationList": []any{map[string]any{"name": "missing"}}, "hasMore": false},
+	})
+	if len(rows) != 0 || len(failures) != 1 || cause == nil {
+		t.Fatalf("missing identity rows = %#v, failures = %#v, cause = %v", rows, failures, cause)
+	}
+
+	t.Run("pagination construction failure", func(t *testing.T) {
+		injected := errors.New("pagination construction failed")
+		testseam.Swap(t, &newConversationResultPagination, func(bool, string) (*output.Pagination, error) {
+			return nil, injected
+		})
+		_, err := run(t, `{"result":{"conversationList":[],"hasMore":false}}`)
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || typed.Reason != "invalid_result_pagination" || !errors.Is(err, injected) {
+			t.Fatalf("error = %#v, want injected pagination failure", err)
+		}
+	})
 }
 
 func TestCrossPlatformCoverageChatCreateAndReplyFailures(t *testing.T) {

@@ -420,25 +420,35 @@ func TestMultiIME2E_NaturalTargetsCompletenessAndWriteBoundaries(t *testing.T) {
 			t.Fatalf("search tools = %#v", got)
 		}
 		var payload map[string]any
-		if strings.TrimSpace(stdout) != "" {
-			t.Fatalf("partial search wrote contradictory success output: %s", stdout)
+		if err := json.Unmarshal([]byte(stdout), &payload); err != nil {
+			t.Fatalf("search legacy output is not JSON: %v\n%s", err, stdout)
 		}
+		business := payload
+		if business["complete"] != false || business["count"] != float64(1) ||
+			business["pagesFetched"] != float64(1) || business["failedCount"] != float64(1) {
+			t.Fatalf("partial search legacy contract = %#v", business)
+		}
+
+		payload = nil
 		if err := json.Unmarshal([]byte(stderr), &payload); err != nil {
 			t.Fatalf("search error is not JSON: %v\n%s", err, stderr)
 		}
 		errorPayload, _ := payload["error"].(map[string]any)
 		details, _ := errorPayload["details"].(map[string]any)
-		business, _ := details["partialResult"].(map[string]any)
-		if errorPayload["reason"] != "search_messages_incomplete" || business == nil {
+		shadow, _ := details["partialResult"].(map[string]any)
+		if errorPayload["reason"] != "search_messages_incomplete" || shadow == nil {
 			t.Fatalf("partial search error envelope = %#v", payload)
 		}
-		if business["complete"] != false || business["count"] != float64(1) ||
-			business["pagesFetched"] != float64(1) || business["failedCount"] != float64(1) {
+		if shadow["complete"] != false || shadow["count"] != float64(1) ||
+			shadow["pagesFetched"] != float64(1) || shadow["failedCount"] != float64(1) {
 			t.Fatalf("partial search contract = %#v", payload)
 		}
-		failures, _ := business["failures"].([]any)
+		failures, _ := shadow["failures"].([]any)
 		if len(failures) != 1 || failures[0].(map[string]any)["stage"] != "search-page" {
 			t.Fatalf("partial search failures = %#v", failures)
+		}
+		if !reflect.DeepEqual(business, shadow) {
+			t.Fatalf("legacy output and structured error partial result diverged:\nlegacy=%#v\nshadow=%#v", business, shadow)
 		}
 	})
 
