@@ -165,6 +165,7 @@ func TestCrossPlatformCoveragePublicFlagIssue(t *testing.T) {
 	}
 	login.Flags().String("public", "", "public input")
 	login.Flags().String("legacy", "", "legacy input")
+	login.PersistentFlags().String("command-persistent", "", "command persistent input")
 	root.PersistentFlags().String("global", "", "global input")
 	if err := login.Flags().MarkHidden("legacy"); err != nil {
 		t.Fatal(err)
@@ -172,6 +173,9 @@ func TestCrossPlatformCoveragePublicFlagIssue(t *testing.T) {
 
 	if issue := publicFlagIssue(root, "dws auth login", []string{"public"}); issue != "" {
 		t.Fatalf("public flag rejected: %s", issue)
+	}
+	if issue := publicFlagIssue(root, "dws auth login", []string{"command-persistent"}); issue != "" {
+		t.Fatalf("command persistent flag rejected: %s", issue)
 	}
 	if issue := publicFlagIssue(root, "dws auth login", []string{"legacy"}); !strings.Contains(issue, "--legacy is hidden") {
 		t.Fatalf("hidden flag issue = %q", issue)
@@ -192,6 +196,9 @@ func TestCrossPlatformCoveragePublicFlagIssue(t *testing.T) {
 	}
 	if issue := publicFlagIssue(root, "dws command-that-does-not-exist", []string{"missing"}); issue != "" {
 		t.Fatalf("invalid command should be handled by path validation, got flag issue: %s", issue)
+	}
+	if flag := commandFlag(nil, "missing"); flag != nil {
+		t.Fatalf("nil command returned flag: %#v", flag)
 	}
 }
 
