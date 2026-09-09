@@ -99,6 +99,8 @@ fmt:
 
 policy: test-auth-legacy-compat shortcut-public-e2e-proof
 	@mkdir -p "$(POLICY_GOTMPDIR)"
+	@$(POLICY_ENV) ./scripts/policy/check-runtime-payload.sh --allow-unsupported-tools
+	@$(POLICY_ENV) ./scripts/build/generate-runtime-payload-assets.sh --check
 	@$(POLICY_ENV) ./scripts/policy/check-open-source-assets.sh
 	@$(POLICY_ENV) ./scripts/policy/check-skill-context-budget.sh
 	@$(POLICY_ENV) ./scripts/policy/check-multi-im-skill-chain.sh
