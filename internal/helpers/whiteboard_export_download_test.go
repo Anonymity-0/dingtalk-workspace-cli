@@ -4,13 +4,16 @@ import (
 	"context"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"io"
+	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 type whiteboardDownloadTransport func(*http.Request) (*http.Response, error)
@@ -131,6 +134,72 @@ func TestCrossPlatformCoverageWhiteboardDownloadFailures(t *testing.T) {
 			}
 			if err := downloadWhiteboardExportLimited(ctx, client, raw, path, 16); err == nil {
 				t.Fatal("failure lost")
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageWhiteboardSpecialAddressPolicy(t *testing.T) {
+	// Independent registry fixtures: deleting a production prefix must fail here.
+	for _, raw := range []string{
+		"0.1.2.3", "10.255.255.255", "100.127.255.255", "127.1.2.3",
+		"169.254.255.255", "172.31.255.255", "192.0.0.255", "192.0.2.255",
+		"192.31.196.1", "192.52.193.1", "192.88.99.1", "192.168.255.255",
+		"192.175.48.1", "198.19.255.255", "198.51.100.255", "203.0.113.255",
+		"240.0.0.1", "64:ff9b::1", "64:ff9b:1::1", "100::1", "100:0:0:1::1",
+		"2001:1ff:ffff::1", "2001:db8::1", "2002::1", "2620:4f:8000::1",
+		"3fff:fff:ffff::1", "5f00::1", "fdff::1", "febf::1",
+	} {
+		ip := netip.MustParseAddr(raw)
+		if whiteboardPublicIP(ip) {
+			t.Errorf("accepted special address %s", ip)
+		}
+		if ip.Is4() && whiteboardPublicIP(netip.MustParseAddr("::ffff:"+raw)) {
+			t.Errorf("accepted mapped special address %s", raw)
+		}
+	}
+	for _, raw := range []string{"::", "::1", "::192.0.2.1", "fec0::1", "4000::1", "2001:4860::1%en0"} {
+		if whiteboardPublicIP(netip.MustParseAddr(raw)) {
+			t.Errorf("accepted %s", raw)
+		}
+	}
+	if whiteboardPublicIP(netip.Addr{}) {
+		t.Fatal("accepted invalid address")
+	}
+	for _, raw := range []string{"8.8.8.8", "1.1.1.1", "::ffff:8.8.8.8", "2001:4860:4860::8888", "2606:4700:4700::1111"} {
+		if !whiteboardPublicIP(netip.MustParseAddr(raw)) {
+			t.Errorf("rejected public address %s", raw)
+		}
+	}
+}
+
+// Exercise net.Dialer itself: Control must reject the resolved socket address
+// before connect, without depending on routing, a listening service or timeout.
+func TestCrossPlatformCoverageWhiteboardReservedURLAndDial(t *testing.T) {
+	for _, host := range []string{"198.18.0.1", "198.19.255.254", "192.0.0.1", "192.0.2.1", "198.51.100.1", "203.0.113.1", "::ffff:198.18.0.1", "::ffff:192.0.2.1", "2001:db8::1", "3fff::1"} {
+		t.Run(host, func(t *testing.T) {
+			raw := "https://" + net.JoinHostPort(host, "443") + "/export.png"
+			if err := validateWhiteboardDownloadURL(raw); err == nil {
+				t.Fatal("accepted reserved URL")
+			}
+			u, err := url.Parse(raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := whiteboardDownloadRedirect(&http.Request{URL: u}, nil); err == nil {
+				t.Fatal("accepted reserved redirect")
+			}
+			called := false
+			dialer := net.Dialer{Timeout: time.Second, Control: func(network, address string, conn syscall.RawConn) error {
+				called = true
+				return whiteboardDownloadControl(network, address, conn)
+			}}
+			conn, err := dialer.DialContext(context.Background(), "tcp", net.JoinHostPort(host, "443"))
+			if conn != nil {
+				conn.Close()
+			}
+			if !called || err == nil || !strings.Contains(err.Error(), "禁止访问非公网地址") {
+				t.Fatalf("dial did not reject before connect: control=%v err=%v", called, err)
 			}
 		})
 	}
