@@ -22,6 +22,15 @@ import (
 )
 
 var whiteboardExportAfter = time.After
+
+var whiteboardExportWait = func(ctx context.Context, delay time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-whiteboardExportAfter(delay):
+		return nil
+	}
+}
 var whiteboardExportAbs = filepath.Abs
 var whiteboardExportStat = os.Stat
 var whiteboardExportFileStat = (*os.File).Stat
@@ -142,10 +151,13 @@ func pollAndDownloadWhiteboardExport(cmd *cobra.Command, jobID, format, outputDi
 			return err
 		}
 		if attempt > 1 {
-			select {
-			case <-cmd.Context().Done():
-				return fmt.Errorf("白板导出轮询被取消 (jobId=%s): %w", jobID, cmd.Context().Err())
-			case <-whiteboardExportAfter(taskPollInterval(attempt)):
+			if err := whiteboardExportWait(cmd.Context(), taskPollInterval(attempt)); err != nil {
+				return fmt.Errorf("白板导出轮询被取消 (jobId=%s): %w", jobID, err)
+			}
+			// Cancellation and the timer may become ready together. Recheck after
+			// waiting so a timer win cannot start another remote query.
+			if err := cmd.Context().Err(); err != nil {
+				return fmt.Errorf("白板导出轮询被取消 (jobId=%s): %w", jobID, err)
 			}
 		}
 		response, err := callWhiteboardToolResult(cmd, whiteboardcore.StandaloneExportQueryTool, map[string]any{"jobId": jobID})

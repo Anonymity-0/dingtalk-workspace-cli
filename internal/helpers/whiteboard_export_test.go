@@ -385,4 +385,23 @@ func TestCrossPlatformCoverageWhiteboardExportFilesystemAndCancellation(t *testi
 			t.Fatal("cancel lost")
 		}
 	})
+	t.Run("cancelled-after-delay-does-not-query-again", func(t *testing.T) {
+		caller := &whiteboardTestCaller{format: "json", response: func(whiteboardTestCall, int) string { return `{"status":"PROCESSING"}` }}
+		installWhiteboardTestCaller(t, caller)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		testseam.Swap(t, &whiteboardExportWait, func(context.Context, time.Duration) error {
+			cancel()
+			return nil
+		})
+		cmd := newWhiteboardCommand()
+		cmd.SetContext(ctx)
+		cmd.SetArgs([]string{"export-get", "--job-id", "job", "--output", t.TempDir()})
+		if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "轮询被取消") {
+			t.Fatalf("cancellation error = %v", err)
+		}
+		if len(caller.calls) != 1 {
+			t.Fatalf("query count after cancellation = %d, want 1", len(caller.calls))
+		}
+	})
 }
