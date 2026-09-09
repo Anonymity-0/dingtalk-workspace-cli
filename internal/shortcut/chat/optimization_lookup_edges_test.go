@@ -22,6 +22,7 @@ func TestCrossPlatformCoverageOptimizationExactCategoryAndReadStatus(t *testing.
 		{"category-reverse-error", map[string]string{"category-id": "1", "feed-id": "cid", "no-detail": "true"}, map[string]string{"im/list_conversations_by_category": `{"result":{"conversations":[]}}`}, "im/list_conv_categories_by_conv", true},
 		{"category-no-id", map[string]string{"category-id": "1", "feed-id": "cid"}, map[string]string{"im/list_conversations_by_category": `{"result":{"conversations":[{}]}}`}, "", true},
 		{"category-shape", map[string]string{"category-id": "1", "feed-id": "cid"}, map[string]string{"im/list_conversations_by_category": `{"result":{}}`}, "", true},
+		{"category-invalid-pagination", map[string]string{"category-id": "1", "feed-id": "cid"}, map[string]string{"im/list_conversations_by_category": `{"result":{"conversations":[{"openConversationId":"cid"}],"hasMore":"false"}}`}, "", true},
 		{"category-read-error", map[string]string{"category-id": "1", "feed-id": "cid"}, nil, "im/list_conversations_by_category", true},
 		{"category-detail-error", map[string]string{"category-id": "1", "feed-id": "cid"}, map[string]string{"im/list_conversations_by_category": `{"result":{"conversations":[{"openConversationId":"cid"}]}}`}, "chat/get_conversation_info", true},
 		{"category-empty-request", map[string]string{"category-id": "1"}, nil, "", true},

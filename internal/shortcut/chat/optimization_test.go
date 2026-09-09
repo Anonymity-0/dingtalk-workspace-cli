@@ -280,3 +280,37 @@ func TestCrossPlatformCoverageCreateNameDelegatesOnlyMissingName(t *testing.T) {
 		})
 	}
 }
+
+func TestCrossPlatformCoverageExactFeedQueryPreservesIntegerCategoryID(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want int
+	}{
+		{name: "primary", args: []string{"--category-id", "42", "--conversation-ids", "cid-a"}, want: 42},
+		{name: "aliases", args: []string{"--feed-group-id", "4242", "--feed-id", "cid-a"}, want: 4242},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := &larkAlignmentCaller{category: `{"result":{"conversations":[{"openConversationId":"cid-a"}],"hasMore":false}}`}
+			args := append([]string{"+feed-group-query-item", "--no-detail"}, tc.args...)
+			out, err := runChatParity(t, fake, args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(fake.calls) != 1 || fake.calls[0].product != "im" || fake.calls[0].tool != "list_conversations_by_category" {
+				t.Fatalf("unexpected calls: %#v", fake.calls)
+			}
+			value, ok := fake.calls[0].args["categoryId"].(int)
+			if !ok || value != tc.want {
+				t.Fatalf("categoryId = %#v (%T), want integer %d", fake.calls[0].args["categoryId"], fake.calls[0].args["categoryId"], tc.want)
+			}
+			var payload map[string]any
+			if err := json.Unmarshal([]byte(out), &payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload["foundCount"] != float64(1) || payload["complete"] != true {
+				t.Fatalf("positive query not verified: %s", out)
+			}
+		})
+	}
+}

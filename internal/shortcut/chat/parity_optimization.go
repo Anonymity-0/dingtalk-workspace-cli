@@ -87,8 +87,9 @@ func executeExactFeedGroupQuery(rt *shortcut.RuntimeContext) error {
 	if len(ids) == 0 || len(ids) > 100 {
 		return apperrors.NewValidation("--conversation-ids 去重后必须为1–100项")
 	}
-	category := strconv.Itoa(rt.IntFirst("category-id", "feed-group-id"))
-	data, err := rt.CallMCPData("im", "list_conversations_by_category", map[string]any{"categoryId": category, "excludeMuted": rt.Bool("exclude-muted")})
+	categoryID := rt.IntFirst("category-id", "feed-group-id")
+	category := strconv.Itoa(categoryID)
+	data, err := rt.CallMCPData("im", "list_conversations_by_category", map[string]any{"categoryId": categoryID, "excludeMuted": rt.Bool("exclude-muted")})
 	if err != nil {
 		return err
 	}
@@ -98,10 +99,14 @@ func executeExactFeedGroupQuery(rt *shortcut.RuntimeContext) error {
 	}
 	payload := feedGroupQueryProject(conversations, ids)
 	missing, _ := payload["notFoundConversationIds"].([]string)
-	exhausted, known := chatmsg.Pagination(data)["hasMore"].(bool)
+	exhausted, paginationMode, err := resolveCategoryConversationsPagination(data)
+	if err != nil {
+		return err
+	}
+	known := true
 	// A terminal list for a nonexistent category cannot prove non-membership.
 	if len(missing) > 0 && known && !exhausted {
-		categories, readErr := rt.CallMCPData("im", "get_conv_categories_info", map[string]any{"categoryIds": []int64{int64(rt.IntFirst("category-id", "feed-group-id"))}})
+		categories, readErr := rt.CallMCPData("im", "get_conv_categories_info", map[string]any{"categoryIds": []int64{int64(categoryID)}})
 		verified := false
 		if readErr == nil {
 			if cats, e := StrictChatCollection(categories, "categories", "categoryList", "items", "list"); e == nil {
@@ -157,6 +162,11 @@ func executeExactFeedGroupQuery(rt *shortcut.RuntimeContext) error {
 	payload["unresolvedConversationIds"], payload["unresolvedCount"] = unresolved, len(unresolved)
 	payload["complete"], payload["ok"] = len(unresolved) == 0, len(unresolved) == 0 && len(notFound) == 0
 	payload["paginationKnown"], payload["failures"], payload["failedCount"] = known, failures, len(failures)
+	payload["paginationMode"] = paginationMode
+	payload["sourceExhausted"] = known && !exhausted
+	if known {
+		payload["hasMore"] = exhausted
+	}
 	if !rt.Bool("no-detail") {
 		if rows, ok := payload["items"].([]map[string]any); ok {
 			if err := attachConversationDetails(rt, payload, rows); err != nil {
