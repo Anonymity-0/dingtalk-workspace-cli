@@ -893,26 +893,6 @@ func addOAApprovalListFlags(cmd *cobra.Command, options oaApprovalListOptions) {
 	}
 }
 
-func oaTemplateSpec(command, tool, description, useWhen, avoidWhen string) LeafSpec {
-	path := "oa approval template " + command
-	return LeafSpec{
-		Use: command, Short: description, Example: "dws " + path, Server: "oa", Tool: tool,
-		OutputRollout: output.RolloutUnifiedActive, ResultCall: callOATemplateResult,
-		Validate: cobra.NoArgs,
-		Safety:   contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
-		Contract: LeafContract{
-			Identity:    contract.ToolIdentitySpec{ProductID: "oa", Name: tool, CanonicalPath: "oa." + tool, CLIPath: path, PrimaryCLIPath: path},
-			Description: description,
-			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "oa", RPCName: tool}},
-			Selection:   contract.SelectionSpec{AgentSummary: description, UseWhen: []string{useWhen}, AvoidWhen: []string{avoidWhen}, Examples: []string{"dws " + path}},
-			Result: &contract.ResultSpec{
-				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-				DataSchema: json.RawMessage(`{"type":"object","properties":{"templates":{"type":"array","description":"审批模板记录；详情接口中的 schemaContent 和 processConfig 保持服务端 JSON 字符串格式","items":{"type":"object","properties":{"processCode":{"type":"string","description":"审批模板 code"},"flowTitle":{"type":"string","description":"列表中的模板名称"},"name":{"type":"string","description":"详情中的模板名称"},"schemaContent":{"type":"string","description":"表单 Schema，内容为 JSON 字符串"},"processConfig":{"type":"string","description":"流程配置，内容为 JSON 字符串"}},"additionalProperties":true}}},"required":["templates"],"additionalProperties":false}`),
-			},
-		},
-	}
-}
-
 func callOATemplateResult(cmd *cobra.Command, tool string, args map[string]any) (output.CommandResult, error) {
 	data, err := CallMCPToolDataOnServer(cmd.Context(), "oa", tool, args)
 	if err != nil {
@@ -1891,21 +1871,89 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 
-	templateListSpec := oaTemplateSpec("list", "list_manage_templates", "查询用户在当前组织可管理的审批模板",
-		"需要枚举当前组织中自己有管理权限的审批模板并取得 processCode 时",
-		"需要单个模板的表单 Schema 和流程配置时使用 dws oa approval template detail；查询可发起模板时使用 dws oa approval list-forms")
-	templateDetailSpec := oaTemplateSpec("detail", "get_template_detail", "获取审批模板详情，返回表单 Schema 和流程配置",
-		"已知一个 processCode，需要读取审批模板的 schemaContent 和 processConfig 以检查表单和流程配置时",
-		"尚不知道可管理模板的 processCode 时先用 dws oa approval template list；查看审批实例时使用 dws oa approval detail")
-	templateDetailSpec.Example += " --process-code <code>"
-	templateDetailSpec.Contract.Selection.Examples = []string{templateDetailSpec.Example}
-	templateDetailSpec.Flags = []LeafFlag{{
-		Name: "process-code", Usage: "单个审批模板 code（必填）", Bind: "processCodes", Trim: true, Required: true, MarkRequired: true,
-		Transform: func(raw string) (any, error) { return []string{raw}, nil },
-	}}
-	templateDetailSpec.Contract.Parameters = []contract.ParamDecl{{Name: "process-code", Property: "processCodes", InterfaceType: "array"}}
-	templateListCmd := NewLeafCommand(templateListSpec)
-	templateDetailCmd := NewLeafCommand(templateDetailSpec)
+	templateListCmd := NewLeafCommand(LeafSpec{
+		Use:           "list",
+		Short:         "查询用户在当前组织可管理的审批模板",
+		Example:       "dws oa approval template list",
+		Server:        "oa",
+		Tool:          "list_manage_templates",
+		OutputRollout: output.RolloutUnifiedActive,
+		ResultCall:    callOATemplateResult,
+		Validate:      cobra.NoArgs,
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "list_manage_templates",
+				CanonicalPath:  "oa.list_manage_templates",
+				CLIPath:        "oa approval template list",
+				PrimaryCLIPath: "oa approval template list",
+			},
+			Description: "查询用户在当前组织可管理的审批模板",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "list_manage_templates"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询用户在当前组织可管理的审批模板",
+				UseWhen:      []string{"需要枚举当前组织中自己有管理权限的审批模板并取得 processCode 时"},
+				AvoidWhen:    []string{"需要单个模板的表单 Schema 和流程配置时使用 dws oa approval template detail；查询可发起模板时使用 dws oa approval list-forms"},
+				Examples:     []string{"dws oa approval template list"},
+			},
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: json.RawMessage(`{"type":"object","properties":{"templates":{"type":"array","description":"当前用户在当前组织可管理的审批模板列表","items":{"type":"object","properties":{"processCode":{"type":"string","description":"审批模板 code"},"flowTitle":{"type":"string","description":"列表中的模板名称"}},"additionalProperties":true}}},"required":["templates"],"additionalProperties":false}`),
+			},
+		},
+	})
+	templateDetailCmd := NewLeafCommand(LeafSpec{
+		Use:           "detail",
+		Short:         "获取审批模板详情，返回表单 Schema 和流程配置",
+		Example:       "dws oa approval template detail --process-code <code>",
+		Server:        "oa",
+		Tool:          "get_template_detail",
+		OutputRollout: output.RolloutUnifiedActive,
+		ResultCall:    callOATemplateResult,
+		Validate:      cobra.NoArgs,
+		Flags: []LeafFlag{{
+			Name: "process-code", Usage: "单个审批模板 code（必填）", Bind: "processCodes", Trim: true, Required: true, MarkRequired: true,
+			Transform: func(raw string) (any, error) { return []string{raw}, nil },
+		}},
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "get_template_detail",
+				CanonicalPath:  "oa.get_template_detail",
+				CLIPath:        "oa approval template detail",
+				PrimaryCLIPath: "oa approval template detail",
+			},
+			Description: "获取审批模板详情，返回表单 Schema 和流程配置",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "get_template_detail"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取审批模板详情，返回表单 Schema 和流程配置",
+				UseWhen:      []string{"已知一个 processCode，需要读取审批模板的 schemaContent 和 processConfig 以检查表单和流程配置时"},
+				AvoidWhen:    []string{"尚不知道可管理模板的 processCode 时先用 dws oa approval template list；查看审批实例时使用 dws oa approval detail"},
+				Examples:     []string{"dws oa approval template detail --process-code <code>"},
+			},
+			Parameters: []contract.ParamDecl{{Name: "process-code", Property: "processCodes", InterfaceType: "array"}},
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: json.RawMessage(`{"type":"object","properties":{"templates":{"type":"array","description":"审批模板详情；schemaContent 和 processConfig 保持服务端 JSON 字符串格式","items":{"type":"object","properties":{"processCode":{"type":"string","description":"审批模板 code"},"name":{"type":"string","description":"详情中的模板名称"},"schemaContent":{"type":"string","description":"表单 Schema，内容为 JSON 字符串"},"processConfig":{"type":"string","description":"流程配置，内容为 JSON 字符串"}},"additionalProperties":true}}},"required":["templates"],"additionalProperties":false}`),
+			},
+		},
+	})
 
 	templateCmd := newGroupCommand(&cobra.Command{Use: "template", Short: "审批模板管理", RunE: groupRunE})
 	templateCmd.AddCommand(templateListCmd, templateDetailCmd)

@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -52,5 +53,57 @@ func TestCrossPlatformCoverageOATemplateDeliveredContract(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageOATemplateResultContractsAreIndependent(t *testing.T) {
+	for _, tc := range []struct {
+		command  string
+		fields   []string
+		excluded []string
+	}{
+		{"list", []string{"processCode", "flowTitle"}, []string{"name", "schemaContent", "processConfig"}},
+		{"detail", []string{"processCode", "name", "schemaContent", "processConfig"}, []string{"flowTitle"}},
+	} {
+		for _, compact := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/compact=%t", tc.command, compact), func(t *testing.T) {
+				root := NewRootCommand()
+				var stdout bytes.Buffer
+				root.SetOut(&stdout)
+				args := []string{"schema", "oa approval template " + tc.command, "--format", "json"}
+				if compact {
+					args = append(args, "--compact")
+				}
+				root.SetArgs(args)
+				if err := root.Execute(); err != nil {
+					t.Fatal(err)
+				}
+				var leaf struct {
+					Result struct {
+						DataSchema struct {
+							Properties map[string]struct {
+								Items struct {
+									Properties map[string]json.RawMessage `json:"properties"`
+								} `json:"items"`
+							} `json:"properties"`
+						} `json:"data_schema"`
+					} `json:"result"`
+				}
+				if err := json.Unmarshal(stdout.Bytes(), &leaf); err != nil {
+					t.Fatal(err)
+				}
+				fields := leaf.Result.DataSchema.Properties["templates"].Items.Properties
+				for _, name := range tc.fields {
+					if _, ok := fields[name]; !ok {
+						t.Errorf("missing %s result field %s", tc.command, name)
+					}
+				}
+				for _, name := range tc.excluded {
+					if _, ok := fields[name]; ok {
+						t.Errorf("%s declares field owned by the other API: %s", tc.command, name)
+					}
+				}
+			})
+		}
 	}
 }
