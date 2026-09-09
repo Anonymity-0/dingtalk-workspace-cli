@@ -132,7 +132,7 @@ func newWhiteboardCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
-				{Name: "part-id", Property: "partId", Required: boolPtr(false), RequiredWhen: "操作文档内嵌白板时；显式提供即选择内嵌分支"},
+				{Name: "part-id", Property: "partId", Required: boolPtr(false)},
 				{Name: "view", Property: "view", Required: boolPtr(false), Enum: []string{"summary", "page", "all"}},
 				{Name: "page-id", Property: "pageId", Required: boolPtr(false), RequiredWhen: "独立白板且 view=page 时"},
 			},
@@ -147,9 +147,9 @@ func newWhiteboardCommand() *cobra.Command {
 	更新模式由文件顶层的 overwrite 字段决定。overwrite=false 表示追加，
 	overwrite=true 表示整页重建。显式提供非空 --part-id 时更新文档内嵌白板；未提供时
 	默认更新独立白板，并要求 --expected-revision 和 --request-id。两种模式都会写入
-	远端白板，必须同时传入 --yes。`,
+	远端白板，执行前必须取得用户确认；非交互执行仅在确认后添加 --yes。`,
 		Example: `  dws whiteboard update --node DOC_ID_OR_URL --part-id WHITEBOARD_PART_ID --source ./whiteboard.json --format json
-	  dws whiteboard update --node WHITEBOARD_NODE_ID --source ./whiteboard.json --expected-revision 12 --request-id wb-update-001 --yes --format json`,
+  dws whiteboard update --node WHITEBOARD_NODE_ID --source ./whiteboard.json --expected-revision 12 --request-id wb-update-001 --format json`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := rejectWhiteboardOutputFilters(cmd); err != nil {
 				return err
@@ -238,7 +238,7 @@ func newWhiteboardCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
-				{Name: "part-id", Property: "partId", Required: boolPtr(false), RequiredWhen: "操作文档内嵌白板时；显式提供即选择内嵌分支"},
+				{Name: "part-id", Property: "partId", Required: boolPtr(false)},
 				{Name: "source", Required: boolPtr(true)},
 				{Name: "page-id", Property: "pageId", Required: boolPtr(false), RequiredWhen: "独立白板 overwrite 时"},
 				{Name: "expected-revision", Property: "expectedRevision", Required: boolPtr(false), RequiredWhen: "操作独立白板时"},

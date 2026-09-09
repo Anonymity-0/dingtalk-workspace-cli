@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	outputpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
@@ -67,7 +69,7 @@ func installWhiteboardTestCaller(t *testing.T, caller *whiteboardTestCaller) *by
 	return output
 }
 
-func TestWhiteboardLocalFileExamplesAreContractOnly(t *testing.T) {
+func TestCrossPlatformCoverageWhiteboardLocalFileExamplesAreContractOnly(t *testing.T) {
 	root := newWhiteboardCommand()
 	tests := []struct {
 		path         string
@@ -81,6 +83,9 @@ func TestWhiteboardLocalFileExamplesAreContractOnly(t *testing.T) {
 			leaf, _, err := root.Find([]string{test.path})
 			if err != nil || leaf == nil {
 				t.Fatalf("find whiteboard %s: command=%v err=%v", test.path, leaf, err)
+			}
+			if strings.Contains(leaf.Example, "--yes") {
+				t.Fatalf("whiteboard %s public example pre-confirms a write:\n%s", test.path, leaf.Example)
 			}
 			final, ok := contractfinal.RuntimeContractFinal(leaf)
 			if !ok || final.Selection == nil {
@@ -110,7 +115,7 @@ func TestWhiteboardLocalFileExamplesAreContractOnly(t *testing.T) {
 	}
 }
 
-func TestWhiteboardQueryRoutesAndDecodesResultJSON(t *testing.T) {
+func TestCrossPlatformCoverageWhiteboardQueryRoutesAndDecodesResultJSON(t *testing.T) {
 	caller := &whiteboardTestCaller{
 		format: "json",
 		response: func(whiteboardTestCall, int) string {
@@ -172,7 +177,7 @@ func TestCrossPlatformCoverageWhiteboardStandaloneQueryPromotesResultJSONToSourc
 	}
 }
 
-func TestWhiteboardUpdateValidatesSourceAndRequiresConfirmation(t *testing.T) {
+func TestCrossPlatformCoverageWhiteboardUpdateValidatesSourceAndRequiresConfirmation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "whiteboard.json")
 	if err := os.WriteFile(path, []byte(`{"overwrite":false,"source":{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[{"id":"n1","type":"text"}]}}`), 0o600); err != nil {
 		t.Fatal(err)
@@ -510,10 +515,39 @@ func TestCrossPlatformCoverageWhiteboardCreateSourceAcceptsInlineJSONOrFile(t *t
 		})
 	}
 
-	for _, invalid := range []string{"", "{", `{"source":"double-encoded"}`, filepath.Join(t.TempDir(), "missing.json")} {
+	for _, invalid := range []string{"", "{", `null`, `{} {}`, `{"source":"double-encoded"}`, filepath.Join(t.TempDir(), "missing.json"), t.TempDir()} {
 		if _, err := loadStandaloneWhiteboardCreateSource(invalid); err == nil {
 			t.Fatalf("expected invalid source %q", invalid)
 		}
+	}
+	for _, requestID := range []string{"", "bad request id"} {
+		if _, err := validateStandaloneWhiteboardRequestID(requestID); err == nil {
+			t.Fatalf("expected invalid request ID %q", requestID)
+		}
+	}
+	if _, _, err := parseStandaloneWhiteboardCreateJSON([]byte("null")); err == nil {
+		t.Fatal("JSON null source unexpectedly succeeded")
+	}
+
+	caller := &whiteboardTestCaller{dry: true}
+	installWhiteboardTestCaller(t, caller)
+	if _, err := callStandaloneWhiteboardCreateResult(&cobra.Command{}, "", map[string]any{"source": "{"}); err == nil {
+		t.Fatal("invalid transformed dry-run source unexpectedly succeeded")
+	}
+	if result, err := callStandaloneWhiteboardCreateResult(&cobra.Command{}, "", map[string]any{
+		"source": direct, "name": "Board", "requestId": "create-1", "folderId": "folder-1",
+	}); err != nil || result == nil {
+		t.Fatalf("dry-run with optional folder failed: result=%#v err=%v", result, err)
+	}
+	caller = &whiteboardTestCaller{err: func(whiteboardTestCall, int) error { return errors.New("create failed") }}
+	installWhiteboardTestCaller(t, caller)
+	if _, err := callStandaloneWhiteboardCreateResult(&cobra.Command{}, "", map[string]any{"source": direct, "requestId": "create-1"}); err == nil {
+		t.Fatal("create caller error unexpectedly succeeded")
+	}
+	caller = &whiteboardTestCaller{}
+	installWhiteboardTestCaller(t, caller)
+	if _, err := callStandaloneWhiteboardCreateResult(&cobra.Command{}, "", map[string]any{"source": direct, "requestId": "create-1"}); err == nil {
+		t.Fatal("invalid create receipt unexpectedly succeeded")
 	}
 }
 
@@ -522,14 +556,21 @@ func TestCrossPlatformCoverageWhiteboardCreateReceiptRejectsExplicitContradictio
 		name     string
 		response map[string]any
 	}{
+		{name: "nil response", response: nil},
+		{name: "false success", response: map[string]any{"success": false}},
+		{name: "malformed success", response: map[string]any{"success": "true"}},
 		{name: "missing node", response: map[string]any{"success": true, "requestId": "create-1", "revision": "0"}},
 		{name: "missing request ID", response: map[string]any{"success": true, "nodeId": "wb", "revision": "0"}},
 		{name: "wrong request ID", response: map[string]any{"success": true, "requestId": "other", "nodeId": "wb", "revision": "0"}},
 		{name: "missing revision", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb"}},
 		{name: "negative revision", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "-1"}},
+		{name: "malformed revision", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": 1.5}},
 		{name: "wrong content type", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "0", "contentType": "DOC"}},
+		{name: "malformed content type", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "0", "contentType": true}},
 		{name: "content not applied", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "0", "requestedContentApplied": false}},
+		{name: "malformed content applied", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "0", "requestedContentApplied": "true"}},
 		{name: "request mismatch", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "0", "requestMatched": false}},
+		{name: "malformed request matched", response: map[string]any{"success": true, "requestId": "create-1", "nodeId": "wb", "revision": "0", "requestMatched": "true"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -549,9 +590,12 @@ func TestCrossPlatformCoverageWhiteboardCreateReceiptRejectsExplicitContradictio
 	if err := validateStandaloneWhiteboardCreateResponse(response, "create-1"); err != nil {
 		t.Fatal(err)
 	}
+	if unwrapWhiteboardResult(nil) != nil {
+		t.Fatal("nil response must remain nil")
+	}
 }
 
-func TestDocWhiteboardInsertBuildsCardAndReturnsPersistedPartID(t *testing.T) {
+func TestCrossPlatformCoverageDocWhiteboardInsertBuildsCardAndReturnsPersistedPartID(t *testing.T) {
 	var blockID string
 	caller := &whiteboardTestCaller{
 		format: "json",
@@ -638,7 +682,7 @@ func stubWhiteboardRetries(t *testing.T, delays int) func() int {
 // 插入成功后的回查如果自身失败（鉴权 / MCP 错误 / 响应解析失败），不能退化成
 // “暂未落库” 的 soft success，否则 Agent 会把硬失败误判成最终一致性，
 // 继续带着空 partId 调用 whiteboard query/update。
-func TestDocWhiteboardInsertFailsClosedWhenVerificationQueryFails(t *testing.T) {
+func TestCrossPlatformCoverageDocWhiteboardInsertFailsClosedWhenVerificationQueryFails(t *testing.T) {
 	tests := []struct {
 		name      string
 		queryErr  error
@@ -711,7 +755,7 @@ func TestDocWhiteboardInsertFailsClosedWhenVerificationQueryFails(t *testing.T) 
 
 // 块暂不可见是真正的最终一致性：重试耗尽后仍按 soft success 返回 blockId，
 // whiteboardId 为 null。
-func TestDocWhiteboardInsertSoftSucceedsWhenBlockNotYetVisible(t *testing.T) {
+func TestCrossPlatformCoverageDocWhiteboardInsertSoftSucceedsWhenBlockNotYetVisible(t *testing.T) {
 	caller := &whiteboardTestCaller{
 		format: "json",
 		response: func(_ whiteboardTestCall, index int) string {
@@ -749,7 +793,7 @@ func TestDocWhiteboardInsertSoftSucceedsWhenBlockNotYetVisible(t *testing.T) {
 
 // 同级插入与容器内插入共用 MCP 的 referenceBlockId：同时传两者过去会让 parent
 // 静默覆盖 ref-block、而 --where 仍留在请求里污染容器插入语义。现在必须显式报错。
-func TestDocWhiteboardInsertRejectsConflictingBlockAnchors(t *testing.T) {
+func TestCrossPlatformCoverageDocWhiteboardInsertRejectsConflictingBlockAnchors(t *testing.T) {
 	for _, test := range []struct {
 		name string
 		args []string
@@ -782,7 +826,7 @@ func TestDocWhiteboardInsertRejectsConflictingBlockAnchors(t *testing.T) {
 	}
 }
 
-func TestDocMediaUploadReturnsStableResourceContract(t *testing.T) {
+func TestCrossPlatformCoverageDocMediaUploadReturnsStableResourceContract(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "icon.svg")
 	if err := os.WriteFile(file, []byte("<svg/>"), 0o600); err != nil {
 		t.Fatal(err)
@@ -815,7 +859,7 @@ func TestDocMediaUploadReturnsStableResourceContract(t *testing.T) {
 	}
 }
 
-func TestDocMediaUploadRedactsTemporaryURLFromUploadError(t *testing.T) {
+func TestCrossPlatformCoverageDocMediaUploadRedactsTemporaryURLFromUploadError(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "icon.svg")
 	if err := os.WriteFile(file, []byte("<svg/>"), 0o600); err != nil {
 		t.Fatal(err)

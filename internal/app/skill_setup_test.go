@@ -836,6 +836,9 @@ func TestResolveSkillSetupSourceMultiFinds(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageResolveSkillSetupSourceAcceptsReleaseBundleRoot(t *testing.T) {
+	if candidates := skillSourceOverrideCandidates("  ", skillSetupModeMulti); candidates != nil {
+		t.Fatalf("blank source override candidates = %v, want nil", candidates)
+	}
 	bundleRoot := t.TempDir()
 	writeSkill := func(dir, name string) {
 		t.Helper()
