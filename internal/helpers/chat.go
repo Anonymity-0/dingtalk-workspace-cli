@@ -3928,7 +3928,7 @@ func newChatCommand() *cobra.Command {
 			},
 			Parameters: append([]contract.ParamDecl{
 				{Name: "direction", Property: "forward"},
-				{Name: "conversation-id", Property: "openconversation_id", Required: boolPtr(false)},
+				{Name: "group", Property: "openconversation_id", Required: boolPtr(false)},
 			}, pagedMCPParamDecls()...),
 		},
 	})
@@ -4334,7 +4334,7 @@ func newChatCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "ai-tag", Property: "clawType", InterfaceType: "string"},
 				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds"},
-				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "idempotency-key", Property: "uuid"},
 				{Name: "open-dingtalk-id", Property: "receiverOpenDingTalkId"},
 			},
@@ -5693,8 +5693,8 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	_ = chatMessageListCmd.Flags().MarkHidden("size")
 	AddPagedMCPFlags(chatMessageListCmd)
 	cli.AnnotateRuntimeConstraints(chatMessageListCmd, cli.RuntimeSchemaConstraints{
-		MutuallyExclusive: [][]string{{"conversation-id", "user", "open-dingtalk-id"}},
-		RequireOneOf:      [][]string{{"conversation-id", "user", "open-dingtalk-id"}},
+		MutuallyExclusive: [][]string{{"group", "user", "open-dingtalk-id"}},
+		RequireOneOf:      [][]string{{"group", "user", "open-dingtalk-id"}},
 	})
 	chatMessageListDirectCmd.Flags().String("user", "", "对方 userId（同组织内同事，与 --open-dingtalk-id 二选一）")
 	chatMessageListDirectCmd.Flags().String("open-dingtalk-id", "", "对方 openDingTalkId（非同组织普通好友场景，与 --user 二选一）")
@@ -5751,8 +5751,8 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	}})
 	cli.AttachRuntimeSchema(chatMessageSendCmd, "chat", "send_personal_message", "hardcoded:chat")
 	cli.AnnotateRuntimeConstraints(chatMessageSendCmd, cli.RuntimeSchemaConstraints{
-		MutuallyExclusive: [][]string{{"conversation-id", "user", "open-dingtalk-id"}},
-		RequireOneOf:      [][]string{{"conversation-id", "user", "open-dingtalk-id"}},
+		MutuallyExclusive: [][]string{{"group", "user", "open-dingtalk-id"}},
+		RequireOneOf:      [][]string{{"group", "user", "open-dingtalk-id"}},
 	})
 	cli.AnnotateRuntimePositionals(chatMessageSendCmd, contract.RuntimeSchemaPositional{
 		Name:        "content",
@@ -6100,7 +6100,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "open-dingtalk-id", Property: "openDingTalkId"},
-				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "user", Property: "openDingTalkId"},
 			},
 		},
@@ -6121,8 +6121,8 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	corecmd.AnnotateFlagAlias(chatConversationInfoCmd, "userId", "user")
 	chatConversationInfoCmd.Flags().String("open-dingtalk-id", "", "单聊对方 openDingTalkId（单聊时使用）")
 	cli.AnnotateRuntimeConstraints(chatConversationInfoCmd, cli.RuntimeSchemaConstraints{
-		MutuallyExclusive: [][]string{{"conversation-id", "user", "open-dingtalk-id"}},
-		RequireOneOf:      [][]string{{"conversation-id", "user", "open-dingtalk-id"}},
+		MutuallyExclusive: [][]string{{"group", "user", "open-dingtalk-id"}},
+		RequireOneOf:      [][]string{{"group", "user", "open-dingtalk-id"}},
 	})
 
 	// ── file 子命令（历史接口，保持隐藏下线）─────────────────────
