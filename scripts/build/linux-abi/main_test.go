@@ -17,7 +17,7 @@ import (
 func TestCrossPlatformCoverageLinuxABIReleaseLibraries(t *testing.T) {
 	for _, arch := range []string{"amd64", "arm64"} {
 		t.Run(arch, func(t *testing.T) {
-			path := filepath.Join("..", "..", "..", "third_party", "runtimepayload", "20260825", "linux", arch, "libx7k2m9p4q1w8.so")
+			path := filepath.Join("..", "..", "..", "third_party", "runtimepayload", "20260908", "linux", arch, "libx7k2m9p4q1w8.so")
 			var stderr bytes.Buffer
 			if code := run([]string{path}, &stderr); code != 0 {
 				t.Fatalf("bundled library rejected: %d, %s", code, &stderr)
