@@ -938,6 +938,18 @@ func TestCrossPlatformCoverageIncompleteResultErrorPreservesTypedCauseContract(t
 		t.Fatalf("outer partial contract = %#v", typed)
 	}
 
+	outerOrigin := NewIncompleteResultError(
+		"partial shortcut read",
+		cause,
+		false,
+		apperrors.WithOrigin("shortcut"),
+		apperrors.WithReason("resource_download_partial_failure"),
+	)
+	if !errors.As(outerOrigin, &typed) || typed.Origin != "shortcut" || typed.ServerKey != "im" ||
+		typed.RPCCode != -32029 || typed.ServerDiag.TraceID != "trace-fixture" {
+		t.Fatalf("outer origin did not win while preserving cause diagnostics: %#v", typed)
+	}
+
 	canceled := NewIncompleteResultError("cancelled after page one", context.Canceled, true)
 	if !errors.As(canceled, &typed) || !errors.Is(canceled, context.Canceled) ||
 		!typed.RetryableSet || typed.Retryable {

@@ -370,6 +370,7 @@ func handlePagedCommandError(
 func NewIncompleteResultError(message string, cause error, fallbackRetryable bool, opts ...apperrors.Option) error {
 	category := apperrors.CategoryAPI
 	retryable := fallbackRetryable
+	var causeOrigin string
 	var typed *apperrors.Error
 	if errors.As(cause, &typed) && typed != nil {
 		category = typed.Category
@@ -390,7 +391,7 @@ func NewIncompleteResultError(message string, cause error, fallbackRetryable boo
 			opts = append(opts, apperrors.WithServerKey(typed.ServerKey))
 		}
 		if typed.Origin != "" {
-			opts = append(opts, apperrors.WithOrigin(typed.Origin))
+			causeOrigin = typed.Origin
 		}
 		if typed.RPCCode != 0 {
 			opts = append(opts, apperrors.WithRPCCode(typed.RPCCode))
@@ -401,6 +402,11 @@ func NewIncompleteResultError(message string, cause error, fallbackRetryable boo
 		if !typed.ServerDiag.IsEmpty() {
 			opts = append(opts, apperrors.WithServerDiag(typed.ServerDiag))
 		}
+	}
+	// The wrapping operation owns origin. Preserve the cause origin only as a
+	// fallback by applying it before the caller-provided options.
+	if causeOrigin != "" {
+		opts = append([]apperrors.Option{apperrors.WithOrigin(causeOrigin)}, opts...)
 	}
 	if errors.Is(cause, context.Canceled) {
 		retryable = false
