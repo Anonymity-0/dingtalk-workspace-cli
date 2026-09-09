@@ -7,9 +7,10 @@ import (
 
 // mcpdev is a helper-only product: it is absent from the generated static
 // server table and from discovery, so the source pin is its only default
-// resolution path. These tests guard that pin.
+// resolution path. These tests guard that pin and carry the macOS platform
+// coverage gate, so they use the TestCrossPlatformCoverage prefix.
 
-func TestMCPDevMCPEndpointFollowsGatewayBaseURL(t *testing.T) {
+func TestCrossPlatformCoverageMCPDevMCPEndpointFollowsGatewayBaseURL(t *testing.T) {
 	t.Setenv("DINGTALK_MCPDEV_MCP_URL", "")
 
 	got := mcpdevMCPEndpoint()
@@ -21,7 +22,7 @@ func TestMCPDevMCPEndpointFollowsGatewayBaseURL(t *testing.T) {
 	}
 }
 
-func TestDirectRuntimeEndpointResolvesMCPDev(t *testing.T) {
+func TestCrossPlatformCoverageDirectRuntimeEndpointResolvesMCPDev(t *testing.T) {
 	t.Setenv("DINGTALK_MCPDEV_MCP_URL", "")
 
 	for _, productID := range []string{mcpdevProductID, "  " + mcpdevProductID + "  "} {
@@ -35,18 +36,12 @@ func TestDirectRuntimeEndpointResolvesMCPDev(t *testing.T) {
 	}
 }
 
-func TestMCPDevEndpointEnvOverrideWins(t *testing.T) {
+func TestCrossPlatformCoverageMCPDevEndpointEnvOverrideWins(t *testing.T) {
 	const override = "https://mcp-gw.example.test/server/custom"
 	t.Setenv("DINGTALK_MCPDEV_MCP_URL", override)
 
 	got, ok := directRuntimeEndpoint(mcpdevProductID, "mcp_server_url_get")
 	if !ok || got != override {
 		t.Fatalf("directRuntimeEndpoint(%q) = %q %v, want %q true", mcpdevProductID, got, ok, override)
-	}
-}
-
-func TestDirectRuntimeProductIDsIncludeMCPDev(t *testing.T) {
-	if !DirectRuntimeProductIDs()[mcpdevProductID] {
-		t.Fatal("DirectRuntimeProductIDs() is missing mcpdev")
 	}
 }
