@@ -90,6 +90,7 @@ metadata:
 | 流式卡片创建 | [card/create.md](references/card/create.md) |
 | 流式卡片更新 | [card/update.md](references/card/update.md) |
 | 卡片 callback 是否可用 | [card/callback.md](references/card/callback.md) |
+| A2UI 展示卡片创建、更新、完结及 Catalog 校验失败 | [脱敏模板](references/card/a2ui.md) |
 | 卡片公开 Schema 边界 | [card/schema.md](references/card/schema.md) |
 | 只有上述 reference 仍无法定位的原子能力 | [chat.md](references/chat.md) 的对应章节 |
 
