@@ -22,6 +22,9 @@ import (
 )
 
 var whiteboardExportAfter = time.After
+var whiteboardExportAbs = filepath.Abs
+var whiteboardExportStat = os.Stat
+var whiteboardExportFileStat = (*os.File).Stat
 
 func newStandaloneWhiteboardExportCommands() (*cobra.Command, *cobra.Command) {
 	exportCmd := &cobra.Command{
@@ -194,7 +197,7 @@ func downloadWhiteboardExport(ctx context.Context, jobID, format, outputDir, dow
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("创建白板导出目录失败: %w", err)
 	}
-	outputPath, err := filepath.Abs(filepath.Join(outputDir, fileName))
+	outputPath, err := whiteboardExportAbs(filepath.Join(outputDir, fileName))
 	if err != nil {
 		return fmt.Errorf("解析白板导出路径失败: %w", err)
 	}
@@ -203,7 +206,7 @@ func downloadWhiteboardExport(ctx context.Context, jobID, format, outputDir, dow
 	}
 	var size int64
 	if err := downloadViaTemp(outputPath, false, func(tmpPath string) error {
-		if err := httpGetFile(ctx, downloadURL, nil, tmpPath); err != nil {
+		if err := whiteboardExportHTTPGet(ctx, downloadURL, nil, tmpPath); err != nil {
 			return err
 		}
 		var err error
@@ -259,7 +262,7 @@ func validateWhiteboardExportFile(path, format string) (int64, error) {
 	if _, err := io.ReadFull(file, header); err != nil || string(header) != signature {
 		return 0, fmt.Errorf("白板导出文件为空、截断或不是有效的 %s 文件", format)
 	}
-	info, err := file.Stat()
+	info, err := whiteboardExportFileStat(file)
 	if err != nil {
 		return 0, err
 	}
@@ -278,12 +281,12 @@ func whiteboardExportDownloadError(err error) error {
 
 // Inspect existing ancestors without creating anything during validation.
 func validateWhiteboardExportDirectory(directory string) error {
-	path, err := filepath.Abs(directory)
+	path, err := whiteboardExportAbs(directory)
 	if err != nil {
 		return err
 	}
 	for {
-		info, err := os.Stat(path)
+		info, err := whiteboardExportStat(path)
 		if err == nil {
 			if !info.IsDir() {
 				return &CLIError{Code: CodeInvalidPath, Message: "--output 必须是目录，已有路径不是目录: " + path}

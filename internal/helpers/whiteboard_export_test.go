@@ -23,7 +23,7 @@ func TestCrossPlatformCoverageWhiteboardExportDownloadsUsingBoardName(t *testing
 		}
 	}}
 	output := installWhiteboardTestCaller(t, caller)
-	testseam.Swap(t, &httpGetFile, func(_ context.Context, _ string, _ map[string]string, destination string) error {
+	testseam.Swap(t, &whiteboardExportHTTPGet, func(_ context.Context, _ string, _ map[string]string, destination string) error {
 		return os.WriteFile(destination, []byte("%PDF-test"), 0o644)
 	})
 
@@ -75,7 +75,7 @@ func TestCrossPlatformCoverageWhiteboardExportPollsAndValidates(t *testing.T) {
 		return `{}`
 	}}
 	installWhiteboardTestCaller(t, caller)
-	testseam.Swap(t, &httpGetFile, func(_ context.Context, _ string, _ map[string]string, destination string) error {
+	testseam.Swap(t, &whiteboardExportHTTPGet, func(_ context.Context, _ string, _ map[string]string, destination string) error {
 		return os.WriteFile(destination, []byte("\x89PNG\r\n\x1a\nbody"), 0o644)
 	})
 
@@ -103,7 +103,7 @@ func TestCrossPlatformCoverageWhiteboardExportGetUnwrapsResultJSON(t *testing.T)
 		return `{"resultJson":"{\"jobId\":\"wb-wrapped\",\"status\":\"SUCCESS\",\"downloadUrl\":\"https://example.test/wrapped.png\"}"}`
 	}}
 	installWhiteboardTestCaller(t, caller)
-	testseam.Swap(t, &httpGetFile, func(_ context.Context, _ string, _ map[string]string, destination string) error {
+	testseam.Swap(t, &whiteboardExportHTTPGet, func(_ context.Context, _ string, _ map[string]string, destination string) error {
 		return os.WriteFile(destination, []byte("\x89PNG\r\n\x1a\nbody"), 0o644)
 	})
 
@@ -127,7 +127,7 @@ func TestCrossPlatformCoverageWhiteboardExportGetRejectsFormatMismatchBeforeDown
 	}}
 	installWhiteboardTestCaller(t, caller)
 	downloaded := false
-	testseam.Swap(t, &httpGetFile, func(_ context.Context, _ string, _ map[string]string, _ string) error {
+	testseam.Swap(t, &whiteboardExportHTTPGet, func(_ context.Context, _ string, _ map[string]string, _ string) error {
 		downloaded = true
 		return nil
 	})
@@ -182,7 +182,7 @@ func TestCrossPlatformCoverageWhiteboardExportRejectsInvalidDownloadAndAllowsRet
 		t.Run(content, func(t *testing.T) {
 			installWhiteboardTestCaller(t, &whiteboardTestCaller{format: "json"})
 			body := content
-			testseam.Swap(t, &httpGetFile, func(_ context.Context, _ string, _ map[string]string, path string) error {
+			testseam.Swap(t, &whiteboardExportHTTPGet, func(_ context.Context, _ string, _ map[string]string, path string) error {
 				return os.WriteFile(path, []byte(body), 0600)
 			})
 			dir := t.TempDir()
@@ -205,7 +205,7 @@ func TestCrossPlatformCoverageWhiteboardExportRejectsInvalidDownloadAndAllowsRet
 func TestCrossPlatformCoverageWhiteboardExportSignedFilenameAndConflict(t *testing.T) {
 	installWhiteboardTestCaller(t, &whiteboardTestCaller{format: "json"})
 	calls := 0
-	testseam.Swap(t, &httpGetFile, func(_ context.Context, _ string, _ map[string]string, path string) error {
+	testseam.Swap(t, &whiteboardExportHTTPGet, func(_ context.Context, _ string, _ map[string]string, path string) error {
 		calls++
 		return os.WriteFile(path, []byte("%PDF-1.7"), 0600)
 	})
@@ -289,4 +289,100 @@ func TestCrossPlatformCoverageWhiteboardExportPollingFailuresPreserveRecovery(t 
 			}
 		})
 	}
+}
+
+func TestCrossPlatformCoverageWhiteboardExportErrorBranches(t *testing.T) {
+	for _, args := range [][]string{{"export"}, {"export-get"}, {"export-get", "--job-id", "job", "--output", "x", "--export-format", "svg"}} {
+		installWhiteboardTestCaller(t, &whiteboardTestCaller{format: "json"})
+		cmd := newWhiteboardCommand()
+		cmd.SetArgs(args)
+		if err := cmd.Execute(); err == nil {
+			t.Fatal("invalid args accepted")
+		}
+	}
+	for _, response := range []string{"{}", "invalid-json"} {
+		installWhiteboardTestCaller(t, &whiteboardTestCaller{format: "json", response: func(whiteboardTestCall, int) string { return response }})
+		cmd := newWhiteboardCommand()
+		cmd.SetArgs([]string{"export", "--node", "board", "--output", t.TempDir()})
+		if err := cmd.Execute(); err == nil {
+			t.Fatal("invalid receipt accepted")
+		}
+	}
+	for _, response := range []string{"invalid-json", `{"jobId":"other","status":"SUCCESS"}`} {
+		installWhiteboardTestCaller(t, &whiteboardTestCaller{format: "json", response: func(whiteboardTestCall, int) string { return response }})
+		cmd := newWhiteboardCommand()
+		cmd.SetArgs([]string{"export-get", "--job-id", "job", "--output", t.TempDir()})
+		if err := cmd.Execute(); err == nil {
+			t.Fatal("invalid query accepted")
+		}
+	}
+	if unwrapWhiteboardExportResult(nil) != nil {
+		t.Fatal("nil unwrap")
+	}
+}
+
+func TestCrossPlatformCoverageWhiteboardExportDownloadFailureBranches(t *testing.T) {
+	installWhiteboardTestCaller(t, &whiteboardTestCaller{format: "json"})
+	for _, raw := range []string{"https://example.test/%xx", "https://example.test/", "https://example.test/unnamed", "https://example.test/a.pdf"} {
+		if err := downloadWhiteboardExport(context.Background(), "job", "png", t.TempDir(), raw, nil); err == nil {
+			t.Fatalf("accepted %s", raw)
+		}
+	}
+	dir := t.TempDir()
+	file := filepath.Join(dir, "file")
+	if err := os.WriteFile(file, []byte("x"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := downloadWhiteboardExport(context.Background(), "job", "png", file, "https://example.test/a.png", nil); err == nil {
+		t.Fatal("file directory accepted")
+	}
+	testseam.Swap(t, &whiteboardExportHTTPGet, func(context.Context, string, map[string]string, string) error { return context.Canceled })
+	if err := downloadWhiteboardExport(context.Background(), "job", "png", dir, "https://example.test/a", nil); err == nil {
+		t.Fatal("download failure lost")
+	}
+	if _, err := validateWhiteboardExportFile(filepath.Join(dir, "absent"), "png"); err == nil {
+		t.Fatal("missing file accepted")
+	}
+	testseam.Swap(t, &whiteboardExportAbs, func(string) (string, error) { return "", context.Canceled })
+	if err := downloadWhiteboardExport(context.Background(), "job", "png", dir, "https://example.test/a.png", nil); err == nil {
+		t.Fatal("abs failure lost")
+	}
+	if err := validateWhiteboardExportDirectory(dir); err == nil {
+		t.Fatal("abs precheck failure lost")
+	}
+}
+
+func TestCrossPlatformCoverageWhiteboardExportFilesystemAndCancellation(t *testing.T) {
+	t.Run("stat", func(t *testing.T) {
+		testseam.Swap(t, &whiteboardExportStat, func(string) (os.FileInfo, error) { return nil, os.ErrPermission })
+		if err := validateWhiteboardExportDirectory(t.TempDir()); err == nil {
+			t.Fatal("stat failure lost")
+		}
+		testseam.Swap(t, &whiteboardExportStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+		if err := validateWhiteboardExportDirectory(t.TempDir()); err == nil {
+			t.Fatal("root missing accepted")
+		}
+	})
+	t.Run("file-stat", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "a")
+		if err := os.WriteFile(path, []byte("%PDF-1.7"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &whiteboardExportFileStat, func(*os.File) (os.FileInfo, error) { return nil, context.Canceled })
+		if _, err := validateWhiteboardExportFile(path, "pdf"); err == nil {
+			t.Fatal("stat failure lost")
+		}
+	})
+	t.Run("cancel-during-delay", func(t *testing.T) {
+		installWhiteboardTestCaller(t, &whiteboardTestCaller{format: "json", response: func(whiteboardTestCall, int) string { return `{"status":"PROCESSING"}` }})
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		testseam.Swap(t, &whiteboardExportAfter, func(time.Duration) <-chan time.Time { cancel(); return make(chan time.Time) })
+		cmd := newWhiteboardCommand()
+		cmd.SetContext(ctx)
+		cmd.SetArgs([]string{"export-get", "--job-id", "job", "--output", t.TempDir()})
+		if err := cmd.Execute(); err == nil {
+			t.Fatal("cancel lost")
+		}
+	})
 }
