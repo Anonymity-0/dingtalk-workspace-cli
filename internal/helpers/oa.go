@@ -1897,13 +1897,13 @@ func newOaCommand() *cobra.Command {
 	templateDetailSpec := oaTemplateSpec("detail", "get_template_detail", "获取审批模板详情，返回表单 Schema 和流程配置",
 		"已知一个 processCode，需要读取审批模板的 schemaContent 和 processConfig 以检查表单和流程配置时",
 		"尚不知道可管理模板的 processCode 时先用 dws oa approval template list；查看审批实例时使用 dws oa approval detail")
-	templateDetailSpec.Example += " --template-code <code>"
+	templateDetailSpec.Example += " --process-code <code>"
 	templateDetailSpec.Contract.Selection.Examples = []string{templateDetailSpec.Example}
 	templateDetailSpec.Flags = []LeafFlag{{
-		Name: "template-code", Usage: "单个审批模板 code（必填）", Bind: "processCodes", Trim: true, Required: true, MarkRequired: true,
+		Name: "process-code", Usage: "单个审批模板 code（必填）", Bind: "processCodes", Trim: true, Required: true, MarkRequired: true,
 		Transform: func(raw string) (any, error) { return []string{raw}, nil },
 	}}
-	templateDetailSpec.Contract.Parameters = []contract.ParamDecl{{Name: "template-code", Property: "processCodes", InterfaceType: "array"}}
+	templateDetailSpec.Contract.Parameters = []contract.ParamDecl{{Name: "process-code", Property: "processCodes", InterfaceType: "array"}}
 	templateListCmd := NewLeafCommand(templateListSpec)
 	templateDetailCmd := NewLeafCommand(templateDetailSpec)
 

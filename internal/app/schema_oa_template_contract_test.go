@@ -43,10 +43,10 @@ func TestCrossPlatformCoverageOATemplateDeliveredContract(t *testing.T) {
 					t.Fatalf("unexpected parameters: %#v", params)
 				}
 			} else {
-				if command.Flags().Lookup("template-code") == nil || command.Flags().Lookup("process-code") != nil {
+				if command.Flags().Lookup("process-code") == nil || command.Flags().Lookup("template-code") != nil {
 					t.Fatal("template detail help flags do not match the new contract")
 				}
-				p := params["template-code"]
+				p := params["process-code"]
 				if len(params) != 1 || p["type"] != "string" || p["property"] != "processCodes" || p["interface_type"] != "array" || p["required"] != true {
 					t.Fatalf("parameter contract: %#v", params)
 				}

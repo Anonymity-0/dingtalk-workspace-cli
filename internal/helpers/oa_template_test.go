@@ -14,7 +14,7 @@ func TestCrossPlatformCoverageOATemplateCommands(t *testing.T) {
 		want                  map[string]any
 	}{
 		{"list", "list_manage_templates", `[{"processCode":"PROC-1","flowTitle":"请假"}]`, nil, map[string]any{}},
-		{"detail", "get_template_detail", `[{"processCode":"PROC-1","schemaContent":"{\"items\":[]}","processConfig":"{\"type\":\"start\"}"}]`, []string{"--template-code", " PROC-1 "}, map[string]any{"processCodes": []string{"PROC-1"}}},
+		{"detail", "get_template_detail", `[{"processCode":"PROC-1","schemaContent":"{\"items\":[]}","processConfig":"{\"type\":\"start\"}"}]`, []string{"--process-code", " PROC-1 "}, map[string]any{"processCodes": []string{"PROC-1"}}},
 	} {
 		t.Run(tc.command, func(t *testing.T) {
 			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: `{"success":true,"dingOpenErrcode":0,"result":` + tc.result + `}`}}}
@@ -51,7 +51,7 @@ func TestCrossPlatformCoverageOATemplateCommands(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageOATemplateDetailRequiresOneCode(t *testing.T) {
-	for _, args := range [][]string{nil, {"--process-code", "PROC-1"}, {"--template-code", " "}, {"--process-codes", "PROC-1,PROC-2"}, {"--template-code", "PROC-1", "PROC-2"}} {
+	for _, args := range [][]string{nil, {"--template-code", "PROC-1"}, {"--process-code", " "}, {"--process-codes", "PROC-1,PROC-2"}, {"--process-code", "PROC-1", "PROC-2"}} {
 		caller := &scriptedToolCaller{format: "json"}
 		if _, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"approval", "template", "detail"}, args...)...); err == nil {
 			t.Fatal("expected validation failure")
@@ -75,7 +75,7 @@ func TestCrossPlatformCoverageOATemplateResponseValidation(t *testing.T) {
 	} {
 		t.Run(tc.response, func(t *testing.T) {
 			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: tc.response}}}
-			_, err := executeOAAttachmentCommandCapturingOutput(t, caller, "approval", "template", "detail", "--template-code", "PROC-1")
+			_, err := executeOAAttachmentCommandCapturingOutput(t, caller, "approval", "template", "detail", "--process-code", "PROC-1")
 			if (err != nil) != tc.fail {
 				t.Fatalf("error = %v, want failure %v", err, tc.fail)
 			}
