@@ -1,0 +1,18 @@
+[
+  {
+    "version": "v1.0",
+    "updateDataModel": {
+      "surfaceId": "example-task-progress",
+      "path": "/execution/title",
+      "value": "正在处理第 2 步"
+    }
+  },
+  {
+    "version": "v1.0",
+    "updateDataModel": {
+      "surfaceId": "example-task-progress",
+      "path": "/answer/displayText",
+      "value": "示例任务第 2 步正在执行。"
+    }
+  }
+]

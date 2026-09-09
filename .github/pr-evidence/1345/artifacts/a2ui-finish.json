@@ -1,0 +1,27 @@
+[
+  {"version":"v1.0","updateDataModel":{"surfaceId":"example-task-progress","path":"/execution/text","value":""}},
+  {"version":"v1.0","updateDataModel":{"surfaceId":"example-task-progress","path":"/execution/timelineOrder","value":[]}},
+  {"version":"v1.0","updateDataModel":{"surfaceId":"example-task-progress","path":"/answer/text","value":"示例任务已完成。"}},
+  {"version":"v1.0","updateDataModel":{"surfaceId":"example-task-progress","path":"/answer/displayText","value":"示例任务已完成。"}},
+  {"version":"v1.0","updateDataModel":{"surfaceId":"example-task-progress","path":"/status","value":"finished"}},
+  {"version":"v1.0","updateDataModel":{"surfaceId":"example-task-progress","path":"/execution/done","value":true}},
+  {"version":"v1.0","updateDataModel":{"surfaceId":"example-task-progress","path":"/answer/done","value":true}},
+  {"version":"v1.0","updateDataModel":{"surfaceId":"example-task-progress","path":"/execution/textEffect","value":""}},
+  {"version":"v1.0","updateDataModel":{"surfaceId":"example-task-progress","path":"/execution/title","value":"处理完成"}},
+  {"version":"v1.0","updateDataModel":{"surfaceId":"example-task-progress","path":"/tools/title","value":"处理完成"}},
+  {
+    "version": "v1.0",
+    "updateComponents": {
+      "surfaceId": "example-task-progress",
+      "components": [
+        {
+          "id": "executionTimeline",
+          "component": "Column",
+          "catalogId": "https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json",
+          "align": "stretch",
+          "children": []
+        }
+      ]
+    }
+  }
+]
