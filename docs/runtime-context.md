@@ -19,9 +19,14 @@ directory. Homebrew therefore uses the real binary in `libexec`, not the link in
   .dws-runtime.lock
 ```
 
-A nonblocking cross-process lock serializes adjacent publication. The embedded
-container is verified and extracted into a hidden temporary directory beside
-the executable. The dedicated ownership manifest reserves the fixed resource
+A nonblocking cross-process lock serializes adjacent publication. For an existing
+ready bundle with the same payload digest, DWS reads the trusted manifest directly
+from the verified embedded archive, compares it with the ownership record, and
+checks every published resource once. Reuse does not create a staging directory
+or extract another copy of the payload.
+
+Installation and repair extract the embedded container into a hidden temporary
+directory beside the executable. The dedicated ownership manifest reserves the fixed resource
 names before publication (`pending`) and commits the verified result afterward
 (`ready`). Existing valid resources are reused. Owned, interrupted or damaged
 resources can be repaired; unknown files and symbolic links are never replaced.
@@ -43,9 +48,13 @@ without blocking login or business requests.
 ```mermaid
 flowchart TD
     A[Embedded payload] --> B[Resolve executable symlinks]
-    B --> C[Lock, stage and verify adjacent resources]
-    C --> D{Publish or reuse succeeds?}
-    D -- Yes --> F[Load verified library]
+    B --> C[Lock and verify existing adjacent resources]
+    C --> L{Ready bundle matches embedded manifest?}
+    L -- Yes --> F[Load verified library]
+    L -- No --> M[Stage, verify and publish owned resources]
+    M --> D{Publication succeeds?}
+    C -- Conflict or lock failure --> E[Verify and materialize private cache]
+    D -- Yes --> F
     D -- No --> E[Verify and materialize private cache]
     E --> F
     E -- Failure --> G[Continue without context]

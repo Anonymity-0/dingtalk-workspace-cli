@@ -4,6 +4,7 @@
 package runtimepayload
 
 import (
+	"archive/tar"
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
@@ -97,23 +98,32 @@ func MaterializeAdjacent(container []byte, root, targetOS, targetArch string) (s
 		}
 	}
 
-	// The staged embedded manifest, rather than a self-asserted disk checksum,
-	// supplies the expected bytes for both reuse and repair.
+	digest := hex.EncodeToString(descriptor.SHA256[:])
+	archive := container[containerHeader : containerHeader+descriptor.Size]
+	if owned && current.State == "ready" && current.PayloadSHA256 == digest {
+		// Read the trusted manifest without writing a second copy of the bundle.
+		// A disk ownership record alone cannot authorize its own checksums.
+		expected, err := readArchiveManifest(bytes.NewReader(archive))
+		if err != nil {
+			return fail()
+		}
+		if current.Manifest == expected && validateRootManifest(root, expected, targetOS, targetArch) == nil {
+			return filepath.Join(root, name), nil
+		}
+	}
+
+	// Only installation or repair stages and verifies a fresh embedded bundle.
 	stage, err := makeCacheTemporary(root, ".dws-runtime-stage-*")
 	if err != nil {
 		return fail()
 	}
 	defer os.RemoveAll(stage)
-	if err := extractPayload(bytes.NewReader(container[containerHeader:containerHeader+descriptor.Size]), stage); err != nil {
+	if err := extractPayload(bytes.NewReader(archive), stage); err != nil {
 		return fail()
 	}
 	expected, err := readManifest(stage)
 	if err != nil || validateRootManifest(stage, expected, targetOS, targetArch) != nil {
 		return fail()
-	}
-	digest := hex.EncodeToString(descriptor.SHA256[:])
-	if owned && current.State == "ready" && current.PayloadSHA256 == digest && current.Manifest == expected && validateRootManifest(root, expected, targetOS, targetArch) == nil {
-		return filepath.Join(root, name), nil
 	}
 	next := ownership{Owner: "dws.runtimepayload", State: "pending", PayloadSHA256: digest, Manifest: expected}
 	if err := writeOwnership(root, stage, next); err != nil {
@@ -142,6 +152,43 @@ func MaterializeAdjacent(container []byte, root, targetOS, targetArch string) (s
 		return fail()
 	}
 	return filepath.Join(root, name), nil
+}
+
+// readArchiveManifest reads only as far as manifest.json from an archive whose
+// checksum Inspect has verified. Bounds also apply to entries skipped before it.
+// Cold publication still validates and extracts the complete archive.
+func readArchiveManifest(input io.Reader) (manifest, error) {
+	invalid := errors.New("invalid embedded runtime manifest")
+	reader, err := newPayloadGzipReader(input)
+	if err != nil {
+		return manifest{}, invalid
+	}
+	defer reader.Close()
+	archive := tar.NewReader(reader)
+	var total int64
+	for range maxFiles {
+		header, err := nextPayloadEntry(archive)
+		if err != nil || header.Typeflag != tar.TypeReg || !validArchivePath(header.Name) || header.Size < 0 || header.Size > maxFileBytes || total+header.Size > maxBundleBytes {
+			return manifest{}, invalid
+		}
+		total += header.Size
+		if header.Name != "manifest.json" {
+			continue
+		}
+		if header.Size > 8192 {
+			return manifest{}, invalid
+		}
+		data, err := io.ReadAll(archive)
+		if err != nil {
+			return manifest{}, invalid
+		}
+		var result manifest
+		if json.Unmarshal(data, &result) != nil {
+			return manifest{}, invalid
+		}
+		return result, nil
+	}
+	return manifest{}, invalid
 }
 
 func readOwnership(root, targetOS, targetArch string) (ownership, bool, error) {
