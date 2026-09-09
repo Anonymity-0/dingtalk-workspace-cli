@@ -6,7 +6,17 @@
 
 ## 按模板生成
 
-- 按用户需求修改文案和业务数据。`example-card` 是示例 surfaceId，可整体替换；同一卡片的创建和更新使用同一个值。
+先将用户需求整理为卡片主题、处理中提示、进度内容和完成结果，再复制下方三份 JSON，按表替换展示字段。以“示例任务进度”为例：
+
+| 阶段 | 修改位置 | 示例文案 |
+|---|---|---|
+| 创建 | `createSurface.dataModel.execution.title`；需要初始正文时填写 `createSurface.dataModel.answer.displayText` | 标题“正在处理示例任务”，正文“示例任务已开始。” |
+| 增量更新 | `updateDataModel.path` 为 `/execution/title`、`/answer/displayText` 的消息中的 `value` | 标题“正在处理第 2 步”，正文“示例任务第 2 步正在执行。” |
+| 完结 | `/execution/title`、`/tools/title` 对应的 `value`；`/answer/text` 和 `/answer/displayText` 同步填写最终正文 | 标题“处理完成”，正文“示例任务已完成。” |
+
+完成结果以实际任务结果为准；只准备文件时将完成文案标明为待执行的模板内容。完结模板中的 `/status`、`/execution/done`、`/answer/done` 和清理消息一起保留，发送完结更新时使用 `--flow-status FINISH`。
+
+- `example-card` 是示例 surfaceId，可整体替换；同一卡片的创建和更新使用同一个值。
 - 保留公开 Catalog URL、`version`、组件名及属性类型。模板中 `createSurface.catalogId` 指向钉钉 Catalog，`Column` 显式引用基础 Catalog。新增组件或属性时，先查对应 Catalog 的定义。
 - 修改数据路径时，同时修改 `dataModel`、组件的 `path` 绑定和后续 `updateDataModel.path`。
 - 接收人和群 ID 来自当前组织中的真实解析结果；后续 `bizId` 取本次发送的实际返回。文档里的 ID 占位符须替换后执行。
@@ -264,6 +274,14 @@ dws chat message update-a2ui-card \
 ```
 
 `--flow-status` 控制卡片流转状态；`dataModel` 中的 `status`、`done` 和文案是模板数据，按消息显式更新。根据实际执行结果写入最终内容，再检查更新结果。
+
+## 生成后检查
+
+1. 对照用户主题检查三份文件的标题和正文，确认“处理中 → 进度更新 → 完成结果”连贯，业务文案已完成脱敏。
+2. 检查创建文件同时包含 `createSurface` 和 `updateComponents`；组件 `children` 指向已有组件，数据绑定和更新路径对应创建时的数据模型，三份文件使用同一个 `surfaceId`。
+3. 分别解析三份 JSON，并用 `jq -c 'map(tojson)'` 编码；将字符串逐项 `fromjson` 解码后应与原对象数组一致。按本机两条命令的 `--help` 核对参数，更新状态依次为 `INPUTTING`、`FINISH`。
+
+本地准备完成时交付三份 JSON、对应命令和检查结果。实际发送后的验收依次检查创建返回、客户端展示、同一 `bizId` 的进度更新及完结效果；某一步失败时保留该步错误，修正后验证该步。
 
 ## 校验失败时
 
