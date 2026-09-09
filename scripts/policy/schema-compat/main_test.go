@@ -424,11 +424,6 @@ func TestSchemaCompatibilityAcceptsReviewedRemoveConfirmationHardening(t *testin
 		"doc/doc.remove_permission",
 		"drive/drive.permission_remove",
 		"wiki/wiki.remove_member",
-		"chat/chat.add_custom_group_role",
-		"chat/chat.remove_custom_group_role",
-		"chat/chat.remove_custom_user_roles",
-		"chat/chat.set_custom_user_roles",
-		"chat/chat.update_custom_group_role",
 	} {
 		if failures := checkToolCompatibility(toolPath, oldTool, newTool); len(failures) != 0 {
 			t.Fatalf("reviewed confirmation hardening for %s failures = %v", toolPath, failures)
@@ -450,26 +445,6 @@ func TestSchemaCompatibilityAcceptsReviewedRemoveConfirmationHardening(t *testin
 	newTool.Confirmation = "not_required"
 	if failures := checkToolCompatibility("doc/doc.remove_permission", oldTool, newTool); len(failures) == 0 {
 		t.Fatal("reviewed tool confirmation weakening unexpectedly passed")
-	}
-}
-
-func TestSchemaCompatibilityAcceptsReviewedChatCategorySafetyHardening(t *testing.T) {
-	oldTool := baselineContract().Products["doc"].Tools["doc.create"]
-	oldTool.Confirmation = "not_required"
-	oldTool.Risk = "low"
-	oldTool.Effect = "write"
-
-	newTool := oldTool
-	newTool.Confirmation = "user_required"
-	newTool.Risk = "medium"
-	if failures := checkToolCompatibility("chat/chat.create_conv_category", oldTool, newTool); len(failures) != 0 {
-		t.Fatalf("reviewed chat category safety hardening failures = %v", failures)
-	}
-
-	partial := oldTool
-	partial.Confirmation = "user_required"
-	if failures := checkToolCompatibility("chat/chat.create_conv_category", oldTool, partial); len(failures) == 0 {
-		t.Fatal("partial chat category safety hardening unexpectedly passed")
 	}
 }
 

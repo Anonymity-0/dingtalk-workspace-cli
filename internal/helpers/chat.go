@@ -3922,8 +3922,8 @@ func newChatCommand() *cobra.Command {
 				UseWhen:      []string{"明确需要 +chat-messages 未公开的底层字段、原始响应或手工 continuation，并读取指定会话消息时"},
 				AvoidWhen:    []string{"常规读取指定会话使用 chat +chat-messages；跨全部会话按时间查询使用 chat message list-all"},
 				Examples: []string{
-					"dws chat message list --conversation-id <openConversationId> --limit 50",
-					"dws chat message list --conversation-id <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50 --jq '.messages[] | {messageId, text}'",
+					"dws chat message list --group <openConversationId> --limit 50",
+					"dws chat message list --group <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50 --jq '.messages[] | {messageId, text}'",
 				},
 			},
 			Parameters: append([]contract.ParamDecl{
@@ -4329,7 +4329,7 @@ func newChatCommand() *cobra.Command {
 				AgentSummary: "以当前用户身份发送群聊或单聊消息",
 				UseWhen:      []string{"明确需要 chat +messages-send 未公开的底层字段、原始响应或不同执行语义，并以个人身份发送消息时"},
 				AvoidWhen:    []string{"常规个人/Bot/Webhook 或高级发送使用 chat +messages-send"},
-				Examples:     []string{"dws chat message send --conversation-id <openConversationId> --content \"项目已更新\""},
+				Examples:     []string{"dws chat message send --group <openConversationId> --content \"项目已更新\""},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "ai-tag", Property: "clawType", InterfaceType: "string"},
@@ -6096,7 +6096,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				AgentSummary: "获取群聊或单聊会话的详细信息",
 				UseWhen:      []string{"明确需要 +conversation-info 未公开的 --user 解析、底层字段或原始响应，并读取会话详情时"},
 				AvoidWhen:    []string{"常规读取会话详情使用 chat +conversation-info；按群名定位使用 chat +chat-search"},
-				Examples:     []string{"dws chat conversation-info --conversation-id <openConversationId> --format json"},
+				Examples:     []string{"dws chat conversation-info --group <openConversationId> --format json"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "open-dingtalk-id", Property: "openDingTalkId"},
@@ -6339,8 +6339,8 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	}
 	DeclareLeafMetadata(chatCategoryCreateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
-			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -8785,7 +8785,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupRoleAddCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -8835,7 +8835,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupRoleUpdateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -8887,7 +8887,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupRoleRemoveCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -8956,7 +8956,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupRoleSetUserCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -9027,7 +9027,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupRoleRemoveUserCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{

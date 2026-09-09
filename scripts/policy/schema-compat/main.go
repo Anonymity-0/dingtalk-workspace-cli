@@ -126,28 +126,6 @@ var reviewedCompatibilityExceptions = map[string][]reviewedCompatibilityExceptio
 		{Field: "confirmation", Old: "not_required", New: "user_required"},
 		{Field: "risk", Old: "medium", New: "high"},
 	},
-	// PR #1343 aligns the atomic conversation-category and custom group-role
-	// leaves with their existing write gates. These are exact safety repairs;
-	// the exception does not permit parameter, constraint, or identity drift.
-	"chat/chat.add_custom_group_role": {
-		{Field: "confirmation", Old: "not_required", New: "user_required"},
-	},
-	"chat/chat.create_conv_category": {
-		{Field: "confirmation", Old: "not_required", New: "user_required"},
-		{Field: "risk", Old: "low", New: "medium"},
-	},
-	"chat/chat.remove_custom_group_role": {
-		{Field: "confirmation", Old: "not_required", New: "user_required"},
-	},
-	"chat/chat.remove_custom_user_roles": {
-		{Field: "confirmation", Old: "not_required", New: "user_required"},
-	},
-	"chat/chat.set_custom_user_roles": {
-		{Field: "confirmation", Old: "not_required", New: "user_required"},
-	},
-	"chat/chat.update_custom_group_role": {
-		{Field: "confirmation", Old: "not_required", New: "user_required"},
-	},
 	"minutes/minutes.replace_minutes_text": {
 		{Field: "confirmation", Old: "not_required", New: "user_required"},
 		{Field: "risk", Old: "medium", New: "high"},
