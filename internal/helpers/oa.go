@@ -894,7 +894,7 @@ func addOAApprovalListFlags(cmd *cobra.Command, options oaApprovalListOptions) {
 }
 
 func oaTemplateSpec(command, tool, description, useWhen, avoidWhen string) LeafSpec {
-	path := "oa approval " + command
+	path := "oa template " + command
 	return LeafSpec{
 		Use: command, Short: description, Example: "dws " + path, Server: "oa", Tool: tool,
 		OutputRollout: output.RolloutUnifiedActive, ResultCall: callOATemplateResult,
@@ -949,10 +949,11 @@ func newOaCommand() *cobra.Command {
 			},
 		},
 		Selection: contract.ProductSelectionDecl{
-			AgentSummary: "查询和处理 OA 审批实例、任务、记录、抄送、评论与附件授权",
+			AgentSummary: "查询和处理 OA 审批实例、任务、记录、抄送、评论与附件授权，查询可管理模板及表单和流程配置",
 			UseWhen: []string{
 				"查看待审、已办、已发起或抄送审批，并执行同意、拒绝、撤销、转交等审批动作时",
 				"获取审批附件下载链接，或为当前用户授权下载、预览审批附件时",
+				"查询当前组织可管理的审批模板，或读取指定模板的表单 Schema 和流程配置时",
 			},
 			AvoidWhen: []string{
 				"不要用于普通待办任务或工作日志；需要实时监听未来的审批任务/实例事件时使用 event consume",
@@ -962,7 +963,7 @@ func newOaCommand() *cobra.Command {
 	root := newGroupCommand(&cobra.Command{
 		Use:   "oa",
 		Short: "OA 审批 / 同意 / 拒绝 / 撤销",
-		Long:  `管理钉钉 OA 审批：待办查询、审批详情、同意、拒绝、撤销、操作记录、已发起列表、表单列表与附件授权。`,
+		Long:  `管理钉钉 OA 审批：待办查询、审批详情、同意、拒绝、撤销、操作记录、已发起列表、表单列表、模板管理与附件授权。`,
 		RunE:  groupRunE,
 	})
 
@@ -1890,21 +1891,24 @@ func newOaCommand() *cobra.Command {
 		},
 	}
 
-	approvalManageTemplatesSpec := oaTemplateSpec("list-manage-templates", "list_manage_templates", "查询用户在当前组织可管理的审批模板",
+	templateListSpec := oaTemplateSpec("list", "list_manage_templates", "查询用户在当前组织可管理的审批模板",
 		"需要枚举当前组织中自己有管理权限的审批模板并取得 processCode 时",
-		"需要单个模板的表单 Schema 和流程配置时使用 get-template-detail；查询可发起模板时使用 list-forms")
-	approvalTemplateDetailSpec := oaTemplateSpec("get-template-detail", "get_template_detail", "获取审批模板详情，返回表单 Schema 和流程配置",
+		"需要单个模板的表单 Schema 和流程配置时使用 dws oa template detail；查询可发起模板时使用 dws oa approval list-forms")
+	templateDetailSpec := oaTemplateSpec("detail", "get_template_detail", "获取审批模板详情，返回表单 Schema 和流程配置",
 		"已知一个 processCode，需要读取审批模板的 schemaContent 和 processConfig 以检查表单和流程配置时",
-		"尚不知道可管理模板的 processCode 时先用 list-manage-templates；查看审批实例时使用 detail")
-	approvalTemplateDetailSpec.Example += " --process-code <processCode>"
-	approvalTemplateDetailSpec.Contract.Selection.Examples = []string{approvalTemplateDetailSpec.Example}
-	approvalTemplateDetailSpec.Flags = []LeafFlag{{
-		Name: "process-code", Usage: "单个审批模板 code（必填）", Bind: "processCodes", Trim: true, Required: true, MarkRequired: true,
+		"尚不知道可管理模板的 processCode 时先用 dws oa template list；查看审批实例时使用 dws oa approval detail")
+	templateDetailSpec.Example += " --template-code <code>"
+	templateDetailSpec.Contract.Selection.Examples = []string{templateDetailSpec.Example}
+	templateDetailSpec.Flags = []LeafFlag{{
+		Name: "template-code", Usage: "单个审批模板 code（必填）", Bind: "processCodes", Trim: true, Required: true, MarkRequired: true,
 		Transform: func(raw string) (any, error) { return []string{raw}, nil },
 	}}
-	approvalTemplateDetailSpec.Contract.Parameters = []contract.ParamDecl{{Name: "process-code", Property: "processCodes", InterfaceType: "array"}}
-	approvalManageTemplatesCmd := NewLeafCommand(approvalManageTemplatesSpec)
-	approvalTemplateDetailCmd := NewLeafCommand(approvalTemplateDetailSpec)
+	templateDetailSpec.Contract.Parameters = []contract.ParamDecl{{Name: "template-code", Property: "processCodes", InterfaceType: "array"}}
+	templateListCmd := NewLeafCommand(templateListSpec)
+	templateDetailCmd := NewLeafCommand(templateDetailSpec)
+
+	templateCmd := newGroupCommand(&cobra.Command{Use: "template", Short: "审批模板管理", RunE: groupRunE})
+	templateCmd.AddCommand(templateListCmd, templateDetailCmd)
 
 	approvalFormSchemaCmd := &cobra.Command{
 		Use: "form-schema", Short: "查询审批模板的表单 Schema",
@@ -2367,15 +2371,13 @@ func newOaCommand() *cobra.Command {
 		approvalAppendTaskCmd,
 		approvalRevertActivitiesCmd,
 		approvalRevertTaskCmd,
-		approvalManageTemplatesCmd,
-		approvalTemplateDetailCmd,
 		approvalFormSchemaCmd,
 		approvalForecastCmd,
 		approvalListByAdminCmd,
 		approvalCreateCmd,
 	)
 	approvalCmd.AddCommand(newOAAttachmentCommand())
-	root.AddCommand(approvalCmd)
+	root.AddCommand(approvalCmd, templateCmd)
 
 	return root
 }

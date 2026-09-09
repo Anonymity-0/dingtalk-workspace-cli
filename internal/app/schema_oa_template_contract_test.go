@@ -7,11 +7,12 @@ import (
 )
 
 func TestCrossPlatformCoverageOATemplateDeliveredContract(t *testing.T) {
-	for _, tc := range []struct{ command, tool string }{{"list-manage-templates", "list_manage_templates"}, {"get-template-detail", "get_template_detail"}} {
+	for _, tc := range []struct{ command, tool string }{{"list", "list_manage_templates"}, {"detail", "get_template_detail"}} {
 		t.Run(tc.command, func(t *testing.T) {
 			root := NewRootCommand()
-			path := "oa approval " + tc.command
-			if exactCommandForTest(root, path) == nil {
+			path := "oa template " + tc.command
+			command := exactCommandForTest(root, path)
+			if command == nil {
 				t.Fatal("missing executable")
 			}
 			var buf bytes.Buffer
@@ -30,16 +31,22 @@ func TestCrossPlatformCoverageOATemplateDeliveredContract(t *testing.T) {
 			if schemaInterfaceObject(leaf["interface_ref"])["rpc_name"] != tc.tool {
 				t.Fatal("wrong MCP interface")
 			}
+			if leaf["primary_cli_path"] != path {
+				t.Fatalf("primary path = %v, want %s", leaf["primary_cli_path"], path)
+			}
 			if leaf["result"] == nil {
 				t.Fatal("missing result contract")
 			}
 			params := schemaContractMap(leaf["parameters"])
-			if tc.command == "list-manage-templates" {
+			if tc.command == "list" {
 				if len(params) != 0 {
 					t.Fatalf("unexpected parameters: %#v", params)
 				}
 			} else {
-				p := params["process-code"]
+				if command.Flags().Lookup("template-code") == nil || command.Flags().Lookup("process-code") != nil {
+					t.Fatal("template detail help flags do not match the new contract")
+				}
+				p := params["template-code"]
 				if len(params) != 1 || p["type"] != "string" || p["property"] != "processCodes" || p["interface_type"] != "array" || p["required"] != true {
 					t.Fatalf("parameter contract: %#v", params)
 				}

@@ -13,12 +13,12 @@ func TestCrossPlatformCoverageOATemplateCommands(t *testing.T) {
 		args                  []string
 		want                  map[string]any
 	}{
-		{"list-manage-templates", "list_manage_templates", `[{"processCode":"PROC-1","flowTitle":"请假"}]`, nil, map[string]any{}},
-		{"get-template-detail", "get_template_detail", `[{"processCode":"PROC-1","schemaContent":"{\"items\":[]}","processConfig":"{\"type\":\"start\"}"}]`, []string{"--process-code", " PROC-1 "}, map[string]any{"processCodes": []string{"PROC-1"}}},
+		{"list", "list_manage_templates", `[{"processCode":"PROC-1","flowTitle":"请假"}]`, nil, map[string]any{}},
+		{"detail", "get_template_detail", `[{"processCode":"PROC-1","schemaContent":"{\"items\":[]}","processConfig":"{\"type\":\"start\"}"}]`, []string{"--template-code", " PROC-1 "}, map[string]any{"processCodes": []string{"PROC-1"}}},
 	} {
 		t.Run(tc.command, func(t *testing.T) {
 			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: `{"success":true,"dingOpenErrcode":0,"result":` + tc.result + `}`}}}
-			stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"approval", tc.command}, tc.args...)...)
+			stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"template", tc.command}, tc.args...)...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -38,7 +38,7 @@ func TestCrossPlatformCoverageOATemplateCommands(t *testing.T) {
 		for _, response := range []string{`{"success":false,"dingOpenErrcode":830001,"result":{}}`, `{"success":true,"result":{}}`, `{"result":[]}`} {
 			t.Run(tc.command+"/failure/"+response, func(t *testing.T) {
 				caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: response}}}
-				_, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"approval", tc.command}, tc.args...)...)
+				_, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"template", tc.command}, tc.args...)...)
 				if err == nil {
 					t.Fatal("expected failure")
 				}
@@ -51,9 +51,9 @@ func TestCrossPlatformCoverageOATemplateCommands(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageOATemplateDetailRequiresOneCode(t *testing.T) {
-	for _, args := range [][]string{nil, {"--process-code", " "}, {"--process-codes", "PROC-1,PROC-2"}, {"--process-code", "PROC-1", "PROC-2"}} {
+	for _, args := range [][]string{nil, {"--process-code", "PROC-1"}, {"--template-code", " "}, {"--process-codes", "PROC-1,PROC-2"}, {"--template-code", "PROC-1", "PROC-2"}} {
 		caller := &scriptedToolCaller{format: "json"}
-		if _, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"approval", "get-template-detail"}, args...)...); err == nil {
+		if _, err := executeOAAttachmentCommandCapturingOutput(t, caller, append([]string{"template", "detail"}, args...)...); err == nil {
 			t.Fatal("expected validation failure")
 		}
 		if caller.calls != 0 {
@@ -75,10 +75,38 @@ func TestCrossPlatformCoverageOATemplateResponseValidation(t *testing.T) {
 	} {
 		t.Run(tc.response, func(t *testing.T) {
 			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: tc.response}}}
-			_, err := executeOAAttachmentCommandCapturingOutput(t, caller, "approval", "get-template-detail", "--process-code", "PROC-1")
+			_, err := executeOAAttachmentCommandCapturingOutput(t, caller, "template", "detail", "--template-code", "PROC-1")
 			if (err != nil) != tc.fail {
 				t.Fatalf("error = %v, want failure %v", err, tc.fail)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageOATemplateGroupHelp(t *testing.T) {
+	caller := &scriptedToolCaller{format: "json"}
+	stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, "template", "--help")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"审批模板管理", "list", "detail"} {
+		if !strings.Contains(stdout, want) {
+			t.Fatalf("group help missing %q: %s", want, stdout)
+		}
+	}
+	if caller.calls != 0 {
+		t.Fatal("group help called MCP")
+	}
+	root := newOaCommand()
+	group, _, err := root.Find([]string{"template"})
+	if err != nil || group.Name() != "template" {
+		t.Fatalf("template group missing: %v", err)
+	}
+	children := map[string]bool{}
+	for _, child := range group.Commands() {
+		children[child.Name()] = true
+	}
+	if !reflect.DeepEqual(children, map[string]bool{"list": true, "detail": true}) {
+		t.Fatalf("template leaves = %#v", children)
 	}
 }
