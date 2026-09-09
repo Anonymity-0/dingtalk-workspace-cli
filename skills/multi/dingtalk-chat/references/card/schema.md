@@ -18,13 +18,15 @@ streaming 不是任意组件 Schema：
 `update-card --flow-status` 的 CLI 类型为 string，但仍只接受兼容数字 1–5
 （包括历史 pflag int 支持的 base-0 写法），并向 streaming RPC 发送 integer。
 
+A2UI 内容生成先读[展示卡片脱敏模板](a2ui.md)，包含完整创建、更新和完结内容。下方 `updateDataModel` 片段只演示已有 surface 的更新格式。
+
 A2UI 原子命令规则：
 
 - `send-a2ui-card` 调用 `im.create_and_send_a2ui_card`。
 - `update-a2ui-card` 调用 `im.update_a2ui_card`。
 - `--content` 必须是 JSON 字符串数组，元素为 A2UI 协议 JSON，例如
   `'["{\"version\":\"v1.0\",\"updateDataModel\":{\"surfaceId\":\"surface\",\"path\":\"/status\",\"value\":\"finished\"}}"]'`；
-  CLI 解析为 `a2uiMessages`，send-card 额外生成 `summary`，值为数组元素按换行拼接
+  CLI 解析为 `a2uiMessages`，send-a2ui-card 额外生成 `summary`，值为数组元素按换行拼接
   （真实 MCP 契约无 `fallbackText` 字段）。
 - 群聊目标写入顶层 `openConversationId`；单聊目标写入顶层 `receiverOpenDingTalkId`
   （传入 userId 时由 CLI 自动解析转换为 openDingTalkId）。
