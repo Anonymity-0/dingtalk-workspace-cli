@@ -632,6 +632,50 @@ func TestCrossPlatformCoverageMinutesListDisplayFinalData(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageMinutesStaffIDPermissionPlanParity(t *testing.T) {
+	args := []string{"minutes", "+share", "--ids", "u1,u2", "--member-staff-ids", "007,008", "--permission", "view", "--sub-resources", "Summary", "--cover=false", "--failure-policy", "continue"}
+	preview := &minutesE2ECaller{}
+	plan, _, err := runMinutesAlignmentCLI(t, preview, append(append([]string{}, args...), "--dry-run")...)
+	if err != nil || len(preview.counts) != 0 || plan["executed"] != false || !reflect.DeepEqual(plan["members"], []any{"007", "008"}) {
+		t.Fatalf("plan=%#v calls=%v err=%v", plan, preview.counts, err)
+	}
+	options := plan["options"].(map[string]any)
+	wantOptions := map[string]any{"policyId": float64(4), "roleSubResourceIds": []any{"Summary"}, "coverPermission": "false"}
+	if !reflect.DeepEqual(options, wantOptions) || plan["failurePolicy"] != "continue" {
+		t.Fatalf("plan options=%#v", plan)
+	}
+	live := &minutesE2ECaller{}
+	result, _, err := runMinutesAlignmentCLI(t, live, append(append([]string{}, args...), "--yes")...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := live.arguments["minutes/add_member_permission"]
+	if len(calls) != 2 {
+		t.Fatalf("calls=%v", calls)
+	}
+	for i, member := range []string{"007", "008"} {
+		raw, err := json.Marshal(calls[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var actual map[string]any
+		if err := json.Unmarshal(raw, &actual); err != nil {
+			t.Fatal(err)
+		}
+		want := map[string]any{"uuids": []any{"u1", "u2"}, "memberStaffIds": []any{member}}
+		for key, value := range wantOptions {
+			want[key] = value
+		}
+		if !reflect.DeepEqual(actual, want) {
+			t.Fatalf("call=%#v want=%#v", actual, want)
+		}
+		row := result["results"].([]any)[i].(map[string]any)
+		if row["memberStaffId"] != member || row["memberUid"] != nil || row["complete"] != true {
+			t.Fatalf("receipt=%#v", row)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageMinutesPermissionPlanScope(t *testing.T) {
 	for _, cover := range []string{"", "--cover", "--cover=false"} {
 		args := []string{"minutes", "+share", "--ids", "u1,u2", "--member-uids", "m1,m2", "--permission", "view", "--sub-resources", "Summary", "--failure-policy", "continue"}

@@ -93,6 +93,22 @@ func TestCrossPlatformCoverageMinutesPreviewPlanFinalDelivery(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageMinutesStaffIDPermissionFinalSchema(t *testing.T) {
+	full := executeShortcutSchemaQuery(t, "--cli-path", "minutes +share")
+	compact := executeShortcutSchemaQuery(t, "--cli-path", "minutes +share", "--compact")
+	if !reflect.DeepEqual(full["result"], compact["result"]) {
+		t.Fatal("compact result drift")
+	}
+	properties := schemaContractMap(schemaContractMap(schemaContractMap(full["result"])["data_schema"])["properties"])
+	for _, name := range []string{"results", "failures"} {
+		item := schemaContractMap(schemaContractMap(properties[name])["items"])
+		fields := schemaContractMap(item["properties"])
+		if schemaContractString(schemaContractMap(fields["memberStaffId"])["description"]) == "" {
+			t.Fatalf("%s lost staffId receipt declaration", name)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageMinutesSpeakerFinalSchema(t *testing.T) {
 	full := executeShortcutSchemaQuery(t, "--cli-path", "minutes +speaker-insights")
 	compact := executeShortcutSchemaQuery(t, "--cli-path", "minutes +speaker-insights", "--compact")
