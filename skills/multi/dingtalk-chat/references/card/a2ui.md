@@ -2,9 +2,9 @@
 
 使用 `dws chat message send-a2ui-card` 创建卡片，使用 `update-a2ui-card` 更新和完结。
 
-下面以任务进度卡片为例，标题和正文按用户需求填写。一次性展示结果时，可创建后直接完结；需要持续展示进度时，再发送中间更新。
+下面以任务进度卡片为例，布局、组件 ID、数据路径和文案可按用户需求调整，并保持引用一致。一次性展示结果时，可创建后直接完结；需要持续展示进度时，再发送中间更新。
 
-`CollapsiblePanel.title` 使用字符串，通过 `updateComponents` 修改；`Markdown.content` 绑定正文，通过 `updateDataModel` 更新。其他组件属性按需查阅[钉钉公开 Catalog](https://dingtalk.com/card/a2ui/catalogs/public/catalog.json)。
+本例的 `CollapsiblePanel.title` 使用字符串，通过 `updateComponents` 修改；`Markdown.content` 绑定正文，通过 `updateDataModel` 更新。其他组件属性按需查阅[钉钉公开 Catalog](https://dingtalk.com/card/a2ui/catalogs/public/catalog.json)。
 
 示例 JSON 使用便于编辑的对象数组，执行命令时用 `jq -c 'map(tojson)'` 转成 `--content` 要求的字符串数组。需要本地安装 `jq`。
 
@@ -185,7 +185,7 @@ dws chat message update-a2ui-card \
 
 - `surfaceId` 对应 `createSurface.surfaceId` 和 `updateComponents.surfaceId`。
 - `componentId` 对应该 surface 中 `updateComponents.components[].id`；这里是 `id` 为 `answer` 的 Markdown 组件。
-- `type` 是注解类型，示例为 `artifact`，不是组件类型。
+- `type` 是注解类型，按实际支持的类型和用途选择；此处以 `artifact` 为例。
 
 注解直接传 JSON 对象数组；卡片消息的 `--content` 仍为 JSON 字符串数组。更新时可引用此前已创建的 surface 和组件，不必为注解重复声明组件。
 
