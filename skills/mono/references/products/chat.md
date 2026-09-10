@@ -2476,6 +2476,8 @@ dws chat message send --conversation-id <openConversationId> --msg-type image --
 
 #### 创建并推送卡片 — streaming 与 A2UI 独立命令
 
+用户希望发卡片时，可结合内容和展示需求选择：以文本为主或持续输出文本时，通常使用 streaming；需要组件布局时，可参考 [A2UI 展示卡片指南](chat/a2ui.md)。用户已明确类型或要更新已有卡片时，沿用对应类型和命令。
+
 `send-card` 创建 streaming 卡片，群聊传 --conversation-id，单聊传 --open-dingtalk-id，二者互斥。群聊创建时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人。
 
 **注意：send-card 必须和 update-card 搭配使用。** 创建卡片时无需传入内容，后续通过 update-card 更新内容，最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。
