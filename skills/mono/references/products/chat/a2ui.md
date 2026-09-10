@@ -181,23 +181,13 @@ dws chat message update-a2ui-card \
 
 ## 组件注解
 
-两条命令均可通过 `--a2ui-annotations` 给消息中的组件附加注解。例如，将上面卡片的 `answer` 组件标注为 `artifact`，保存为 `a2ui-annotations.json`：
-
-```json
-[
-  {
-    "surfaceId": "example-card",
-    "componentId": "answer",
-    "type": "artifact"
-  }
-]
-```
+发送或更新时，可通过 `--a2ui-annotations '[{"surfaceId":"example-card","componentId":"answer","type":"artifact"}]'` 将上面卡片的 `answer` 组件标注为 `artifact`。
 
 - `surfaceId` 对应 `createSurface.surfaceId` 和 `updateComponents.surfaceId`。
 - `componentId` 对应该 surface 中 `updateComponents.components[].id`；这里是 `id` 为 `answer` 的 Markdown 组件。
 - `type` 是注解类型，示例为 `artifact`，不是组件类型。
 
-发送或更新时加上 `--a2ui-annotations "$(jq -c . a2ui-annotations.json)"`。注解直接传对象数组，不需要 `map(tojson)`；卡片消息的 `--content` 仍按前面的方式编码。更新时可引用此前已创建的 surface 和组件，不必为注解重复声明组件。
+注解直接传 JSON 对象数组；卡片消息的 `--content` 仍为 JSON 字符串数组。更新时可引用此前已创建的 surface 和组件，不必为注解重复声明组件。
 
 省略时，创建请求不携带注解字段，更新请求保持发送空数组；也可显式传入 `[]`。这只描述请求参数，不表示服务端如何合并或清除已有注解。
 
