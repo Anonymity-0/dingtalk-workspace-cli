@@ -546,6 +546,9 @@ func callMCPToolInternalOptsContext(ctx context.Context, explicitServerID, toolN
 				}
 			}
 
+			if serverID == "oa" && toolName == "list_pending_approvals" {
+				return renderOAPendingResponse(c.Text)
+			}
 			return renderLegacyMCPText(toolName, c.Text, unescapeHTML)
 		}
 	}

@@ -1,0 +1,57 @@
+package helpers
+
+import (
+	"encoding/json"
+	"fmt"
+	"strconv"
+)
+
+// renderOAPendingResponse aligns the pending API's legacy string envelope with
+// the typed OA envelope. RawMessage keeps business fields (including large IDs)
+// intact; only the reviewed top-level success and error-code fields change.
+// The caller classifies gateway, authentication and business errors first.
+func renderOAPendingResponse(text string) error {
+	var body map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(text), &body); err != nil || body == nil {
+		return &CLIError{Code: CodeMCPToolError, Message: "待处理审批返回了无效的 JSON 对象"}
+	}
+	if raw, ok := body["success"]; ok {
+		var value any
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return err
+		}
+		switch value {
+		case true, "true":
+			body["success"] = json.RawMessage("true")
+		case false, "false":
+			body["success"] = json.RawMessage("false")
+		default:
+			return &CLIError{Code: CodeMCPToolError, Message: "待处理审批响应 success 必须为布尔值"}
+		}
+	}
+	for _, key := range []string{"errorCode", "error_code"} {
+		if raw, ok := body[key]; ok {
+			code := string(raw)
+			if len(raw) > 0 && raw[0] == '"' {
+				if err := json.Unmarshal(raw, &code); err != nil {
+					return err
+				}
+			}
+			n, err := strconv.ParseInt(code, 10, 64)
+			if err != nil {
+				return &CLIError{Code: CodeMCPToolError, Message: fmt.Sprintf("待处理审批响应 %s 必须为整数", key)}
+			}
+			body["errorCode"] = json.RawMessage(strconv.FormatInt(n, 10))
+		}
+	}
+	delete(body, "error_code")
+	if deps.Caller.Format() == "json" {
+		return deps.Out.PrintJSON(body)
+	}
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	deps.Out.PrintRaw(string(raw))
+	return nil
+}
