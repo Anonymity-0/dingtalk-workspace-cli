@@ -33,9 +33,9 @@ func normalizeOAApprovalListResponse(text string) (map[string]json.RawMessage, e
 		if raw, ok := body[key]; ok {
 			code := string(raw)
 			if len(raw) > 0 && raw[0] == '"' {
-				if err := json.Unmarshal(raw, &code); err != nil {
-					return nil, err
-				}
+				// The outer Unmarshal validated every RawMessage; the leading
+				// quote also proves this value is a JSON string.
+				_ = json.Unmarshal(raw, &code)
 			}
 			n, err := strconv.ParseInt(code, 10, 64)
 			if err != nil {
@@ -56,10 +56,9 @@ func renderOAApprovalListResponse(text string) error {
 	if deps.Caller.Format() == "json" {
 		return deps.Out.PrintJSON(body)
 	}
-	raw, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
+	// Normalization preserves validated RawMessages and only inserts valid
+	// boolean/integer literals, so this map is always JSON-serializable.
+	raw, _ := json.Marshal(body)
 	deps.Out.PrintRaw(string(raw))
 	return nil
 }

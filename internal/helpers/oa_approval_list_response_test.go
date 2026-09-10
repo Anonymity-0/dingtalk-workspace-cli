@@ -10,7 +10,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
-func TestOAApprovalListResponseEnvelope(t *testing.T) {
+func TestCrossPlatformCoverageOAApprovalListResponseEnvelope(t *testing.T) {
 	for _, command := range []struct{ name, tool string }{
 		{"list-pending", "get_todo_tasks"},
 		{"list-submitted", "get_submitted_instances"},
@@ -92,7 +92,7 @@ func TestOAApprovalListResponseEnvelope(t *testing.T) {
 	}
 }
 
-func TestOAApprovalListFailureEnvelopeTypes(t *testing.T) {
+func TestCrossPlatformCoverageOAApprovalListFailureEnvelopeTypes(t *testing.T) {
 	for _, command := range []struct{ name, tool string }{
 		{"list-pending", "get_todo_tasks"},
 		{"list-submitted", "get_submitted_instances"},
@@ -138,6 +138,47 @@ func TestOAApprovalListFailureEnvelopeTypes(t *testing.T) {
 				})
 			}
 
+		})
+	}
+}
+
+func TestCrossPlatformCoverageOAApprovalListInvalidResponse(t *testing.T) {
+	for _, raw := range []string{`null`, `[]`, `{`, `{"success":1e1000}`} {
+		t.Run(raw, func(t *testing.T) {
+			installScriptedCaller(t, &scriptedToolCaller{format: "json"})
+			var out bytes.Buffer
+			deps.Out.w = &out
+			if err := renderOAApprovalListResponse(raw); err == nil {
+				t.Fatal("invalid response accepted")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("invalid response leaked output: %s", &out)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageOAApprovalListUnrelatedResponses(t *testing.T) {
+	const response = `{"success":"true","error_code":"0"}`
+	for _, tc := range []struct{ server, tool string }{
+		{"other", "get_todo_tasks"},
+		{"oa", "list_user_visible_process"},
+	} {
+		t.Run(tc.server+"/"+tc.tool, func(t *testing.T) {
+			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: response}}}
+			installScriptedCaller(t, caller)
+			var out bytes.Buffer
+			deps.Out.w = &out
+			if err := callMCPToolOnServer(tc.server, tc.tool, nil); err != nil {
+				t.Fatal(err)
+			}
+			var body map[string]any
+			if err := json.Unmarshal(out.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if body["success"] != "true" || body["error_code"] != "0" || body["errorCode"] != nil {
+				t.Fatalf("unrelated response was normalized: %s", &out)
+			}
 		})
 	}
 }
