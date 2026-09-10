@@ -30,7 +30,7 @@ func TestOAPendingResponseEnvelope(t *testing.T) {
 				deps.Out.w = &out
 				cmd := newOaCommand()
 				cmd.SilenceErrors, cmd.SilenceUsage = true, true
-				cmd.SetArgs([]string{"approval", "list-pending", "--start", "2026-03-10T00:00:00+08:00", "--end", "2026-03-10T23:59:59+08:00"})
+				cmd.SetArgs([]string{"approval", "list-pending", "--page", "1", "--limit", "20"})
 				err := cmd.Execute()
 				if tc.wantError {
 					if err == nil || out.Len() != 0 {
@@ -54,6 +54,9 @@ func TestOAPendingResponseEnvelope(t *testing.T) {
 				}
 				if string(result["id"]) != "9007199254740993" || string(result["success"]) != `"false"` || string(result["error_code"]) != `"007"` {
 					t.Fatalf("business data changed: %s", body["result"])
+				}
+				if caller.server != "oa" || caller.tool != "get_todo_tasks" {
+					t.Fatalf("unexpected interface: %s/%s", caller.server, caller.tool)
 				}
 				if caller.calls != 1 {
 					t.Fatalf("calls = %d", caller.calls)
