@@ -11,3 +11,14 @@
 结果中 `verified=true` 表示已有明确更新证据；`accepted=true, verified=false` 仅表示服务端
 接受了请求但未提供独立生效证据，应如实说明且不得重复执行相同更新。只有错误明确标记
 `retryable=true` 时才重试；明确未应用或 `bizId` 不一致时停止。
+
+## A2UI 卡片
+
+A2UI 使用 `dws chat message update-a2ui-card`，必填 `--biz-id`、`--content` 和
+`--flow-status`。内容为非空 JSON 字符串数组，状态支持 `INPUTTING`、`FINISH` 等枚举。
+可选 `--a2ui-annotations` 接受 JSON 对象数组并透传为 `a2uiAnnotations`，
+支持 `[]`；省略时保持发送空注解数组的既有行为。数组中的对象字段按服务端契约填写。
+
+```bash
+dws chat message update-a2ui-card --biz-id <bizId> --content '<A2UI消息JSON字符串数组>' --flow-status FINISH --a2ui-annotations '[]' -f json
+```

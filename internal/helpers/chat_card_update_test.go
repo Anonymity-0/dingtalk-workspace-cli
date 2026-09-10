@@ -14,6 +14,7 @@
 package helpers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -287,4 +288,67 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 			t.Fatalf("bad a2ui status error = %v, want enum list", err)
 		}
 	})
+}
+
+func TestCrossPlatformCoverageA2UIAnnotations(t *testing.T) {
+	for _, target := range []struct {
+		name string
+		args []string
+		tool string
+	}{
+		{"group", []string{"message", "send-a2ui-card", "--conversation-id", "group-1"}, "create_and_send_a2ui_card"},
+		{"direct", []string{"message", "send-a2ui-card", "--open-dingtalk-id", "DAAAAAAAAAAAiE"}, "create_and_send_a2ui_card"},
+		{"update", []string{"message", "update-a2ui-card", "--biz-id", "biz-1", "--flow-status", "INPUTTING"}, "update_a2ui_card"},
+	} {
+		for _, tc := range []struct {
+			name    string
+			raw     string
+			invalid bool
+		}{
+			{name: "omitted"},
+			{name: "empty array", raw: "[]"},
+			{name: "objects", raw: `[{"id":9007199254740993,"nested":{"values":[true,null,"中文"]}},{}]`},
+			{name: "blank", raw: " ", invalid: true},
+			{name: "null", raw: "null", invalid: true},
+			{name: "object", raw: "{}", invalid: true},
+			{name: "string element", raw: `["annotation"]`, invalid: true},
+			{name: "null element", raw: `[null]`, invalid: true},
+			{name: "number element", raw: `[1]`, invalid: true},
+			{name: "malformed", raw: `[`, invalid: true},
+			{name: "trailing value", raw: `[] {}`, invalid: true},
+		} {
+			t.Run(target.name+"/"+tc.name, func(t *testing.T) {
+				caller := &scriptedToolCaller{}
+				args := append(append([]string{}, target.args...), "--content", `["message"]`)
+				if tc.name != "omitted" {
+					args = append(args, "--a2ui-annotations", tc.raw)
+				}
+				err := runNativeCardUpdate(t, caller, args...)
+				if tc.invalid {
+					if err == nil || !strings.Contains(err.Error(), "--a2ui-annotations") || caller.calls != 0 {
+						t.Fatalf("err=%v calls=%d", err, caller.calls)
+					}
+					return
+				}
+				if err != nil || caller.calls != 1 || caller.server != "im" || caller.tool != target.tool {
+					t.Fatalf("err=%v caller=%#v", err, caller)
+				}
+				value, exists := caller.args["a2uiAnnotations"]
+				if tc.name == "omitted" && target.name != "update" {
+					if exists {
+						t.Fatal("creation must preserve omitted annotations")
+					}
+					return
+				}
+				want := tc.raw
+				if tc.name == "omitted" {
+					want = "[]"
+				}
+				got, err := json.Marshal(value)
+				if err != nil || string(got) != want {
+					t.Fatalf("annotations=%s want=%s err=%v", got, want, err)
+				}
+			})
+		}
+	}
 }

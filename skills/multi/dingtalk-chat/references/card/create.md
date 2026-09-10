@@ -19,9 +19,20 @@ Runtime 会唯一解析为 openDingTalkId；已有 openDingTalkId 时传
 重试；明确未应用或 `bizId` 不一致时停止并保留真实错误。若结果中已经包含 `openTaskId`，
 可以按用户需要查询一次投递状态；该查询只确认消息投递，不代表卡片正文已经更新成功。
 
-当前内容仅为 streaming text，不接受 Lark Card JSON、组件树或按钮 callback。
+上述 `+messages-send-card` 的内容为 streaming text；A2UI 使用下方专用命令。
 
 ```bash
 dws chat +messages-send-card --group <openConversationId> --at-open-dingtalk-ids <mentionedOpenDingTalkId> --content "请确认"
 dws chat +messages-send-card --group <openConversationId> --at-all --content "请大家确认"
+```
+
+## A2UI 卡片
+
+A2UI 使用 `dws chat message send-a2ui-card`。群聊传 `--conversation-id`，
+单聊传 `--open-dingtalk-id`，二者互斥；`--content` 必填，接受非空 JSON 字符串数组。
+可选 `--a2ui-annotations` 接受 JSON 对象数组并透传为 `a2uiAnnotations`，
+支持 `[]`；省略时创建请求不携带该字段。创建状态默认为 `PROCESSING`。
+
+```bash
+dws chat message send-a2ui-card --open-dingtalk-id <openDingTalkId> --content '<A2UI消息JSON字符串数组>' --a2ui-annotations '[]' -f json
 ```

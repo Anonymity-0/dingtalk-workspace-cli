@@ -108,3 +108,22 @@ func TestCrossPlatformCoverageThreadTimeKeepsHistoricalFormat(t *testing.T) {
 		t.Fatalf("millisecond cursor must not inherit date-time format: %q", got)
 	}
 }
+
+func TestCrossPlatformCoverageA2UIAnnotationsSchema(t *testing.T) {
+	for _, path := range []string{"chat message send-a2ui-card", "chat message update-a2ui-card"} {
+		for _, compact := range []bool{false, true} {
+			args := []string{"--cli-path", path}
+			if compact {
+				args = append(args, "--compact")
+			}
+			payload := executeShortcutSchemaQuery(t, args...)
+			param := schemaContractMap(payload["parameters"])["a2ui-annotations"]
+			if param == nil || param["required"] == true || param["type"] != "string" || !strings.Contains(schemaContractString(param["description"]), "JSON 对象数组") {
+				t.Fatalf("%s compact=%v parameter=%#v", path, compact, param)
+			}
+			if !compact && (param["property"] != "a2uiAnnotations" || param["interface_type"] != "array") {
+				t.Fatalf("%s mapping=%#v", path, param)
+			}
+		}
+	}
+}
