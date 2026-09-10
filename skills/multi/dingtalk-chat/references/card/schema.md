@@ -1,8 +1,6 @@
 # 卡片 Schema
 
-用户希望发卡片时，可结合内容和展示需求选择：以文本为主或持续输出文本时，通常使用 streaming；需要组件布局时，可参考 [A2UI 展示卡片指南](a2ui.md)。用户已明确类型或要更新已有卡片时，沿用对应类型和命令。
-
-streaming 卡片操作可按需参考[创建流式卡片指南](create.md)，了解目标选择、内容更新、`bizId` 传递、结果验证及重试规则。
+文本展示或持续输出文本可参考[创建流式卡片](create.md)；需要组件布局可参考 [A2UI 展示卡片](a2ui.md)。
 
 DWS 公开两类卡片命令契约：
 
@@ -22,7 +20,7 @@ streaming 不是任意组件 Schema：
 `update-card --flow-status` 的 CLI 类型为 string，但仍只接受兼容数字 1–5
 （包括历史 pflag int 支持的 base-0 写法），并向 streaming RPC 发送 integer。
 
-A2UI 内容生成可参考[展示卡片指南](a2ui.md)，包含创建、更新和完结示例。下方 `updateDataModel` 片段只演示已有 surface 的更新格式。
+下方 `updateDataModel` 片段只演示已有 surface 的更新格式，完整创建示例见上述 A2UI 指南。
 
 A2UI 原子命令规则：
 

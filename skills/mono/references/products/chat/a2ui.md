@@ -1,19 +1,10 @@
 # A2UI 展示卡片
 
-用户需要带布局或组件的展示卡片时，可使用 `dws chat message send-a2ui-card` 发送，再用 `update-a2ui-card` 更新或完结。只有文本展示或持续输出文本的需求时，streaming 卡片通常更简单。
+使用 `dws chat message send-a2ui-card` 创建卡片，使用 `update-a2ui-card` 更新和完结。
 
-## 按需求准备卡片
+下面以任务进度卡片为例，标题和正文按用户需求填写。一次性展示结果时，可创建后直接完结；需要持续展示进度时，再发送中间更新。
 
-结合用户要表达的内容、接收对象和展示方式准备卡片，复用对话中已确认的信息；缺少影响发送的信息时再补充确认。
-
-- 接收对象可以是群聊或单聊，将用户给出的名称或线索解析为当前组织中的实际 ID。
-- 标题和正文使用用户提供的内容或实际任务结果；需要布局时，可参考下面的组件结构调整。
-- 用户要修改已有卡片时，使用对应的 `bizId` 更新；新发卡片则保存创建返回的 `bizId`，供后续使用。
-- 一次性展示结果时，可创建后直接发送最终内容并设为 `FINISH`；持续展示进度时，再按需要发送中间更新。
-
-下面的创建、更新和完结示例可分别取用，文件名仅用于演示。组件属性按需查阅[钉钉公开 Catalog](https://dingtalk.com/card/a2ui/catalogs/public/catalog.json)，命令参数以当前版本的 `--help` 和 leaf Schema 为准。
-
-本指南以任务进度展示卡片为例，覆盖创建、内容更新和完结，可按任务调整标题和正文。`CollapsiblePanel.title` 使用字符串；修改标题时发送 `updateComponents`。`Markdown.content` 支持数据绑定，正文通过 `updateDataModel` 更新。新增组件或交互能力时，需另行核对当前 DWS 参数、Catalog 契约及实际支持情况。
+`CollapsiblePanel.title` 使用字符串，通过 `updateComponents` 修改；`Markdown.content` 绑定正文，通过 `updateDataModel` 更新。其他组件属性按需查阅[钉钉公开 Catalog](https://dingtalk.com/card/a2ui/catalogs/public/catalog.json)。
 
 示例 JSON 使用便于编辑的对象数组，执行命令时用 `jq -c 'map(tojson)'` 转成 `--content` 要求的字符串数组。需要本地安装 `jq`。
 
