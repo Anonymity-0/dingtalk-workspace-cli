@@ -90,6 +90,14 @@ func withMinutesSpeakerResult(decl corecmd.ContractDecl) corecmd.ContractDecl {
 	return decl
 }
 
+func withMinutesShareParameters(decl corecmd.ContractDecl) corecmd.ContractDecl {
+	decl.Parameters = append(decl.Parameters,
+		contract.ParamDecl{Name: "member-uids", Property: "memberUids", Description: "真实成员钉钉 UID，最多 50 个"},
+		contract.ParamDecl{Name: "member-staff-ids", Property: "memberStaffIds", InterfaceType: "array", Description: "组织内成员 staffId，最多 50 个并保留前导零"},
+	)
+	return decl
+}
+
 func withMinutesListResult(decl corecmd.ContractDecl) corecmd.ContractDecl {
 	decl.Result = minutesListResult()
 	decl.Pagination = minutesCursorPagination()
@@ -268,7 +276,7 @@ func withMinutesPermissionResult(decl corecmd.ContractDecl) corecmd.ContractDecl
     },
     "members": {
       "type": "array",
-      "description": "本次稳定成员UID集合",
+      "description": "本次真实成员标识集合；由 member-uids 或 member-staff-ids 指定类型",
       "items": {
         "type": "string"
       }
@@ -350,7 +358,11 @@ func withMinutesPermissionResult(decl corecmd.ContractDecl) corecmd.ContractDecl
         "properties": {
           "memberUid": {
             "type": "string",
-            "description": "成员标识"
+            "description": "使用 member-uids 时的成员UID"
+          },
+          "memberStaffId": {
+            "type": "string",
+            "description": "使用 member-staff-ids 时的组织staffId，保留前导零"
           },
           "complete": {
             "type": "boolean",
@@ -369,7 +381,11 @@ func withMinutesPermissionResult(decl corecmd.ContractDecl) corecmd.ContractDecl
         "properties": {
           "memberUid": {
             "type": "string",
-            "description": "成员标识"
+            "description": "使用 member-uids 时的成员UID"
+          },
+          "memberStaffId": {
+            "type": "string",
+            "description": "使用 member-staff-ids 时的组织staffId，保留前导零"
           },
           "error": {
             "type": "string",
