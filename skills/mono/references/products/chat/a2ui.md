@@ -177,25 +177,27 @@ dws chat message update-a2ui-card \
   -f json
 ```
 
-`--flow-status` 控制卡片流转状态；`dataModel.status` 是本示例的业务数据，按需要维护，不能代替命令参数。仅准备文件时，完成文案表示待执行的最终内容。
+`--flow-status` 控制卡片流转状态；示例中的 `dataModel.status` 用于记录业务状态，可按需要维护。
 
 ## 组件注解
 
-发送或更新时，可通过 `--a2ui-annotations '[{"surfaceId":"example-card","componentId":"answer","type":"artifact"}]'` 将上面卡片的 `answer` 组件标注为 `artifact`。
+`--a2ui-annotations` 通过 surface 和组件 ID 关联 `--content` 中的 A2UI 消息。例如：`--a2ui-annotations '[{"surfaceId":"example-card","componentId":"answer","type":"artifact"}]'`。
 
 - `surfaceId` 对应 `createSurface.surfaceId` 和 `updateComponents.surfaceId`。
-- `componentId` 对应该 surface 中 `updateComponents.components[].id`；这里是 `id` 为 `answer` 的 Markdown 组件。
+- `componentId` 对应该 surface 中 `updateComponents.components[].id`，按需要关联的实际组件填写。
 - `type` 是注解类型，按实际支持的类型和用途选择；此处以 `artifact` 为例。
 
-注解直接传 JSON 对象数组；卡片消息的 `--content` 仍为 JSON 字符串数组。更新时可引用此前已创建的 surface 和组件，不必为注解重复声明组件。
+示例中的 `answer` 是上面卡片定义的组件 ID，可随组件定义调整。
 
-省略时，创建请求不携带注解字段，更新请求保持发送空数组；也可显式传入 `[]`。这只描述请求参数，不表示服务端如何合并或清除已有注解。
+注解直接传 JSON 对象数组；卡片消息的 `--content` 为 JSON 字符串数组。更新时可引用此前已创建的 surface 和组件。
+
+该参数可选，支持 `[]`；省略时，创建请求不携带注解字段，更新请求沿用原有的空数组。
 
 ## 检查与排错
 
 - 组件名、属性类型和绑定方式与对应 Catalog 一致；`children` 引用已有组件，数据绑定与更新路径对应数据模型。
 - 三份文件使用同一个 `surfaceId`。示例值 `example-card` 可整体替换；接收对象和 `bizId` 占位符在执行前替换。
 - 用 `jq` 检查 JSON；字符串数组逐项 `fromjson` 解码后应与原对象数组一致。
-- 实际发送后检查创建结果、客户端展示，以及同一 `bizId` 的更新和完结效果。CLI 参数解析成功不代表服务端已接受组件或客户端已正确渲染。
+- 发送后核对创建结果和客户端展示，再检查同一 `bizId` 的更新和完结效果。
 
 遇到 `a2ui dws catalog validation failed` 时，对照 Catalog 检查组件属性类型、内层 JSON、Catalog 地址和 surface 创建顺序，保留错误码与 trace 定位。
