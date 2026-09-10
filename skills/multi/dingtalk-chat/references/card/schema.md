@@ -20,7 +20,7 @@ streaming 不是任意组件 Schema：
 `update-card --flow-status` 的 CLI 类型为 string，但仍只接受兼容数字 1–5
 （包括历史 pflag int 支持的 base-0 写法），并向 streaming RPC 发送 integer。
 
-A2UI 内容生成先读[展示卡片脱敏模板](a2ui.md)，包含完整创建、更新和完结内容。下方 `updateDataModel` 片段只演示已有 surface 的更新格式。
+A2UI 内容生成可参考[展示卡片指南](a2ui.md)，包含创建、更新和完结示例。下方 `updateDataModel` 片段只演示已有 surface 的更新格式。
 
 A2UI 原子命令规则：
 

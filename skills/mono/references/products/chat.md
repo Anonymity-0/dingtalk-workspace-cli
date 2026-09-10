@@ -2480,7 +2480,7 @@ dws chat message send --conversation-id <openConversationId> --msg-type image --
 
 **注意：send-card 必须和 update-card 搭配使用。** 创建卡片时无需传入内容，后续通过 update-card 更新内容，最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。
 
-`send-a2ui-card` 调用 `im.create_and_send_a2ui_card`，必须传 `--content` JSON 字符串数组（元素为 A2UI 协议 JSON）。生成内容时先读 [A2UI 展示卡片脱敏模板](chat/a2ui.md)，按完整的 `createSurface`、组件定义和数据绑定创建卡片。CLI 会解析为 `a2uiMessages`，并用换行拼接为 `summary`，单聊传 userId 时自动解析为 openDingTalkId。创建时默认 `flowStatus=PROCESSING`。
+`send-a2ui-card` 调用 `im.create_and_send_a2ui_card`，必须传 `--content` JSON 字符串数组（元素为 A2UI 协议 JSON）。生成内容时可参考 [A2UI 展示卡片指南](chat/a2ui.md)，使用完整的 `createSurface`、组件定义和数据绑定创建卡片。CLI 会解析为 `a2uiMessages`，并用换行拼接为 `summary`，单聊传 userId 时自动解析为 openDingTalkId。创建时默认 `flowStatus=PROCESSING`。
 ```
 Usage:
   dws chat message send-card [flags]
