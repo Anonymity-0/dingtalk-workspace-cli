@@ -73,6 +73,8 @@ dws chat message send-a2ui-card \
 
 群聊时将 `--open-dingtalk-id` 替换为 `--conversation-id '<群openConversationId>'`，两者互斥。接收对象使用当前组织中确认的实际 ID。创建状态默认 `PROCESSING`；发送成功后保存实际返回的 `bizId`，用于后续更新。
 
+允许转发时，在创建命令中加上 `--support-forward`，默认 `false`。
+
 ## 更新
 
 保存为 `a2ui-update.json`。以下消息更新面板标题和正文，可根据任务进度多次调用。替换组件定义时保留该组件所需的 `children` 等字段。
@@ -179,7 +181,23 @@ dws chat message update-a2ui-card \
 
 ## 组件注解
 
-两条命令均可通过 `--a2ui-annotations` 传入 JSON 对象数组。已有注解文件时，可使用 `--a2ui-annotations "$(jq -c . a2ui-annotations.json)"`；该参数不需要 `map(tojson)`。对象字段按实际注解契约填写。
+两条命令均可通过 `--a2ui-annotations` 给消息中的组件附加注解。例如，将上面卡片的 `answer` 组件标注为 `artifact`，保存为 `a2ui-annotations.json`：
+
+```json
+[
+  {
+    "surfaceId": "example-card",
+    "componentId": "answer",
+    "type": "artifact"
+  }
+]
+```
+
+- `surfaceId` 对应 `createSurface.surfaceId` 和 `updateComponents.surfaceId`。
+- `componentId` 对应该 surface 中 `updateComponents.components[].id`；这里是 `id` 为 `answer` 的 Markdown 组件。
+- `type` 是注解类型，示例为 `artifact`，不是组件类型。
+
+发送或更新时加上 `--a2ui-annotations "$(jq -c . a2ui-annotations.json)"`。注解直接传对象数组，不需要 `map(tojson)`；卡片消息的 `--content` 仍按前面的方式编码。更新时可引用此前已创建的 surface 和组件，不必为注解重复声明组件。
 
 省略时，创建请求不携带注解字段，更新请求保持发送空数组；也可显式传入 `[]`。这只描述请求参数，不表示服务端如何合并或清除已有注解。
 

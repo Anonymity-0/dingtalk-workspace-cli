@@ -7357,10 +7357,12 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			if err != nil {
 				return err
 			}
+			supportForward, _ := cmd.Flags().GetBool("support-forward")
 			toolArgs := map[string]any{
 				"requestId":       uuid.NewString(),
 				"bizCardId":       uuid.NewString(),
 				"protocolVersion": "1.0",
+				"supportForward":  supportForward,
 				"flowStatus":      defaultA2UIFlowStatus,
 				"a2uiMessages":    messages,
 				"summary":         strings.Join(messages, "\n"),
@@ -7408,6 +7410,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Parameters: []contract.ParamDecl{
 				{Name: "content", Property: "a2uiMessages", Required: boolPtr(true), InterfaceType: "array"},
 				{Name: "a2ui-annotations", Property: "a2uiAnnotations", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "support-forward", Property: "supportForward", Required: boolPtr(false), InterfaceType: "boolean"},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "open-dingtalk-id", Property: "receiverOpenDingTalkId", Required: boolPtr(false)},
 			},
@@ -7416,6 +7419,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	chatMessageSendA2UICardCmd.Flags().String("conversation-id", "", "群聊 openConversationId（群聊时必填，与 --open-dingtalk-id 互斥）")
 	chatMessageSendA2UICardCmd.Flags().String("open-dingtalk-id", "", "单聊接收者 openDingTalkId（单聊时必填，与 --conversation-id 互斥）")
 	chatMessageSendA2UICardCmd.Flags().String("a2ui-annotations", "", "A2UI 组件注解 JSON 对象数组（可选，支持空数组 []）")
+	chatMessageSendA2UICardCmd.Flags().Bool("support-forward", false, "允许转发 A2UI 卡片（默认不允许）")
 	chatMessageSendA2UICardCmd.Flags().String("content", "", "A2UI 卡片消息 JSON 字符串数组 (必填)")
 	_ = chatMessageSendA2UICardCmd.MarkFlagRequired("content")
 	cli.AnnotateRuntimeConstraints(chatMessageSendA2UICardCmd, cli.RuntimeSchemaConstraints{

@@ -117,6 +117,17 @@ func TestCrossPlatformCoverageA2UIAnnotationsSchema(t *testing.T) {
 				args = append(args, "--compact")
 			}
 			payload := executeShortcutSchemaQuery(t, args...)
+			forward := schemaContractMap(payload["parameters"])["support-forward"]
+			if path == "chat message send-a2ui-card" {
+				if forward == nil || forward["type"] != "boolean" || forward["required"] == true {
+					t.Fatalf("support-forward compact=%v parameter=%#v", compact, forward)
+				}
+				if !compact && forward["property"] != "supportForward" {
+					t.Fatalf("support-forward mapping=%#v", forward)
+				}
+			} else if forward != nil {
+				t.Fatalf("update unexpectedly exposes support-forward: %#v", forward)
+			}
 			param := schemaContractMap(payload["parameters"])["a2ui-annotations"]
 			if param == nil || param["required"] == true || param["type"] != "string" || !strings.Contains(schemaContractString(param["description"]), "JSON 对象数组") {
 				t.Fatalf("%s compact=%v parameter=%#v", path, compact, param)

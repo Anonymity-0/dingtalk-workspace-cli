@@ -308,6 +308,7 @@ func TestCrossPlatformCoverageA2UIAnnotations(t *testing.T) {
 		}{
 			{name: "omitted"},
 			{name: "empty array", raw: "[]"},
+			{name: "artifact", raw: `[{"componentId":"answer","surfaceId":"example-card","type":"artifact"}]`},
 			{name: "objects", raw: `[{"id":9007199254740993,"nested":{"values":[true,null,"中文"]}},{}]`},
 			{name: "blank", raw: " ", invalid: true},
 			{name: "null", raw: "null", invalid: true},
@@ -348,6 +349,44 @@ func TestCrossPlatformCoverageA2UIAnnotations(t *testing.T) {
 				got, err := json.Marshal(value)
 				if err != nil || string(got) != want {
 					t.Fatalf("annotations=%s want=%s err=%v", got, want, err)
+				}
+			})
+		}
+	}
+}
+
+func TestCrossPlatformCoverageA2UISupportForward(t *testing.T) {
+	for _, target := range [][]string{
+		{"--conversation-id", "group-1"},
+		{"--open-dingtalk-id", "DAAAAAAAAAAAiE"},
+	} {
+		for _, tc := range []struct {
+			name    string
+			flags   []string
+			want    bool
+			invalid bool
+		}{
+			{name: "default"},
+			{name: "enabled", flags: []string{"--support-forward"}, want: true},
+			{name: "disabled", flags: []string{"--support-forward=false"}},
+			{name: "invalid", flags: []string{"--support-forward=invalid"}, invalid: true},
+		} {
+			t.Run(target[0]+"/"+tc.name, func(t *testing.T) {
+				caller := &scriptedToolCaller{}
+				args := append([]string{"message", "send-a2ui-card", "--content", `["message"]`}, target...)
+				args = append(args, tc.flags...)
+				err := runNativeCardUpdate(t, caller, args...)
+				if tc.invalid {
+					if err == nil || caller.calls != 0 {
+						t.Fatalf("err=%v calls=%d", err, caller.calls)
+					}
+					return
+				}
+				if err != nil || caller.calls != 1 || caller.tool != "create_and_send_a2ui_card" || caller.args["supportForward"] != tc.want {
+					t.Fatalf("err=%v caller=%#v", err, caller)
+				}
+				if _, exists := caller.args["cardProperty"]; exists {
+					t.Fatal("MCP accepts supportForward directly, not the downstream cardProperty envelope")
 				}
 			})
 		}
