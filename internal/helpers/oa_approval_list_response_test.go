@@ -13,6 +13,7 @@ import (
 func TestCrossPlatformCoverageOAApprovalListResponseEnvelope(t *testing.T) {
 	for _, command := range []struct{ name, tool string }{
 		{"list-pending", "get_todo_tasks"},
+		{"list-executed", "get_done_tasks"},
 		{"list-submitted", "get_submitted_instances"},
 		{"list-cc", "get_noticed_instances"},
 	} {
@@ -42,6 +43,9 @@ func TestCrossPlatformCoverageOAApprovalListResponseEnvelope(t *testing.T) {
 						cmd.SilenceErrors, cmd.SilenceUsage = true, true
 						cmd.SetArgs([]string{"approval", command.name, "--page", "1", "--limit", "20"})
 						err := cmd.Execute()
+						if caller.server != "oa" || caller.tool != command.tool || caller.calls != 1 {
+							t.Fatalf("want one oa/%s call, got %s/%s calls=%d", command.tool, caller.server, caller.tool, caller.calls)
+						}
 						if tc.wantError {
 							if err == nil || out.Len() != 0 {
 								t.Fatalf("want error without success output, got err=%v output=%s", err, &out)
@@ -78,12 +82,6 @@ func TestCrossPlatformCoverageOAApprovalListResponseEnvelope(t *testing.T) {
 						if string(result["id"]) != "9007199254740993" || string(result["success"]) != `"false"` || string(result["error_code"]) != `"007"` {
 							t.Fatalf("business data changed: %s", body["result"])
 						}
-						if caller.server != "oa" || caller.tool != command.tool {
-							t.Fatalf("unexpected interface: %s/%s", caller.server, caller.tool)
-						}
-						if caller.calls != 1 {
-							t.Fatalf("calls = %d", caller.calls)
-						}
 					})
 				}
 			}
@@ -95,6 +93,7 @@ func TestCrossPlatformCoverageOAApprovalListResponseEnvelope(t *testing.T) {
 func TestCrossPlatformCoverageOAApprovalListFailureEnvelopeTypes(t *testing.T) {
 	for _, command := range []struct{ name, tool string }{
 		{"list-pending", "get_todo_tasks"},
+		{"list-executed", "get_done_tasks"},
 		{"list-submitted", "get_submitted_instances"},
 		{"list-cc", "get_noticed_instances"},
 	} {
@@ -111,6 +110,9 @@ func TestCrossPlatformCoverageOAApprovalListFailureEnvelopeTypes(t *testing.T) {
 					cmd.SilenceErrors, cmd.SilenceUsage = true, true
 					cmd.SetArgs([]string{"approval", command.name, "--page", "1", "--limit", "100"})
 					err := cmd.Execute()
+					if caller.server != "oa" || caller.tool != command.tool || caller.calls != 1 {
+						t.Fatalf("want one oa/%s call, got %s/%s calls=%d", command.tool, caller.server, caller.tool, caller.calls)
+					}
 					var cliErr *CLIError
 					if !errors.As(err, &cliErr) || cliErr.Code != CodeMCPToolError {
 						t.Fatalf("want MCP error, got %v", err)

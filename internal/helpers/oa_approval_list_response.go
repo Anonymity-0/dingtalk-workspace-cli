@@ -69,7 +69,7 @@ func hasOAApprovalListEnvelope(serverID, toolName string) bool {
 		return false
 	}
 	switch toolName {
-	case "get_todo_tasks", "list_pending_approvals", "get_submitted_instances", "get_noticed_instances":
+	case "get_todo_tasks", "get_done_tasks", "get_submitted_instances", "get_noticed_instances":
 		return true
 	default:
 		return false
