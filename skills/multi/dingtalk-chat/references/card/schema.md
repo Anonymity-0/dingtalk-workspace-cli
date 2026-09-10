@@ -1,6 +1,6 @@
 # 卡片 Schema
 
-创建 streaming 卡片先读[创建流式卡片操作指南](create.md)，其中包含目标三选一、`--content` 行为、`bizId` 传递、结果验证和安全重试规则。
+streaming 卡片操作可按需参考[创建流式卡片指南](create.md)，了解目标选择、内容更新、`bizId` 传递、结果验证及重试规则。
 
 DWS 公开两类卡片命令契约：
 
