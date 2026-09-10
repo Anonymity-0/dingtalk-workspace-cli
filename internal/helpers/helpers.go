@@ -542,7 +542,18 @@ func callMCPToolInternalOptsContext(ctx context.Context, explicitServerID, toolN
 				}
 				// 业务逻辑错误
 				if isBusinessError(errBody) {
-					return &CLIError{Code: CodeMCPToolError, Message: businessErrorDisplayMessage(errBody, c.Text), Suggestion: suggestForBusinessError(errBody)}
+					message := businessErrorDisplayMessage(errBody, c.Text)
+					if serverID == "oa" && (toolName == "get_todo_tasks" || toolName == "list_pending_approvals") {
+						// Preserve classification and diagnostics from the original response.
+						// Unknown/symbolic codes keep their original error rather than being
+						// masked by an integer conversion failure.
+						if body, normalizeErr := normalizeOAPendingResponse(c.Text); normalizeErr == nil {
+							if raw, marshalErr := json.Marshal(body); marshalErr == nil {
+								message = string(raw)
+							}
+						}
+					}
+					return &CLIError{Code: CodeMCPToolError, Message: message, Suggestion: suggestForBusinessError(errBody)}
 				}
 			}
 

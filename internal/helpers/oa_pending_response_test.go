@@ -3,6 +3,7 @@ package helpers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"testing"
 
@@ -21,6 +22,7 @@ func TestOAPendingResponseEnvelope(t *testing.T) {
 			{"typed failure", `{"success":false,"errorCode":0}`, true},
 			{"nonzero code", `{"success":"true","error_code":"123"}`, true},
 			{"invalid success", `{"success":"unknown","error_code":"0"}`, true},
+			{"symbolic failure", `{"success":"false","error_code":"INVALID_ARGUMENT","error_message":"参数错误"}`, true},
 		} {
 			t.Run(format+"/"+tc.name, func(t *testing.T) {
 				caller := &scriptedToolCaller{format: format, steps: []scriptedToolStep{{text: tc.response}}}
@@ -35,6 +37,12 @@ func TestOAPendingResponseEnvelope(t *testing.T) {
 				if tc.wantError {
 					if err == nil || out.Len() != 0 {
 						t.Fatalf("want error without success output, got err=%v output=%s", err, &out)
+					}
+					if tc.name == "symbolic failure" {
+						var cliErr *CLIError
+						if !errors.As(err, &cliErr) || cliErr.Message != tc.response {
+							t.Fatalf("symbolic diagnostic was masked: %v", err)
+						}
 					}
 					return
 				}
@@ -63,5 +71,45 @@ func TestOAPendingResponseEnvelope(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestOAPendingFailureEnvelopeTypes(t *testing.T) {
+	for _, format := range []string{"json", "raw"} {
+		t.Run(format, func(t *testing.T) {
+			caller := &scriptedToolCaller{format: format, steps: []scriptedToolStep{{text: `{"error_code":"400002","error_message":"参数错误","result":{"values":null},"success":"false","trace_id":"2104940317890289991958640e05b4"}`}}}
+			installScriptedCaller(t, caller)
+			testseam.Swap(t, &os.Args, []string{"dws", "oa"})
+			var out bytes.Buffer
+			deps.Out.w = &out
+			cmd := newOaCommand()
+			cmd.SilenceErrors, cmd.SilenceUsage = true, true
+			cmd.SetArgs([]string{"approval", "list-pending", "--page", "1", "--limit", "100"})
+			err := cmd.Execute()
+			var cliErr *CLIError
+			if !errors.As(err, &cliErr) || cliErr.Code != CodeMCPToolError {
+				t.Fatalf("want MCP error, got %v", err)
+			}
+			if out.Len() != 0 {
+				t.Fatalf("failure emitted success output: %s", &out)
+			}
+			var body map[string]any
+			if err := json.Unmarshal([]byte(cliErr.Message), &body); err != nil {
+				t.Fatalf("invalid error payload: %s", cliErr.Message)
+			}
+			if body["success"] != false || body["errorCode"] != float64(400002) || body["error_code"] != nil {
+				t.Fatalf("unexpected error field types: %s", cliErr.Message)
+			}
+			if body["error_message"] != "参数错误" || body["trace_id"] != "2104940317890289991958640e05b4" {
+				t.Fatalf("lost diagnostics: %s", cliErr.Message)
+			}
+			result, ok := body["result"].(map[string]any)
+			if !ok {
+				t.Fatalf("lost result: %s", cliErr.Message)
+			}
+			if v, exists := result["values"]; !exists || v != nil {
+				t.Fatalf("changed values: %v", result)
+			}
+		})
 	}
 }
