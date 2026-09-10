@@ -1,5 +1,7 @@
 # 卡片 Schema
 
+创建 streaming 卡片先读[创建流式卡片操作指南](create.md)，其中包含目标三选一、`--content` 行为、`bizId` 传递、结果验证和安全重试规则。
+
 DWS 公开两类卡片命令契约：
 
 - `chat +messages-send-card` / `chat +messages-update-card`：仍是 `im.streaming-card.v1`
