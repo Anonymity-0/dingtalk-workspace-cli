@@ -42,6 +42,14 @@ dws minutes tag query --tag-id <tagId> --limit 10 --cursor <nextToken> --format 
 - 不按标签名称猜 `tagId`；`tag list` 明确返回空数组时直接交付“当前无标签”，不再查 Help 或拿其他分组补位。
 - `tag query` 是单页原子查询；返回真实 `nextToken` 时继续续拉，或明确说明当前结果不完整。
 
+## 逐字稿与行动项落盘
+
+```text
+dws minutes +detail --id <taskUuid> --artifacts transcript,todos --transcript-output file --output-dir <安全相对目录> --format json
+```
+
+`file` 只自动保存逐字稿，其他所需产物或失败说明按真实返回另存文件，不能说全部自动落盘。逐字稿优先复用命令返回的文件，不手抄终端片段；按真实 `direction/pages/complete` 和文件内容核对顺序与覆盖，不凭文件名判断。默认正序，只有用户要求倒序才加 `--direction 1`；待办未知不能保存成“0条”。额外要求的摘要/关键词按需加入 `--artifacts`。
+
 ## 本地归档
 
 ```text

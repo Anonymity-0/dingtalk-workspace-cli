@@ -64,7 +64,7 @@ dws minutes <group> <leaf> --help
 
 1. 用户给真实 taskUuid/URL：直接使用。
 2. 用户给标题/关键词/时间：先搜索。服务端过滤与 Agent 复核应使用同一时间范围和 profile。
-3. 精确标题优先；标题包含或语义相关结果可作为候选。零命中停止，多候选、差异较大或分页未完成时消歧。
+3. 精确标题优先；标题包含或语义相关结果可作为候选。零命中停止，多候选或差异较大时消歧；分页未完成本身不是歧义，续页与停止条件遵循根 Skill。
 4. 锁定后所有 get/update 操作复用同一 taskUuid；某项内容为空或失败不能偷偷换对象。
 
 ### 时间转换与展示
@@ -103,7 +103,7 @@ python3 scripts/format_timestamp.py --unit ms --timezone Asia/Shanghai 0 1000
 dws minutes +detail --ids <uuid1,uuid2> --artifacts basic --format json
 ```
 
-结果必须逐项覆盖请求 ID；缺项或失败项如实保留。当前 basic 投影没有逐条 `orgName` 时，应说明归属字段不可得；当前 profile 的 `corpName` 只能证明执行上下文，不能证明每条听记的创建组织或归属。
+结果必须逐项覆盖请求 ID；缺项或失败项如实保留。核对时复用列表已返回的同 ID 元信息；`orgName`、`flashUserInfo.name` 仅按组织显示名、闪记用户显示名展示，不冒称已验证所有者。缺字段标未知，不为同一缺字段反复读取不提供它的 basic；当前 profile 的 `corpName` 不能代替资源归属。
 
 多听记、多来源或跨产品任务先建立逐来源证据台账：`requested` 记录用户要求的输入，`resolved` 记录已锁定的 `taskUuid`/来源 ID，`missing` 记录未找到的输入，`artifacts` 记录每条实际取得的内容，`status` 记录 `succeeded/partial/failed/unknown`。任一必需来源缺失时整体不能称完整；后续跨产品 Skill 只能接收有来源 ID 的真实产物，不能把已找到的子集写成全部。
 
@@ -132,6 +132,8 @@ dws minutes +update --id <taskUuid> --title "<目标标题>" --dry-run --format 
 最终展示 `当前标题 → 目标标题`、`executed=false` 和同一 taskUuid 后即结束。用户说“不实际写入”时不得继续索要写入确认、追加 `--yes`、真实改名或再以还原补救。
 
 录音 start 的成功回执不一定含可控制的 taskUuid。只有响应明确提供 `taskUuid`，并由 Shortcut 返回 `controlReady=true`，才能执行 pause/resume/stop；不能通过“最新听记”或列表第一条猜测绑定。
+
+录音预览的 `executed=false` 只证明本次控制请求未执行，不证明远端实时状态；basic 的 start/endTime、duration 或读取成功也不是正在录制、暂停或结束的证据。用户另要求前后列表比较时须按同一范围完整读取，不能凭后验首页宣称全局不变；不得为验证预览执行真实控制。
 
 ## 5. 思维导图与发言人
 

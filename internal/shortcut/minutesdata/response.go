@@ -217,6 +217,14 @@ func ProjectList(page Page) ([]map[string]any, error) {
 		row := map[string]any{"taskUuid": uuid}
 		copyFirst(row, "title", item, "title", "name")
 		copyFirst(row, "creator", item, "creator", "creatorName", "createUserName", "creatorNick")
+		if name, ok := item["orgName"].(string); ok && name != "" {
+			row["orgName"] = name
+		}
+		if info, ok := item["flashUserInfo"].(map[string]any); ok {
+			if name, ok := info["name"].(string); ok && name != "" {
+				row["flashUserInfo"] = map[string]any{"name": name}
+			}
+		}
 		copyFirst(row, "startTime", item, "startTime", "gmtStart", "beginTime", "createTime")
 		copyFirst(row, "endTime", item, "endTime", "gmtEnd", "deadline")
 		copyFirst(row, "url", item, "url", "shareUrl", "link")

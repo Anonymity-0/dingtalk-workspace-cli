@@ -220,13 +220,13 @@ var ExportPack = shortcut.Shortcut{
 var Share = shortcut.Shortcut{
 	Service: "minutes", Command: "+share", Product: "minutes",
 	Description: "按成员逐项授予一个或多个听记权限，输出可审计的部分写入 ledger",
-	Intent:      "所有者已确认成员钉钉 UID 和权限，需批量授权时使用；逐成员调用以区分成功/失败，默认首错停止。",
+	Intent:      "所有者已确认成员钉钉 UID 和权限，需批量授权时使用；逐成员调用以区分成功/失败，默认首错停止。 预览显示目标和失败策略；分享另显示权限及显式子资源/覆盖设置，不调用远端。写回执不证明成员最终权限。",
 	Risk:        shortcut.RiskWrite,
 	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
-	Contract: withMinutesDryRun(minutesContract("+share", "按成员逐项授予一个或多个听记权限，输出可审计的部分写入 ledger",
+	Contract: withMinutesPermissionResult(withMinutesDryRun(minutesContract("+share", "按成员逐项授予一个或多个听记权限，输出可审计的部分写入 ledger",
 		"听记所有者已确认稳定 member UID，需要授予 view/download/edit 权限并审计每个成员结果时使用",
 		[]string{"当前用户自己申请权限时使用 +apply-permission；只有姓名而无稳定 UID 时先用 contact 命令消歧"},
-		[]string{`dws minutes +share --ids <uuid1,uuid2> --member-uids <uid1,uid2> --permission view`, `dws minutes +share --id <uuid> --member-uids <uid> --permission edit --cover`}), contract.DryRunPreviewPlan, false),
+		[]string{`dws minutes +share --ids <uuid1,uuid2> --member-uids <uid1,uid2> --permission view`, `dws minutes +share --id <uuid> --member-uids <uid> --permission edit --cover`}), contract.DryRunPreviewPlan, false)),
 	Flags: minutesShareFlags(true),
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"id", "ids"}},
@@ -241,13 +241,13 @@ var Share = shortcut.Shortcut{
 var Unshare = shortcut.Shortcut{
 	Service: "minutes", Command: "+unshare", Product: "minutes",
 	Description: "按成员逐项移除一个或多个听记权限，输出可审计的部分写入 ledger",
-	Intent:      "所有者明确要撤销稳定成员 UID 的听记访问时使用；默认首错停止，任何部分失败都返回非零。",
+	Intent:      "所有者明确要撤销稳定成员 UID 的听记访问时使用；默认首错停止，任何部分失败都返回非零。 预览显示目标和失败策略；分享另显示权限及显式子资源/覆盖设置，不调用远端。写回执不证明成员最终权限。",
 	Risk:        shortcut.RiskWrite,
 	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
-	Contract: withMinutesDryRun(minutesContract("+unshare", "按成员逐项移除一个或多个听记权限，输出可审计的部分写入 ledger",
+	Contract: withMinutesPermissionResult(withMinutesDryRun(minutesContract("+unshare", "按成员逐项移除一个或多个听记权限，输出可审计的部分写入 ledger",
 		"听记所有者已确认稳定 member UID，需要撤销其对一个或多个听记的访问权限时使用",
 		[]string{"要授权时使用 +share；成员或听记 ID 未确认时不要撤销"},
-		[]string{`dws minutes +unshare --ids <uuid1,uuid2> --member-uids <uid1,uid2>`, `dws minutes +unshare --id <uuid> --member-uids <uid> --failure-policy continue`}), contract.DryRunPreviewPlan, false),
+		[]string{`dws minutes +unshare --ids <uuid1,uuid2> --member-uids <uid1,uid2>`, `dws minutes +unshare --id <uuid> --member-uids <uid> --failure-policy continue`}), contract.DryRunPreviewPlan, false)),
 	Flags: minutesShareFlags(false),
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"id", "ids"}},
@@ -697,16 +697,21 @@ func validateMinutesShare(rt *shortcut.RuntimeContext) error {
 	return nil
 }
 
+func minutesShareOptions(rt *shortcut.RuntimeContext) map[string]any {
+	options := map[string]any{"policyId": map[string]float64{"edit": 2, "download": 3, "view": 4}[rt.Str("permission")]}
+	if rt.Changed("cover") {
+		options["coverPermission"] = fmt.Sprintf("%t", rt.Bool("cover"))
+	}
+	if values := rt.StrSlice("sub-resources"); len(values) > 0 {
+		options["roleSubResourceIds"] = values
+	}
+	return options
+}
+
 func executeMinutesShare(rt *shortcut.RuntimeContext) error {
-	policy := map[string]float64{"edit": 2, "download": 3, "view": 4}[rt.Str("permission")]
 	return executeMinutesPermissionLedger(rt, "share", "add_member_permission", func(member string) map[string]any {
-		params := map[string]any{"uuids": minutesIDs(rt), "memberUids": []string{member}, "policyId": policy}
-		if rt.Changed("cover") {
-			params["coverPermission"] = fmt.Sprintf("%t", rt.Bool("cover"))
-		}
-		if values := rt.StrSlice("sub-resources"); len(values) > 0 {
-			params["roleSubResourceIds"] = values
-		}
+		params := minutesShareOptions(rt)
+		params["uuids"], params["memberUids"] = minutesIDs(rt), []string{member}
 		return params
 	})
 }
@@ -732,6 +737,11 @@ func executeMinutesPermissionLedger(rt *shortcut.RuntimeContext, operation, tool
 	members := uniqueStrings(rt.StrSlice("member-uids"))
 	plan := map[string]any{"operation": "minutes." + operation, "taskUuids": minutesIDs(rt), "memberCount": len(members), "members": members}
 	if rt.DryRun() {
+		plan["failurePolicy"] = rt.Str("failure-policy")
+		if operation == "share" {
+			plan["permission"] = rt.Str("permission")
+			plan["options"] = minutesShareOptions(rt)
+		}
 		return rt.Output(minutesDryRunPayload(contract.DryRunPreviewPlan, "minutes."+operation, plan))
 	}
 	results := []map[string]any{}
