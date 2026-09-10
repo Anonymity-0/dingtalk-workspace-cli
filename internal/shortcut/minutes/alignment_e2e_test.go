@@ -601,6 +601,75 @@ func TestCrossPlatformCoverageMinutesExportAllTextAndNoPublishOnLeak(t *testing.
 	}
 }
 
+func TestCrossPlatformCoverageMinutesExportScanIOFailures(t *testing.T) {
+	if err := scanExportCredentials(filepath.Join(t.TempDir(), "missing"), nil, false); err == nil {
+		t.Fatal("missing export directory accepted")
+	}
+	t.Run("symlink", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.Symlink(filepath.Join(dir, "missing"), filepath.Join(dir, "basic.json")); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		if err := scanExportCredentials(dir, []string{"basic"}, false); err == nil || !strings.Contains(err.Error(), "symlink") {
+			t.Fatalf("symlink scan=%v", err)
+		}
+	})
+	for _, kind := range []string{"relative-path", "read", "unexpected", "trailing-json"} {
+		t.Run(kind, func(t *testing.T) {
+			dir := t.TempDir()
+			body := `{}`
+			if kind == "trailing-json" {
+				body = `{} {}`
+			}
+			if err := os.WriteFile(filepath.Join(dir, "basic.json"), []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			artifacts := []string{"basic"}
+			switch kind {
+			case "relative-path":
+				testseam.Swap(t, &minutesRel, func(string, string) (string, error) { return "", errors.New("path failure") })
+			case "read":
+				testseam.Swap(t, &minutesReadFile, func(string) ([]byte, error) { return nil, errors.New("read failure") })
+			case "unexpected":
+				artifacts = nil
+			}
+			if err := scanExportCredentials(dir, artifacts, false); err == nil {
+				t.Fatalf("%s failure accepted", kind)
+			}
+		})
+	}
+	var nested any = "body"
+	for i := 0; i < 10001; i++ {
+		nested = []any{nested}
+	}
+	if _, _, err := sanitizeExportArtifact(nested); err == nil || !strings.Contains(err.Error(), "decoded") {
+		t.Fatalf("over-depth JSON accepted: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageMinutesExportSanitizerFailureDoesNotPublish(t *testing.T) {
+	old, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	work := t.TempDir()
+	if err := os.Chdir(work); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(old) })
+	sentinel := errors.New("sanitizer rejected artifact")
+	testseam.Swap(t, &minutesSanitizeExportArtifact, func(any) (any, int, error) { return nil, 0, sentinel })
+	caller := &minutesE2ECaller{responses: map[string][]string{"minutes/get_minutes_basic_info": {`{"success":true,"result":{"taskUuid":"u1","title":"example"}}`}}}
+	_, _, err = runMinutesAlignmentCLI(t, caller, "minutes", "+export-pack", "--id", "u1", "--output", "pack", "--artifacts", "basic")
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("sanitizer error=%v", err)
+	}
+	entries, err := os.ReadDir(work)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("failed export left files: %v %v", entries, err)
+	}
+}
+
 func TestCrossPlatformCoverageMinutesListDisplayFinalData(t *testing.T) {
 	for _, command := range []string{"+list-mine", "+list-shared", "+list-all", "+search"} {
 		c := &minutesE2ECaller{responses: map[string][]string{

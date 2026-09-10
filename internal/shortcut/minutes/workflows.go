@@ -24,17 +24,19 @@ import (
 var minutesWorkflowArtifacts = []string{"basic", "summary", "keywords", "transcript", "todos"}
 
 var (
-	minutesMkdirTemp     = os.MkdirTemp
-	minutesRemoveAll     = os.RemoveAll
-	minutesWriteFile     = os.WriteFile
-	minutesStat          = os.Stat
-	minutesRename        = os.Rename
-	minutesGetwd         = os.Getwd
-	minutesEvalSymlinks  = filepath.EvalSymlinks
-	minutesRel           = filepath.Rel
-	minutesLstat         = os.Lstat
-	minutesMkdir         = os.Mkdir
-	minutesMarshalIndent = json.MarshalIndent
+	minutesMkdirTemp              = os.MkdirTemp
+	minutesRemoveAll              = os.RemoveAll
+	minutesWriteFile              = os.WriteFile
+	minutesStat                   = os.Stat
+	minutesRename                 = os.Rename
+	minutesGetwd                  = os.Getwd
+	minutesEvalSymlinks           = filepath.EvalSymlinks
+	minutesRel                    = filepath.Rel
+	minutesLstat                  = os.Lstat
+	minutesMkdir                  = os.Mkdir
+	minutesMarshalIndent          = json.MarshalIndent
+	minutesReadFile               = os.ReadFile
+	minutesSanitizeExportArtifact = sanitizeExportArtifact
 )
 
 var RecordWrapUp = shortcut.Shortcut{
@@ -619,7 +621,7 @@ func executeMinutesExportPack(rt *shortcut.RuntimeContext) error {
 	totalRedactions := 0
 	for _, name := range artifacts {
 		filename := name + ".json"
-		value, redactionCount, sanitizeErr := sanitizeExportArtifact(bundle[name])
+		value, redactionCount, sanitizeErr := minutesSanitizeExportArtifact(bundle[name])
 		if sanitizeErr != nil {
 			return sanitizeErr
 		}

@@ -317,6 +317,23 @@ func TestCrossPlatformCoverageMinutesWorkflowCompletion(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageMinutesTodosMalformedResultAndTypeDiagnostics(t *testing.T) {
+	for _, result := range []any{nil, "wrong", []any{}} {
+		fact := InspectTodos("u1", map[string]any{"success": true, "result": result})
+		if fact.State != ArtifactUnsupportedShape || fact.Successful() || fact.Err() == nil {
+			t.Fatalf("unexpected result fact: %#v", fact)
+		}
+	}
+	for _, tc := range []struct {
+		value any
+		want  string
+	}{{nil, "null"}, {true, "boolean"}, {float32(1), "number"}, {struct{}{}, "struct {}"}} {
+		if got := jsonType(tc.value); got != tc.want {
+			t.Fatalf("type(%#v)=%q want %q", tc.value, got, tc.want)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageMinutesTodosTruthStates(t *testing.T) {
 	tests := []struct {
 		name       string

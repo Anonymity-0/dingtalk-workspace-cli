@@ -127,7 +127,7 @@ func scanExportCredentials(dir string, artifacts []string, includeMedia bool) er
 		if entry.IsDir() {
 			return nil
 		}
-		relative, err := filepath.Rel(dir, path)
+		relative, err := minutesRel(dir, path)
 		if err != nil {
 			return fmt.Errorf("export credential scan failed")
 		}
@@ -137,18 +137,15 @@ func scanExportCredentials(dir string, artifacts []string, includeMedia bool) er
 		if !allowed[relative] {
 			return fmt.Errorf("export credential scan rejected unexpected file")
 		}
-		raw, err := os.ReadFile(path)
+		raw, err := minutesReadFile(path)
 		if err != nil {
 			return fmt.Errorf("export credential scan cannot read artifact")
 		}
 		var value any = string(raw)
 		if filepath.Ext(path) == ".json" {
-			if !json.Valid(raw) {
-				return fmt.Errorf("export credential scan found invalid JSON")
-			}
 			d := json.NewDecoder(bytes.NewReader(raw))
 			d.UseNumber()
-			if d.Decode(&value) != nil {
+			if d.Decode(&value) != nil || !json.Valid(raw) {
 				return fmt.Errorf("export credential scan found invalid JSON")
 			}
 		}
