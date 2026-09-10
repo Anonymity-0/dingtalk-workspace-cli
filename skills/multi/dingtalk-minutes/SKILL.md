@@ -81,7 +81,7 @@ dws minutes +list-all --page-all --format json
 - 列表或逐字稿只有 `data.complete=true` 才能称为“全部/完整”。全量请求遇到 `meta.pagination.next_token` 时继续；只有 token 缺失、cursor 停滞/循环、达到 `page-limit` 或后页失败时才停止，并保留失败信封或不完整证据。
 - 用户要求核对、汇总“这些/每条/全部”命中项时，必须覆盖完整命中集合；可用 `dws minutes +detail --ids <uuid1,uuid2> --artifacts basic --format json` 批量核对，并逐项保留失败。只检查第一条不能代表全体；响应没有逐条归属或组织字段时如实说明不可得，不能用当前 profile 的组织名代替每条听记的归属。
 - 多听记、多来源或跨产品汇总按每个 `taskUuid`/来源 ID 保留 `requested/resolved/missing/artifacts/status`；缺输入或必需产物时整体按 partial，仍交付成功内容支持的独立结果并列缺项；不缩减原请求或把子集说成全部，依赖缺失来源的结论暂不生成。
-- 内容归纳必须来自每条真实 `summary/transcript/keywords`；未满足用户要求的内容依据时只列元数据，分类任务列“待分类/证据不足”，不凭标题或时长判无效。按 taskUuid 去重后的已分类数＋待分类数须等于目标总数。
+- 内容归纳必须来自每条真实 `summary/transcript/keywords`；只有 `title/basic` 时只列元数据；其他未满足用户要求的内容依据也只列元数据，分类任务列“待分类/证据不足”，不凭标题或时长判无效。按 taskUuid 去重后的已分类数＋待分类数须等于目标总数。
 - `partial_success`、异步 `pending`、超时和未知写入结果不是成功。按结果中的恢复句柄继续，不能重放已成功步骤。
 
 ## 安全边界
