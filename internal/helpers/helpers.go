@@ -543,11 +543,11 @@ func callMCPToolInternalOptsContext(ctx context.Context, explicitServerID, toolN
 				// 业务逻辑错误
 				if isBusinessError(errBody) {
 					message := businessErrorDisplayMessage(errBody, c.Text)
-					if serverID == "oa" && (toolName == "get_todo_tasks" || toolName == "list_pending_approvals") {
+					if hasOAApprovalListEnvelope(serverID, toolName) {
 						// Preserve classification and diagnostics from the original response.
 						// Unknown/symbolic codes keep their original error rather than being
 						// masked by an integer conversion failure.
-						if body, normalizeErr := normalizeOAPendingResponse(c.Text); normalizeErr == nil {
+						if body, normalizeErr := normalizeOAApprovalListResponse(c.Text); normalizeErr == nil {
 							if raw, marshalErr := json.Marshal(body); marshalErr == nil {
 								message = string(raw)
 							}
@@ -557,8 +557,8 @@ func callMCPToolInternalOptsContext(ctx context.Context, explicitServerID, toolN
 				}
 			}
 
-			if serverID == "oa" && (toolName == "get_todo_tasks" || toolName == "list_pending_approvals") {
-				return renderOAPendingResponse(c.Text)
+			if hasOAApprovalListEnvelope(serverID, toolName) {
+				return renderOAApprovalListResponse(c.Text)
 			}
 			return renderLegacyMCPText(toolName, c.Text, unescapeHTML)
 		}

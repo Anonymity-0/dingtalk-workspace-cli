@@ -6,14 +6,14 @@ import (
 	"strconv"
 )
 
-// normalizeOAPendingResponse aligns the pending API's legacy string envelope with
+// normalizeOAApprovalListResponse aligns the approval list APIs' legacy string envelopes with
 // the typed OA envelope. RawMessage keeps business fields (including large IDs)
 // intact; only the reviewed top-level success and error-code fields change.
 // It is shared by success rendering and business-error diagnostics.
-func normalizeOAPendingResponse(text string) (map[string]json.RawMessage, error) {
+func normalizeOAApprovalListResponse(text string) (map[string]json.RawMessage, error) {
 	var body map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(text), &body); err != nil || body == nil {
-		return nil, &CLIError{Code: CodeMCPToolError, Message: "待处理审批返回了无效的 JSON 对象"}
+		return nil, &CLIError{Code: CodeMCPToolError, Message: "审批列表返回了无效的 JSON 对象"}
 	}
 	if raw, ok := body["success"]; ok {
 		var value any
@@ -26,7 +26,7 @@ func normalizeOAPendingResponse(text string) (map[string]json.RawMessage, error)
 		case false, "false":
 			body["success"] = json.RawMessage("false")
 		default:
-			return nil, &CLIError{Code: CodeMCPToolError, Message: "待处理审批响应 success 必须为布尔值"}
+			return nil, &CLIError{Code: CodeMCPToolError, Message: "审批列表响应 success 必须为布尔值"}
 		}
 	}
 	for _, key := range []string{"errorCode", "error_code"} {
@@ -39,7 +39,7 @@ func normalizeOAPendingResponse(text string) (map[string]json.RawMessage, error)
 			}
 			n, err := strconv.ParseInt(code, 10, 64)
 			if err != nil {
-				return nil, &CLIError{Code: CodeMCPToolError, Message: fmt.Sprintf("待处理审批响应 %s 必须为整数", key)}
+				return nil, &CLIError{Code: CodeMCPToolError, Message: fmt.Sprintf("审批列表响应 %s 必须为整数", key)}
 			}
 			body["errorCode"] = json.RawMessage(strconv.FormatInt(n, 10))
 		}
@@ -48,8 +48,8 @@ func normalizeOAPendingResponse(text string) (map[string]json.RawMessage, error)
 	return body, nil
 }
 
-func renderOAPendingResponse(text string) error {
-	body, err := normalizeOAPendingResponse(text)
+func renderOAApprovalListResponse(text string) error {
+	body, err := normalizeOAApprovalListResponse(text)
 	if err != nil {
 		return err
 	}
@@ -62,4 +62,17 @@ func renderOAPendingResponse(text string) error {
 	}
 	deps.Out.PrintRaw(string(raw))
 	return nil
+}
+
+// Keep success rendering and business-error diagnostics on the same RPC set.
+func hasOAApprovalListEnvelope(serverID, toolName string) bool {
+	if serverID != "oa" {
+		return false
+	}
+	switch toolName {
+	case "get_todo_tasks", "list_pending_approvals", "get_submitted_instances", "get_noticed_instances":
+		return true
+	default:
+		return false
+	}
 }
