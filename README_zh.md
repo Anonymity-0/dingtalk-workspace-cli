@@ -353,10 +353,10 @@ dws todo task list --dry-run                       # 预览操作但不执行
 dws 是为 AI Agent 设计的 CLI 工具。请先完成[安装](#安装)和[开始使用](#开始使用)，然后安装 Agent Skills：
 
 ```bash
-npx skills add DingTalk-Real-AI/dingtalk-workspace-cli -g -y
+npx skills add DingTalk-Real-AI/dingtalk-workspace-cli -g
 ```
 
-`dws skill setup` 仍是进阶用户 / 国内 / 升级路径。详见 [Agent Skills](#agent-skills)。
+安装器会先展示计划——安装哪些 skill、写入哪些目标目录、如何处理已存在的同名 skill——并在写入前请求确认。`dws skill setup` 仍是进阶用户 / 国内 / 升级路径。详见 [Agent Skills](#agent-skills)。
 
 ### Agent 调用模式
 
@@ -397,10 +397,12 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 ### Agent Skills
 
 ```bash
-npx skills add DingTalk-Real-AI/dingtalk-workspace-cli -g -y
+npx skills add DingTalk-Real-AI/dingtalk-workspace-cli -g
 ```
 
 该命令发现 `skills/multi/dingtalk-*/SKILL.md`（`skills/` 下三层的目录布局，正是 `npx skills add` 已支持的扫描深度），并把 `dingtalk-calendar`、`dingtalk-chat` 等安装到 [vercel-labs/skills](https://github.com/vercel-labs/skills) 已识别的 Agent 目录：默认是项目 `.agents/skills/`，加 `-g` 则装到用户全局 `.agents/skills`，并链接到 `~/.cursor/skills`、`~/.claude/skills` 等已登记的 Agent home。
+
+不带 `-y` 时，安装器会先列出要安装的 skill、目标目录以及对已存在同名内容的处理方式，经确认后才写入。交互式安装和首次全局安装请保留该确认。`-y` 仅用于自动化场景：只有在用户明确确认了安装目标与覆盖行为之后才应加上——该路径不维护 `dws skill setup` 的所有权、备份与 mono↔multi 互斥清理状态，跳过确认可能在未经用户同意的情况下替换用户文件。
 
 一体式 mono skill（`skills/mono`，frontmatter 名为 `dws`）标了 `metadata.internal: true`，**不是**默认可安装 skill，因此 Agent 不会在 `dws` 与各产品 skill 之间双重路由。
 

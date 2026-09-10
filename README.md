@@ -360,10 +360,10 @@ dws todo task list --dry-run                       # preview without executing
 dws is designed as an AI-native CLI. Complete [Installation](#installation) and [Getting Started](#getting-started) first, then install Agent Skills:
 
 ```bash
-npx skills add DingTalk-Real-AI/dingtalk-workspace-cli -g -y
+npx skills add DingTalk-Real-AI/dingtalk-workspace-cli -g
 ```
 
-`dws skill setup` remains the power-user / China / upgrade path. See [Agent Skills](#agent-skills).
+The installer first shows the plan — which skills, which target directories, and how existing same-named skills will be handled — and asks for confirmation before writing anything. `dws skill setup` remains the power-user / China / upgrade path. See [Agent Skills](#agent-skills).
 
 ### Agent Invocation Patterns
 
@@ -404,10 +404,12 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 ### Agent Skills
 
 ```bash
-npx skills add DingTalk-Real-AI/dingtalk-workspace-cli -g -y
+npx skills add DingTalk-Real-AI/dingtalk-workspace-cli -g
 ```
 
 This discovers `skills/multi/dingtalk-*/SKILL.md` (catalog layout, three levels under `skills/`, the depth `npx skills add` already walks) and installs `dingtalk-calendar`, `dingtalk-chat`, … into the agent directories [vercel-labs/skills](https://github.com/vercel-labs/skills) already knows: project `.agents/skills/` by default, user-global `.agents/skills` with `-g`, plus links into `~/.cursor/skills`, `~/.claude/skills`, and the other registered homes.
+
+Without `-y`, the installer lists the skills, target directories, and existing same-named content handling for confirmation before it writes. Keep that prompt for interactive and first-time global installs. `-y` exists for automation only: add it after the user has explicitly confirmed the install targets and overwrite behavior — this path does not maintain `dws skill setup`'s ownership, backup, or mono↔multi mutual-exclusion cleanup state, so a skipped prompt can replace user files without consent.
 
 The all-in-one mono skill (`skills/mono`, frontmatter name `dws`) is marked `metadata.internal: true`, so it is **not** a default installable skill. Agents therefore do not double-route between `dws` and the per-product skills.
 
