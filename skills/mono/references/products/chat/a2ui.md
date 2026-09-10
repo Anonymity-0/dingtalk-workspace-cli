@@ -177,6 +177,12 @@ dws chat message update-a2ui-card \
 
 `--flow-status` 控制卡片流转状态；`dataModel.status` 是本示例的业务数据，按需要维护，不能代替命令参数。仅准备文件时，完成文案表示待执行的最终内容。
 
+## 组件注解
+
+两条命令均可通过 `--a2ui-annotations` 传入 JSON 对象数组。已有注解文件时，可使用 `--a2ui-annotations "$(jq -c . a2ui-annotations.json)"`；该参数不需要 `map(tojson)`。对象字段按实际注解契约填写。
+
+省略时，创建请求不携带注解字段，更新请求保持发送空数组；也可显式传入 `[]`。这只描述请求参数，不表示服务端如何合并或清除已有注解。
+
 ## 检查与排错
 
 - 组件名、属性类型和绑定方式与对应 Catalog 一致；`children` 引用已有组件，数据绑定与更新路径对应数据模型。

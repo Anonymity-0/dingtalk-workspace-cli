@@ -37,7 +37,8 @@ A2UI 原子命令规则：
   7 TIMEOUT、8 CONFIRMING、9 CONFIRMED，由 CLI 映射为枚举字符串发送。
 - A2UI `send-a2ui-card` 在 CLI 侧自动生成 `requestId`、`bizCardId`，并固定
   `protocolVersion="1.0"`；创建默认 `flowStatus=PROCESSING`。
-- A2UI `update-a2ui-card` 固定附带 `a2uiAnnotations: []`。
+- 两个 A2UI 命令均支持可选 `--a2ui-annotations`，接受 JSON 对象数组并透传为
+  `a2uiAnnotations`。省略时创建请求不携带该字段，更新请求保持发送 `[]`。
 - A2UI 命令不提供 `--at-open-dingtalk-ids` / `--at-all`；@ 仅 streaming
   `send-card` 群聊可用。
 
