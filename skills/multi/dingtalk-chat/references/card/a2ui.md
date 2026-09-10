@@ -2,7 +2,7 @@
 
 使用 `dws chat message send-a2ui-card` 创建卡片，使用 `update-a2ui-card` 更新和完结。组件属性可查阅[钉钉公开 Catalog](https://dingtalk.com/card/a2ui/catalogs/public/catalog.json)。命令参数以当前版本的 `--help` 和 leaf Schema 为准。
 
-下面以任务进度卡片为例，可按任务调整标题、正文和组件。`CollapsiblePanel.title` 使用字符串；修改标题时发送 `updateComponents`。`Markdown.content` 支持数据绑定，正文通过 `updateDataModel` 更新。其他属性是否支持绑定，以对应 Catalog 的字段类型为准。
+本指南以任务进度展示卡片为例，覆盖创建、内容更新和完结，可按任务调整标题和正文。`CollapsiblePanel.title` 使用字符串；修改标题时发送 `updateComponents`。`Markdown.content` 支持数据绑定，正文通过 `updateDataModel` 更新。新增组件或交互能力时，需另行核对当前 DWS 参数、Catalog 契约及实际支持情况。
 
 示例 JSON 使用便于编辑的对象数组，执行命令时用 `jq -c 'map(tojson)'` 转成 `--content` 要求的字符串数组。需要本地安装 `jq`。
 
@@ -182,4 +182,4 @@ dws chat message update-a2ui-card \
 - 用 `jq` 检查 JSON；字符串数组逐项 `fromjson` 解码后应与原对象数组一致。
 - 实际发送后检查创建结果、客户端展示，以及同一 `bizId` 的更新和完结效果。CLI 参数解析成功不代表服务端已接受组件或客户端已正确渲染。
 
-遇到 `a2ui dws catalog validation failed` 时，对照 Catalog 检查组件属性类型、内层 JSON、Catalog 地址和 surface 创建顺序，保留错误码与 trace 定位。原子命令的成功返回与真实交互回调分别验证；需要表单交互时，可按公开 Catalog 配置输入组件和 Action，并结合实际回调契约验证。
+遇到 `a2ui dws catalog validation failed` 时，对照 Catalog 检查组件属性类型、内层 JSON、Catalog 地址和 surface 创建顺序，保留错误码与 trace 定位。
