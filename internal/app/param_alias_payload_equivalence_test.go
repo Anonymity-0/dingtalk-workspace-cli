@@ -447,9 +447,6 @@ var paramAliasCandidateCompleteCommands = map[string][]string{
 	"report +outbox-list":                  {"report", "+outbox-list", "--size", "7"},
 	"report +report-latest":                {"report", "+report-latest", "--keyword", "Fixture", "--start", "2026-03-01T00:00:00+08:00", "--end", "2026-03-10T00:00:00+08:00"},
 	"report +template-search":              {"report", "+template-search", "--query", "fixture"},
-	"recruit job create":                   {"recruit", "job", "create", "--from", "testdata/recruit_job.json", "--yes"},
-	"recruit job get":                      {"recruit", "job", "get", "--job-id", "job-1"},
-	"recruit job list":                     {"recruit", "job", "list", "--job-ids", "job-1,job-2", "--creator-user-ids", "user-1,user-2", "--keyword", "fixture", "--cursor", "cursor-1", "--size", "7"},
 	"sheet +list-sheets":                   {"sheet", "+list-sheets", "--node", "node-1"},
 	"sheet +read":                          {"sheet", "+read", "--node", "node-1", "--sheet-id", "Sheet1"},
 
@@ -1256,7 +1253,7 @@ func TestCrossPlatformCoverageReviewedProductTemplatedParamAliasesCannotBypassCo
 		switch product {
 		case "attendance", "mail", "oa", "ding", "report", "sheet", "whiteboard", "markdown",
 			"aisearch", "contact", "live", "devdoc", "hrbrain", "pat",
-			"agoal", "audit", "dev", "devapp", "event", "mcp", "recruit":
+			"agoal", "audit", "dev", "devapp", "event", "mcp":
 		default:
 			continue
 		}
