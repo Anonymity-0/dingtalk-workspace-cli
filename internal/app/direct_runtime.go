@@ -50,7 +50,6 @@ const (
 	deapDevServerPath     = "/server/68e7e41374caa1336dc642bc3dd220de6f1e7077356dc0d4fc128f62d52d7d9b"
 	mcpdevProductID       = "mcpdev"
 	mcpdevServerPath      = "/server/62445d67b5b7971653fbd0f7c8092ee3b9ca59ce51a15ad0a1e0c0d7aac4ede5"
-	recruitProductID      = "recruit"
 )
 
 // devappMCPEndpoint resolves the open-platform app-management MCP endpoint
@@ -428,7 +427,6 @@ func DirectRuntimeProductIDs() map[string]bool {
 	ids[devappProductID] = true
 	ids[deapDevProductID] = true
 	ids[mcpdevProductID] = true
-	ids[recruitProductID] = true
 	for key := range dynamicProducts {
 		ids[key] = true
 	}
