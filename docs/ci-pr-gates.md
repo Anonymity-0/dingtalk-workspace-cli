@@ -620,7 +620,9 @@ badge is presentation only and is never read as a gate input.
 CLI 兼容检查只使用 modern Interface Snapshot 这一处权威比较 seam，并从 PR
 merge-base 和最近的可达 stable release 生成权威快照。本治理机制合入后，
 merge-base 拥有生成器、比较器和已审批迁移清单，因此 candidate 不能通过修改
-helper、fixture 或在同一 PR 新增 self-approval 记录来放行 breaking change。首次
+helper、fixture 或在同一 PR 新增 self-approval 记录来放行 breaking change。已批准的
+招聘产品整体退役使用精确的 base-owned 回执，范围、bootstrap 和旧 PR 更新要求见
+[已完成的招聘产品退役回执](cli-interface-flag-migrations.md#已完成的招聘产品退役回执)。首次
 bootstrap 仍由 merge-base 已有的 modern helper 做无豁免比较，并只接受 candidate
 提交中的规范空清单；完整边界见下方治理文档。
 
