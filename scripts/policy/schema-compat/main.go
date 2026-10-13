@@ -1124,6 +1124,13 @@ var reviewedAvailabilityInterfaceRetirements = map[string]interfaceTransition{
 		OldRef:  `{"product_id":"im","rpc_name":"convert_message_to_thread"}`,
 		NewMode: interfaceModeMCP,
 	},
+	// contact 两阶段命令退役：钉钉号查 userId 的旧 MCP 已下线，退役叶子降级为
+	// composite/unavailable 并清除精确的历史 RPC 引用。
+	"contact/contact.get_user_id_by_dingtalk_id": {
+		OldMode: interfaceModeMCP,
+		OldRef:  `{"product_id":"contact","rpc_name":"get_user_id_by_dingtalk_id"}`,
+		NewMode: "composite",
+	},
 }
 
 // reviewedInterfaceRefRedirect enumerates the exact, individually reviewed

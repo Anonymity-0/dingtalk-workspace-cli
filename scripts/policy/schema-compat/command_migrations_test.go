@@ -930,6 +930,49 @@ func TestCrossPlatformCoverageChatPromoteAvailabilityRetirementLifecycle(t *test
 	})
 }
 
+func TestCrossPlatformCoverageContactDingtalkIDAvailabilityRetirementLifecycle(t *testing.T) {
+	directory := t.TempDir()
+	baselinePath := filepath.Join(directory, "baseline.json")
+	currentPath := filepath.Join(directory, "current.json")
+	approvedPath := filepath.Join(directory, "approved.json")
+	candidatePath := filepath.Join(directory, "candidate.json")
+	currentSnapshotPath := filepath.Join(directory, "current-snapshot.json")
+	baseSnapshotPath := filepath.Join(directory, "base-snapshot.json")
+	stableSnapshotPath := filepath.Join(directory, "stable-snapshot.json")
+
+	current := contactDingtalkRetirementContract(true)
+	writeSchemaContractFile(t, baselinePath, contactDingtalkRetirementContract(false))
+	writeRawSchemaContractFile(t, currentPath, current)
+	writeCommandMigrationManifestFile(t, approvedPath, contactDingtalkRetirementManifest(interfacesnapshot.CommandMigrationPending))
+	writeCommandMigrationManifestFile(t, candidatePath, contactDingtalkRetirementManifest(interfacesnapshot.CommandMigrationConsumed))
+	writeInterfaceSnapshotFile(t, currentSnapshotPath, contactDingtalkRetirementSnapshot(true))
+	writeInterfaceSnapshotFile(t, baseSnapshotPath, contactDingtalkRetirementSnapshot(false))
+	writeInterfaceSnapshotFile(t, stableSnapshotPath, contactDingtalkRetirementSnapshot(false))
+
+	args := []string{
+		"--check", baselinePath,
+		"--current", currentPath,
+		"--approved-command-migrations", approvedPath,
+		"--candidate-command-migrations", candidatePath,
+		"--migration-current-snapshot", currentSnapshotPath,
+		"--migration-base-snapshot", baseSnapshotPath,
+		"--migration-stable-snapshot", stableSnapshotPath,
+	}
+	var stdout, stderr strings.Builder
+	if code := run(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("consumed composite retirement code=%d stderr=%s", code, stderr.String())
+	}
+
+	// 消费了收据但退役后的 interface tuple 不在评审表内时必须失败关闭。
+	mutateContactDingtalkTool(&current, func(tool *toolSchema) { tool.InterfaceMode = interfaceModeMCP })
+	writeRawSchemaContractFile(t, currentPath, current)
+	stderr.Reset()
+	if code := run(args, &stdout, &stderr); code != 2 ||
+		!strings.Contains(stderr.String(), "does not match reviewed interface tuple") {
+		t.Fatalf("wrong retired interface tuple code=%d stderr=%q", code, stderr.String())
+	}
+}
+
 func TestCrossPlatformCoverageSchemaCommandMigrationComposesHistoricalFlagLineage(t *testing.T) {
 	directory := t.TempDir()
 	stableContract, baseContract, currentContract := schemaCommandLineageContracts()
@@ -1838,6 +1881,72 @@ func chatPromoteRetirementSnapshot(hidden bool) interfacesnapshot.Snapshot {
 		Commands: []interfacesnapshot.Command{
 			{Path: "dws", Runnable: true, Aliases: []string{}, LocalFlags: []interfacesnapshot.Flag{}, InheritedFlags: []interfacesnapshot.Flag{}},
 			{Path: "dws chat thread promote", Runnable: true, Hidden: hidden, Aliases: []string{}, LocalFlags: []interfacesnapshot.Flag{}, InheritedFlags: []interfacesnapshot.Flag{}},
+		},
+	}
+}
+
+func contactDingtalkRetirementContract(after bool) schemaContract {
+	tool := toolSchema{
+		PrimaryCLIPath: "contact user get-by-dingtalk-id",
+		InterfaceMode:  interfaceModeMCP,
+		InterfaceRef:   `{"product_id":"contact","rpc_name":"get_user_id_by_dingtalk_id"}`,
+		Availability:   "available",
+		Parameters:     map[string]parameterSchema{},
+		Effect:         "read",
+		Risk:           "low",
+		Confirmation:   "not_required",
+		Idempotency:    "idempotent",
+	}
+	if after {
+		tool.Availability = "unavailable"
+		tool.InterfaceMode = "composite"
+		tool.InterfaceRef = ""
+	}
+	return schemaContract{Version: schemaContractVersion, Products: map[string]productSchema{
+		"contact": {Tools: map[string]toolSchema{"contact.get_user_id_by_dingtalk_id": tool}},
+	}}
+}
+
+func mutateContactDingtalkTool(contract *schemaContract, mutate func(*toolSchema)) {
+	product := contract.Products["contact"]
+	tool := product.Tools["contact.get_user_id_by_dingtalk_id"]
+	mutate(&tool)
+	product.Tools["contact.get_user_id_by_dingtalk_id"] = tool
+	contract.Products["contact"] = product
+}
+
+func contactDingtalkRetirementManifest(state string) interfacesnapshot.CommandMigrationManifest {
+	return interfacesnapshot.CommandMigrationManifest{
+		Version: interfacesnapshot.CommandMigrationManifestVersion,
+		Migrations: []interfacesnapshot.CommandMigration{{
+			Kind: interfacesnapshot.CommandMigrationAvailability,
+			Legacy: interfacesnapshot.CommandMigrationSide{
+				Command: "dws contact user get-by-dingtalk-id",
+				Before:  interfacesnapshot.CommandMigrationState{Present: true, Runnable: true},
+				After:   interfacesnapshot.CommandMigrationState{Present: true, Runnable: true, Hidden: true},
+			},
+			Schema: interfacesnapshot.CommandMigrationSchema{
+				ProductID:    "contact",
+				SourceToolID: "contact.get_user_id_by_dingtalk_id",
+				Parameters:   []interfacesnapshot.CommandParameterMigration{},
+				Availability: &interfacesnapshot.CommandAvailabilityChange{Before: "available", After: "unavailable"},
+			},
+			State:  state,
+			Reason: "Retire contact user get-by-dingtalk-id after the command migration is consumed.",
+		}},
+	}
+}
+
+func contactDingtalkRetirementSnapshot(hidden bool) interfacesnapshot.Snapshot {
+	return interfacesnapshot.Snapshot{
+		SchemaVersion: interfacesnapshot.SchemaVersion,
+		Rules: interfacesnapshot.Rules{
+			ExcludedCommandSubtrees: []string{"dws __complete", "dws __completeNoDesc", "dws completion", "dws help"},
+			ExcludedFlags:           []string{"help"},
+		},
+		Commands: []interfacesnapshot.Command{
+			{Path: "dws", Runnable: true, Aliases: []string{}, LocalFlags: []interfacesnapshot.Flag{}, InheritedFlags: []interfacesnapshot.Flag{}},
+			{Path: "dws contact user get-by-dingtalk-id", Runnable: true, Hidden: hidden, Aliases: []string{}, LocalFlags: []interfacesnapshot.Flag{}, InheritedFlags: []interfacesnapshot.Flag{}},
 		},
 	}
 }
