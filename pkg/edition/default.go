@@ -61,12 +61,6 @@ func openSupplementServers() []ServerInfo {
 			Endpoint: "https://mcp-gw.dingtalk.com/server/whiteboard",
 		},
 		{
-			ID:       "recruit",
-			Name:     "钉钉招聘",
-			Endpoint: "https://mcp-gw.dingtalk.com/server/f69b54ada16c57b603c0e5e1c36f464ba73dcee28d64bb701ff2682c259c0cff",
-			Prefixes: []string{"recruit", "job"},
-		},
-		{
 			ID:       "contract",
 			Name:     "智能合同",
 			Endpoint: "https://mcp-gw.dingtalk.com/server/571e843ffa2f7546207fcae482d0d47a43bb7e5317bc717172998e1e00691710",

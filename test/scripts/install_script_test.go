@@ -7683,3 +7683,63 @@ printf 'accepted\n'
 		})
 	}
 }
+
+// TestInstallScriptResolveVersion checks wget-only latest resolution when
+// LATEST_URL is unset. The header only selects the URL and tag parse.
+func TestInstallScriptResolveVersion(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell semantics are unavailable")
+	}
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scriptData, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(scriptData), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.sh main section not found")
+	}
+
+	root := t.TempDir()
+	const latestURL = "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli/releases/latest"
+	harness := string(scriptData[:cut]) + `
+GITEE_REPO=
+VERSION=latest
+unset LATEST_URL
+need_cmd() { [ "$1" = "wget" ]; }
+wget() {
+  printf '%s\n' "$*" >"$DWS_RESOLVE_EVIDENCE"
+  printf '%s\n' "Location: https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli/releases/tag/v1.2.3" >&2
+}
+resolve_version
+printf 'resolved=%s\n' "$VERSION"
+`
+	harnessPath := filepath.Join(root, "resolve-version-harness.sh")
+	mustWriteFile(t, harnessPath, []byte(harness), 0o755)
+	evidencePath := filepath.Join(root, "downloader-evidence")
+	cmd := exec.Command("sh", harnessPath)
+	cmd.Env = []string{
+		"PATH=" + os.Getenv("PATH"),
+		"HOME=" + filepath.Join(root, "home"),
+		"DWS_RESOLVE_EVIDENCE=" + evidencePath,
+	}
+	output, err := cmd.CombinedOutput()
+	recorded, readErr := os.ReadFile(evidencePath)
+	if readErr != nil && !os.IsNotExist(readErr) {
+		t.Fatalf("read downloader evidence: %v", readErr)
+	}
+	if err != nil {
+		t.Fatalf("resolve_version: %v\nevidence:\n%s\noutput:\n%s", err, recorded, output)
+	}
+	const wantArgs = "--spider --max-redirect=0 " + latestURL + "\n"
+	if string(recorded) != wantArgs {
+		t.Fatalf("wget arguments = %q, want %q\noutput:\n%s", recorded, wantArgs, output)
+	}
+	if !strings.Contains(string(output), "resolved=v1.2.3\n") {
+		t.Fatalf("resolved version = %q", output)
+	}
+}

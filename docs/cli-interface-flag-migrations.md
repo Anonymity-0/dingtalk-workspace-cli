@@ -104,6 +104,32 @@ replacement 必须保留 source 已发布的 dry-run 能力：历史 `dry_run` �
 
 两种迁移都要求旧 argv 继续可执行。删除旧命令、删除旧 flag、把 legacy 改成 non-runnable、改变未登记的历史参数、改变 interface / safety，或只完成部分 before → after 转换都会 fail closed。命令别名会先规范到 reference 的 canonical path，但清单本身仍只能记录精确 canonical 命令，不能用 alias 或前缀扩大授权。
 
+### 已完成的招聘产品退役回执
+
+[PR #1485](https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pull/1485)
+经管理员明确批准，将整个开源招聘产品退役，合并提交为
+`9a2d37268c62ba0790e83c48da5119d6afa67ea5`。管理员 bypass 只完成合并，
+不会推进稳定版基线；因此 `v1.0.63` 仍包含招聘产品，后续无关 PR 曾持续失败。
+
+`internal/interfacesnapshot/retired_products.go` 保存此次已完成退役的精确回执：
+
+- CLI 历史子树必须恰好为 `dws recruit`、`dws recruit job`、`list/get/create`
+  五个可见且可运行的节点，且没有别名；候选快照必须完全不存在招聘路径，包括别名。
+  只有 `command_removed: dws recruit` 被接受，报告在 `reviewed` 中记录 `PR #1485`。
+- Schema 历史产品必须恰好包含 `recruit.list_jobs`、`recruit.get_job_detail`、
+  `recruit.create_job`，分别绑定 `recruit job list/get/create`；候选必须移除整个
+  `recruit` 产品，且其他产品不能保留招聘工具身份或招聘 CLI 路径。
+- 其他产品、额外招聘节点、部分退役、参数及安全元数据变化继续执行原兼容检查。
+  这不是可供候选 PR 申请任意产品删除的通用审批入口，也没有改变 migration ledger。
+
+CLI 和 Schema 的 authoritative wrapper 继续使用 **merge-base 拥有的代码**；
+候选修改回执或检查器不能自行放行。首次将此治理修复合入 main 时，旧检查器仍会
+报告已批准的招聘删除，需受控管理员 bootstrap，不能称为原检查通过。合入后，
+后续 PR 必须基于含修复的 main 更新分支并生成新的 CI 结果，重跑旧基线不足以修复。
+
+稳定版 tag 和历史基线不改写，beta 不替代稳定版基线。CLI/Schema 两条入口均使用
+回执，发布仍需通过现行独立门禁；当后续稳定版也不含招聘产品时，回执自然不再命中。
+
 跨命令清单复用下文同一套 `pending → consumed → inert/cleanup` 生命周期。治理 PR 只能新增 `pending` 且产品 surface 必须仍是 before；后续产品 PR 才能一次性切到 after 并改为 `consumed`。candidate 新增的 pending 记录不能批准自己的改动。
 
 当前首批 pending 记录覆盖 `chat topic` 收口：`chat group create --thread` 拆到 `chat topic create`，以及 `chat message list-topic-replies` / `forward-topic` 迁到对应的 `chat topic` 命令。前一条完整登记 `name` / `type` / `users` 的同名承接，以及 `thread` → `convThreadEnabled=true` 的常量承接。产品 PR 消费这些记录时只能把三条 `state` 改为 `consumed`，不得改写其 before、after、Schema mapping、constant 或 reason。

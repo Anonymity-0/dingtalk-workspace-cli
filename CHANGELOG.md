@@ -6,6 +6,83 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.64] - 2026-10-14
+
+本版本将已交付的 `v1.0.64-beta.1` 晋级正式版，汇总该 beta 的变化，并纳入下方列出的 beta 后变更。
+
+### Added
+
+- **Pi Coding Agent 接入** — 新增 `--channel pi`，支持官方 JSON 流式文本、模型覆盖、按会话隔离和重启续聊；ask 模式禁用工具。
+- **通讯录好友与事件** — 增加好友列表、申请列表、发送和处理申请、删除好友，以及好友申请和添加事件；统一使用 `openDingTalkId`，提供到 `userId` 的查询入口，补齐昵称、备注、状态和 Agent 使用说明。写操作要求明确确认，删除好友属于高风险操作。
+- **OpenHarmony 发布包** — 增加静态自签名的 `openharmony/arm64` 归档和 SHA256，集成 SafeChat 消息加密；npm 与 Homebrew 的平台范围保持原有配置。
+- **版本检查与升级提示** — `auth status`、`version` 和 `--version` 提供限时、可缓存、可关闭的更新检查；未知输入优先给出具体纠错建议，仅在缺少明确建议时检查新版，保留原错误类别、退出码和机器输出。
+
+### Changed
+
+- **AI 表格契约与公开同步** — 精确登记 24 项幂等性声明纠正，并限定已审查的公开同步补丁；未登记接口及风险、确认要求和执行效果的兼容保护继续生效。
+
+### Fixed
+
+- **AI 表格写入、等待与筛选** — 保留原始 clientToken，未知写入停止重放并通过只读对账恢复；补齐批次分组与旧回执兼容。建表、建字段提供有时限的结构核对，超时或取消不重复创建；统一查询、批量更新的筛选校验及 Help、Schema、Skill 说明。
+- **日历、白板与 AI 卡片** — 修复日历嵌套时区与忙闲字段的写后核验，读回失败时保留写入回执；白板在预览或远端调用前校验 OpenNodes 层级与文本样式。更新 AI 卡片协议索引、兼容预检、预览及业务标识处理，补齐白板和卡片使用说明。
+- **升级来源与安装方式** — 开源版默认通过 npm Registry 查询版本；包管理器安装交由对应工具升级，独立二进制校验 npm 包完整性与资产 SHA256 后自更新，无需 npm 或 Node.js。保留备份、回滚和 Skill 更新，修复 npm 强制升级、同版本重装及安装文档中的环境变量传递。
+
+### Changes since `v1.0.64-beta.1`
+
+### Removed
+
+- **Chat Thread** — 下线 `chat thread promote`，历史调用返回 `command_retired`，帮助与 Skill 不再推荐该命令。已有消息转为话题暂无等价替代；新建话题使用 `chat thread send`，回复已有话题使用 `chat thread reply`。
+
+- **招聘产品下线** — 开源版移除 `dws recruit job list`、`get`、`create` 及整个招聘产品域的内置注册、Schema、MCP 端点和 Skill 入口。招聘能力仅在千问办公专属版维护。
+
+### Fixed
+
+- **wget-only install of the latest release** (#1456) — resolving `latest` without curl now requests the GitHub releases URL directly, so wget can read the release tag instead of failing before the download.
+
+- 修正 npm 包的问题反馈、仓库和主页链接，统一指向 `DingTalk-Real-AI/dingtalk-workspace-cli`，避免 `npm bugs` 打开 404 页面。
+
+- **招聘退役兼容检查** — 精确登记已批准的开源招聘产品退役，避免仍含招聘能力的旧稳定版阻塞后续 PR 和发布兼容检查；其他产品和接口的兼容保护保持生效。
+
+
+## [1.0.64-beta.1] - 2026-10-09
+
+### Added
+
+- **Pi Coding Agent 原生接入** (#1472) — 新增 `--channel pi`，支持官方 JSON 流式文本、模型覆盖、按会话隔离和重启续聊；提供本地官方 CLI 验收，ask 模式禁用工具。
+
+- **Contact friend CLI** — adds `dws contact +friend-list`, `+friend-request-list`, `+friend-request-send`, `+friend-request-accept`, `+friend-request-reject`, and `+friend-remove` shortcuts for the friend-link MCP tools published under `mcpId=2400`. All friend shortcuts accept and return `openDingTalkId` (the open-platform pairwise identifier used in friend event payloads) instead of `dingtalkId`; the write shortcuts require explicit user confirmation (`user_required`), and `+friend-remove` is a high-risk write that must be confirmed before `--yes` is accepted.
+- **Contact user lookup by openDingTalkId** — adds `dws contact user get-by-open-dingtalk-id --id <openDingTalkId>` (alias `get-user-by-open-dingtalk-id`) to retrieve a user's `userId` from their openDingTalkId, closing the friend-event-to-userId resolution loop.
+- **Friend list projections expose the nickname** — `+friend-list` projects `userProfileModel.nick` (friend nickname) alongside the reviewed `alias` (friend remark name) and the friend-operation `status` (1=added, 0=removed); `+friend-request-list` projects the requester `nick` and documents the status enum for agent translation. Both list schemas mark `openDingTalkId` as the internal identifier required for follow-up operations: always returned, displayed only when the user needs to act on it.
+- **Personal friend events** — registers two personal event keys for subscription and flattened projection: `user_contact_friend_request_received` (src/dest openDingTalkId, remark, source, apply time) and `user_contact_friend_added` (friend openDingTalkId, friend name, establish time, direction active/passive). Payloads without the required identity fields, or with an unknown direction, fail closed instead of projecting an empty result.
+- **Friend shortcuts join the public catalog** — registers the six friend shortcuts in `semantic_catalog_contact.json` (reviewed, public) and regenerates `docs/shortcut-public-catalog.json` plus `internal/shortcut/public_catalog_generated.go`, so they are visible to agents instead of hidden.
+- **Contact skill documents the friend surface** — `skills/multi/dingtalk-contact/SKILL.md` gains a friend SOP, intent-table rows, and VISIBLE_SHORTCUTS entries; `references/contact.md` gains the friend command reference (risk levels, openDingTalkId identity-key rules, pagination semantics, `+friend-remove` confirmation policy) and the `get-by-open-dingtalk-id` command section, so AI agents can discover and route friend intents.
+
+- **OpenHarmony build, self-signer, and release** — builds a static self-signed `openharmony/arm64` package (pure-Go signer `cmd/binary-sign-tool`, deterministic archive) and publishes `dws-openharmony-arm64.tar.gz` with its SHA-256 in every beta and stable GitHub Release, verified on a HarmonyOS PC, with SafeChat message crypto linked through the pinned OpenHarmony NDK (static cgo build, OpenSSL notice in NOTICE), while keeping runtime payloads, npm, and Homebrew unchanged.
+
+- **版本检查** — `auth status`、`version` 和 `--version` 显示当前版本与更新检查结果，支持限时查询、缓存、只读模式和关闭检查；开源版默认通过 npm Registry 查询，减少对 GitHub API 限额的依赖，无需安装 npm。
+- **未知命令升级提示** — 已有具体拼写候选、人工路径或参数纠正、已知处理方案时保留原 hint，不发起版本网络检查。没有明确建议、只有通用帮助指引的未知输入才限时检查新版，并在有更新时附加升级建议，保留错误类别、退出码和机器输出格式；不据此判定该命令一定存在于新版。
+
+### Changed
+
+- **AI 表格契约迁移** — 精确登记 24 项幂等性声明纠正，继续拒绝未登记路径以及夹带风险、确认要求或执行效果变化。
+- **公开同步准入** — 为已审查的 AI 表格同步 PR 登记固定来源和完整文件补丁，仅允许该批准内容；其他 AI PR 的文件数量和保护目录规则保持原样。
+
+### Fixed
+
+- **AI 表格写入与对账** — 保留调用方的原始 clientToken，写入结果未知时停止自动重放，并通过只读对账恢复；补齐批次分组与旧回执兼容。
+- **AI 表格创建后等待** — 建表、建字段支持有时限的只读结构核对；等待超时或取消不会再次创建对象。
+- **AI 表格筛选与发现** — 查询和批量更新共用筛选校验，统一 Help、Schema 与 mono/multi Skill 的参数和安全说明。
+- **安装文档** — 修正 mono 模式和 Gitee 镜像安装示例中的环境变量传递。
+
+- **日历写后核验** — 按真实嵌套字段校验时区与忙闲状态；读回失败时保留成功写回执并阻止自动重放。
+- **白板内容校验** — 在预览、生成 SVG 或远端调用前校验 OpenNodes 字段层级和文本样式，并补齐独立白板与文档内嵌白板的路由说明。
+- **AI 卡片协议与预览** — 更新 explain 索引与兼容性预检，保持更新状态并使用服务端返回的业务标识；同步组件、模式和示例说明。
+
+- **升级来源** — 开源版的 `upgrade --check`、`--list` 和指定版本查询默认使用 npm Registry，避免依赖 GitHub REST API 的匿名请求额度；保留显式配置的 GitHub 镜像和仓库。
+- **升级方式** — npm、pnpm、Homebrew 安装交由对应包管理器升级；独立二进制直接下载 npm 发布包，校验包完整性和平台资产 SHA256 后自更新，无需 npm 或 Node.js。保留原生安装的备份、回滚与技能包更新。
+- **强制升级** — npm 全局和局部安装均转发 `--force`；同版本重装保留 `npm rebuild`，重跑安装脚本恢复包内二进制。
+
+
 ## [1.0.63] - 2026-10-03
 
 本版本将已交付的 `v1.0.63-beta.3` 晋级正式版，汇总本版本线三个 beta 的变化，并纳入下方列出的 beta 后变更。
