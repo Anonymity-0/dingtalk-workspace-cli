@@ -16,6 +16,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/audit"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/authretry"
@@ -182,6 +183,88 @@ func TestCrossPlatformCoverageDelegatorRunnerLifecycle(t *testing.T) {
 	root.SetArgs([]string{"delegator-lifecycle", "leaf", "--required=ok"})
 	if err := root.Execute(); err != nil || seen != (delegatorSnapshot{}) {
 		t.Fatalf("next ordinary invocation inherited identity: %#v, %v", seen, err)
+	}
+}
+
+// 普通 Cobra hook 也必须保留当前身份，并在成功或 panic 退出后清理作用域。
+func TestCrossPlatformCoverageDelegatorPlainHooks(t *testing.T) {
+	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+	helpers.InitDepsForTest(t, helpers.GetCaller())
+	var runtime *runtimeRunner
+	testseam.Swap(t, &rootNewCommandRunnerWithFlags, func(flags *GlobalFlags) executor.Runner {
+		runtime = &runtimeRunner{globalFlags: flags}
+		return runtime
+	})
+	stages := []string{"persistent pre", "pre", "run", "post", "persistent post"}
+	var seen []string
+	panicStage, wantID := "", "current"
+	hook := func(stage string) func(*cobra.Command, []string) {
+		return func(*cobra.Command, []string) {
+			seen = append(seen, stage)
+			snapshot := runtime.withDelegatorContext(context.Background()).Value(delegatorContextKey{}).(delegatorSnapshot)
+			if snapshot.openDingtalkID != wantID {
+				t.Errorf("%s identity=%q, want %q", stage, snapshot.openDingtalkID, wantID)
+			}
+			if panicStage == stage {
+				panic("fixture plain hook panic")
+			}
+		}
+	}
+	leaf := &cobra.Command{Use: "leaf", Args: cobra.NoArgs, PreRun: hook("pre"), Run: hook("run"), PostRun: hook("post")}
+	group := &cobra.Command{Use: "delegator-plain"}
+	group.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
+			panic(err)
+		}
+		hook("persistent pre")(cmd, args)
+	}
+	group.PersistentPostRun = hook("persistent post")
+	group.AddCommand(leaf)
+	root := newRootCommandWithAssembly(context.Background(), nil, func(root *cobra.Command) { root.AddCommand(group) })
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	for index, stage := range append([]string{""}, stages...) {
+		name := stage
+		if name == "" {
+			name = "success"
+		}
+		t.Run(name, func(t *testing.T) {
+			panicStage, wantID, seen = stage, "current", nil
+			root.SetArgs([]string{"delegator-plain", "leaf", "--delegator-open-dingtalk-id=current"})
+			failed := false
+			func() {
+				defer func() {
+					if recover() != nil {
+						failed = true
+					}
+				}()
+				failed = root.Execute() != nil
+			}()
+			wantStages := len(stages)
+			if stage != "" {
+				wantStages = index
+			}
+			if failed != (stage != "") || len(seen) != wantStages {
+				t.Fatalf("failed=%v, stages=%v; want failed=%v, %d stages", failed, seen, stage != "", wantStages)
+			}
+			for i, got := range seen {
+				if got != stages[i] {
+					t.Fatalf("hook order=%v, want prefix of %v", seen, stages)
+				}
+			}
+			if runtime.globalFlags.delegatorInvocation.snapshot.Load() != nil {
+				t.Fatal("plain hook exit retained delegation scope")
+			}
+			// 同一棵树紧接着普通执行，任何 hook 都不能继承前次身份。
+			panicStage, wantID, seen = "", "", nil
+			root.SetArgs([]string{"delegator-plain", "leaf"})
+			if err := root.Execute(); err != nil || len(seen) != len(stages) {
+				t.Fatalf("ordinary invocation: error=%v, stages=%v", err, seen)
+			}
+			if runtime.globalFlags.delegatorInvocation.snapshot.Load() != nil {
+				t.Fatal("ordinary invocation retained delegation scope")
+			}
+		})
 	}
 }
 
